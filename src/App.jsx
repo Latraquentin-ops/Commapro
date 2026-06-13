@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus } from "lucide-react";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera } from "lucide-react";
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
@@ -613,8 +613,82 @@ export default function App() {
 // ═══════════════════════════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCANNER CODE-BARRES (caméra) — charge html5-qrcode depuis un CDN à la demande
+// ═══════════════════════════════════════════════════════════════════════════════
+function BarcodeScanner({ onDetected, onClose }) {
+  const [status, setStatus] = useState("Initialisation de la caméra…");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let scanner = null;
+    let cancelled = false;
+
+    function loadScript() {
+      return new Promise((resolve, reject) => {
+        if (window.Html5Qrcode) return resolve();
+        const s = document.createElement("script");
+        s.src = "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js";
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("Impossible de charger le scanner."));
+        document.head.appendChild(s);
+      });
+    }
+
+    (async () => {
+      try {
+        await loadScript();
+        if (cancelled) return;
+        const Html5Qrcode = window.Html5Qrcode;
+        scanner = new Html5Qrcode("scanner-zone");
+        setStatus("Visez un code-barres…");
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          (decodedText) => {
+            if (cancelled) return;
+            cancelled = true;
+            scanner.stop().then(() => onDetected(decodedText)).catch(() => onDetected(decodedText));
+          },
+          () => {}
+        );
+      } catch (e) {
+        console.error(e);
+        setError(e.message || "Erreur caméra. Autorisez l'accès à la caméra dans votre navigateur.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (scanner) { try { scanner.stop().catch(()=>{}); } catch {} }
+    };
+  }, [onDetected]);
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.85)", zIndex:1000, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
+      <div style={{ background:"#111", borderRadius:24, padding:20, maxWidth:420, width:"100%", border:"1px solid rgba(255,255,255,0.1)" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+          <div style={{ color:"white", fontSize:15, fontWeight:700, display:"flex", alignItems:"center", gap:8 }}><ScanLine size={18} /> Scanner un code-barres</div>
+          <button onClick={onClose} style={{ background:"rgba(255,255,255,0.1)", border:"none", borderRadius:10, width:34, height:34, cursor:"pointer", color:"white", display:"flex", alignItems:"center", justifyContent:"center" }}><X size={18} /></button>
+        </div>
+        {error ? (
+          <div style={{ color:"#f87171", fontSize:13, textAlign:"center", padding:"30px 10px", lineHeight:1.5 }}>
+            <Camera size={32} style={{ marginBottom:10 }} /><br/>{error}
+          </div>
+        ) : (
+          <>
+            <div id="scanner-zone" style={{ width:"100%", borderRadius:16, overflow:"hidden", background:"#000", minHeight:240 }} />
+            <div style={{ color:"rgba(255,255,255,0.6)", fontSize:12, textAlign:"center", marginTop:12 }}>{status}</div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
   const [query, setQuery] = useState("");
+  const [scanning, setScanning] = useState(false);
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
   const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
   const pending = orders.filter(o => ["en_attente","validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
@@ -661,6 +735,9 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
             style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, color:"var(--t-input-color)" }}
           />
           {query && <button onClick={() => setQuery("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", display:"flex", padding:0 }}><X size={18} /></button>}
+          <button onClick={() => setScanning(true)} title="Scanner un code-barres" style={{ background:"rgba(99,102,241,0.15)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, padding:"6px 10px", cursor:"pointer", color:"#818cf8", display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+            <ScanLine size={17} />
+          </button>
         </div>
 
         {q.length >= 2 && (
@@ -688,6 +765,8 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
           </div>
         )}
       </div>
+
+      {scanning && <BarcodeScanner onDetected={(code) => { setQuery(code); setScanning(false); }} onClose={() => setScanning(false)} />}
 
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
