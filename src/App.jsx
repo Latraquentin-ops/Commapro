@@ -614,6 +614,7 @@ export default function App() {
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
+  const [query, setQuery] = useState("");
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
   const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
   const pending = orders.filter(o => ["en_attente","validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
@@ -627,14 +628,65 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
     isAdmin && { page:"admin", Icon:Settings, label:"Administration",   desc:"Utilisateurs et paramètres",       gradient:"linear-gradient(135deg,rgba(245,158,11,0.7),rgba(234,179,8,0.6))", glow:"rgba(245,158,11,0.3)" },
   ].filter(Boolean).filter(c => (session.pages||[]).includes(c.page) || isAdmin);
 
+  // Recherche globale produits (réf / EAN / désignation)
+  const q = query.trim().toLowerCase();
+  const searchResults = q.length < 2 ? [] : suppliers.flatMap(s =>
+    s.products
+      .filter(p =>
+        (p.ref||"").toLowerCase().includes(q) ||
+        (p.ean||"").toLowerCase().includes(q) ||
+        (p.label||"").toLowerCase().includes(q)
+      )
+      .map(p => ({ ...p, supplierName: s.name, supplierId: s.id }))
+  ).slice(0, 30);
+
   return (
     <div>
       {/* Greeting */}
-      <div style={{ marginBottom:28 }}>
+      <div style={{ marginBottom:18 }}>
         <h1 style={{ margin:"0 0 4px", fontSize:26, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>
           Bonjour, {session.name.split(" ")[0]} 👋
         </h1>
-        <div style={{ fontSize:13, color:"var(--t-text-55)" }}>Tous les montants sont en tarif Hors Taxe</div>
+        <div style={{ fontSize:13, color:"var(--t-text-55)" }}>Voici un aperçu de votre activité.</div>
+      </div>
+
+      {/* Recherche globale produits */}
+      <div style={{ marginBottom:24, position:"relative" }}>
+        <div className="lg-search-bar" style={{ display:"flex", alignItems:"center", gap:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"12px 16px" }}>
+          <Search size={18} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Rechercher un produit par référence, code EAN ou nom…"
+            style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, color:"var(--t-input-color)" }}
+          />
+          {query && <button onClick={() => setQuery("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", display:"flex", padding:0 }}><X size={18} /></button>}
+        </div>
+
+        {q.length >= 2 && (
+          <div style={{ marginTop:10, background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:16, overflow:"hidden", boxShadow:"var(--t-card-shadow)" }}>
+            {searchResults.length === 0 ? (
+              <div style={{ padding:"20px", textAlign:"center", color:"var(--t-text-40)", fontSize:13 }}>Aucun produit trouvé pour « {query} »</div>
+            ) : (
+              <>
+                <div style={{ padding:"8px 16px", fontSize:11, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"1px solid var(--t-border-subtle)" }}>{searchResults.length} résultat(s)</div>
+                {searchResults.map((p, i) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"11px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none" }}>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                      <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
+                        <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-mono-bg)", padding:"1px 6px", borderRadius:5 }}>{p.ref}</span>
+                        {p.ean && <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-mono-color)", background:"var(--t-mono-bg)", padding:"1px 6px", borderRadius:5 }}>EAN {p.ean}</span>}
+                        <span style={{ fontSize:11, color:"var(--t-text-40)" }}>· {p.supplierName}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontWeight:700, fontSize:14, color:"#059669", flexShrink:0 }}>{fmt(p.price)}</div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
@@ -903,23 +955,24 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
     const u = users.find(u => u.email === email.trim() && u.password === pw && u.active);
     if (u) onLogin(u); else setErr("Email ou mot de passe incorrect.");
   }
+  const loginInput = { width:"100%", padding:"12px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.14)", fontSize:14, outline:"none", boxSizing:"border-box", background:"rgba(255,255,255,0.07)", color:"#ffffff" };
+  const loginLabel = { display:"block", fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.5)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" };
   return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#0a0a0f 0%,#0d1117 50%,#0a0f1a 100%)", position:"relative", overflow:"hidden", fontFamily:"-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif" }}>
       <style>{`@keyframes lb1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-20px)}} @keyframes lb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-25px,30px)}}`}</style>
       <div style={{ position:"absolute", top:"15%", left:"10%", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.2) 0%,transparent 70%)", animation:"lb1 14s ease-in-out infinite", pointerEvents:"none" }} />
       <div style={{ position:"absolute", bottom:"10%", right:"8%", width:350, height:350, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.16) 0%,transparent 70%)", animation:"lb2 18s ease-in-out infinite", pointerEvents:"none" }} />
-      <div style={{ backdropFilter:"blur(32px) saturate(180%)", WebkitBackdropFilter:"blur(32px) saturate(180%)", background:"var(--t-surface)", borderRadius:28, padding:"44px 40px", width:"100%", maxWidth:400, border:"1px solid rgba(255,255,255,0.1)", boxShadow:"0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)", position:"relative", zIndex:1 }}>
+      <div style={{ backdropFilter:"blur(32px) saturate(180%)", WebkitBackdropFilter:"blur(32px) saturate(180%)", background:"rgba(255,255,255,0.06)", borderRadius:28, padding:"44px 40px", width:"100%", maxWidth:400, border:"1px solid rgba(255,255,255,0.1)", boxShadow:"0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)", position:"relative", zIndex:1 }}>
         <div style={{ textAlign:"center", marginBottom:32 }}>
           <div style={{ marginBottom:14, display:"flex", justifyContent:"center" }}><div style={{ width:72, height:72, borderRadius:18, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(99,102,241,0.3)" }}><CPLogo size={46} /></div></div>
           <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.03em", background:"linear-gradient(135deg,#e0e7ff,#a5b4fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CommaPro</div>
-          <div style={{ fontSize:13, color:"var(--t-text-55)", marginTop:6, letterSpacing:"-0.01em" }}>Gestion des commandes fournisseurs</div>
+          <div style={{ fontSize:13, color:"rgba(255,255,255,0.55)", marginTop:6, letterSpacing:"-0.01em" }}>Gestion des commandes fournisseurs</div>
         </div>
-        <Field label="Email"><input value={email} onChange={e => setEmail(e.target.value)} style={S.input} type="email" placeholder="votre@email.com" onKeyDown={e => e.key==="Enter" && submit()} /></Field>
+        <div><label style={loginLabel}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} style={loginInput} type="email" placeholder="votre@email.com" onKeyDown={e => e.key==="Enter" && submit()} /></div>
         <div style={{ height:14 }} />
-        <Field label="Mot de passe"><input value={pw} onChange={e => setPw(e.target.value)} style={S.input} type="password" placeholder="••••••••" onKeyDown={e => e.key==="Enter" && submit()} /></Field>
+        <div><label style={loginLabel}>Mot de passe</label><input value={pw} onChange={e => setPw(e.target.value)} style={loginInput} type="password" placeholder="••••••••" onKeyDown={e => e.key==="Enter" && submit()} /></div>
         {err && <div style={{ marginTop:10, fontSize:12, color:"#f87171", background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.25)", padding:"8px 14px", borderRadius:12 }}>{err}</div>}
         <button onClick={submit} className="lg-btn-primary" style={{ ...S.btnPrimary, width:"100%", marginTop:22, padding:"13px", fontSize:15, borderRadius:16, transition:"all 0.18s" }}>Se connecter</button>
-        <div style={{ marginTop:16, fontSize:11, color:"var(--t-text-30)", textAlign:"center" }}>Démo : admin@demo.com / admin123</div>
       </div>
     </div>
   );
@@ -1277,6 +1330,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
           const weeklyVolume = parseFloat(pick(r, ["ventes/sem","ventes","ventes semaine","ventes/semaine","volume"])) || 0;
           return {
             ref:        String(pick(r, ["ref","reference","référence","réf.","ref."]) || "").trim(),
+            ean:        String(pick(r, ["ean","code ean","code-barres","code barres","gencod","gencode","ean13"]) || "").trim(),
             label:      String(pick(r, ["designation","désignation","libelle","libellé","nom","produit"]) || "").trim(),
             family:     String(pick(r, ["famille","rayon","categorie","catégorie"]) || "").trim(),
             subFamily:  String(pick(r, ["sous-famille","sous famille","sousfamille"]) || "").trim(),
@@ -1311,7 +1365,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
     setEditing(null); setForm(null);
   }
   function del(id) { if (confirm("Supprimer ce fournisseur ?")) setSuppliers(prev => prev.filter(s => s.id!==id)); }
-  function addProduct() { setForm(f => ({...f, products: [...f.products, { ref:"", label:"", price:0, family:"", subFamily:"", weeklyVolume:0, stockMin:0 }]})); }
+  function addProduct() { setForm(f => ({...f, products: [...f.products, { ref:"", ean:"", label:"", price:0, family:"", subFamily:"", weeklyVolume:0, stockMin:0 }]})); }
   function updateProduct(i, field, val) {
     setForm(f => { const p=[...f.products]; p[i]={...p[i],[field]:["price","weeklyVolume","stockMin"].includes(field) ? parseFloat(val)||0 : val};
       // Auto-calc stockMin when weeklyVolume changes
@@ -1343,18 +1397,19 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
         </div>
         {importMsg && <div style={{ fontSize:12, marginBottom:10, padding:"8px 12px", borderRadius:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", color:"var(--t-text-85)" }}>{importMsg}</div>}
         <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:12 }}>
-          💡 Colonnes attendues dans le fichier Excel : <b>Référence, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> (l'ordre n'a pas d'importance, le stock min est calculé automatiquement).
+          💡 Colonnes attendues dans le fichier Excel : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> (l'ordre n'a pas d'importance, le stock min est calculé automatiquement).
         </div>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 6 }}>
-            {["Réf.","Désignation","Famille","Sous-famille","P.U. HT","Ventes/sem","Stock min",""].map(h => (
+          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 6 }}>
+            {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Ventes/sem","Stock min",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 8, alignItems: "center" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 8, alignItems: "center" }}>
             <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." />
+            <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" />
             <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" />
             <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" />
             <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" />
@@ -1396,13 +1451,14 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
               <div style={{ marginTop: 14, borderTop: "1.5px solid #F1F5F9", paddingTop: 14, overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead><tr style={{ background:"var(--t-thead-bg)" }}>
-                    {["Réf.","Désignation","Famille","Sous-famille","Prix HT","Ventes/sem","Stock min"].map(h => (
+                    {["Réf.","Code EAN","Désignation","Famille","Sous-famille","Prix HT","Ventes/sem","Stock min"].map(h => (
                       <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color:"var(--t-text-55)", fontWeight:600 }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>{s.products.map(p => (
                     <tr key={p.ref} style={{ borderBottom: "1px solid #F1F5F9" }}>
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11 }}>{p.ref}</td>
+                      <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11, color:"var(--t-text-55)" }}>{p.ean || "—"}</td>
                       <td style={S.td}>{p.label}</td>
                       <td style={{ ...S.td, fontSize: 12 }}>{p.family || "—"}</td>
                       <td style={S.td}><span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-tag-bg)", padding:"2px 8px", borderRadius:8, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily || "—"}</span></td>
