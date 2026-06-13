@@ -435,11 +435,19 @@ export default function App() {
   }, [suppliers, orders]);
 
   if (!loaded) return (
-    <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#0a0a0f,#0d1117)", color:"white", fontFamily:"-apple-system,sans-serif", gap:16 }}>
-      <CPLogo size={56} light={true} />
-      <div style={{ fontSize:16, fontWeight:600 }}>Connexion à la base de données…</div>
-      <div style={{ width:32, height:32, border:"3px solid rgba(255,255,255,0.15)", borderTopColor:"#818cf8", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#0a0a0f 0%,#0d1117 50%,#0a0f1a 100%)", color:"white", fontFamily:"-apple-system,'SF Pro Display',sans-serif", gap:22, position:"relative", overflow:"hidden" }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}} @keyframes glow{0%,100%{opacity:0.4}50%{opacity:0.7}}`}</style>
+      <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.2) 0%,transparent 70%)", animation:"glow 3s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:22 }}>
+        <div style={{ width:96, height:96, borderRadius:26, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 16px 48px rgba(99,102,241,0.4)", animation:"pulse 2s ease-in-out infinite" }}>
+          <CPLogo size={60} />
+        </div>
+        <div style={{ fontSize:24, fontWeight:800, letterSpacing:"-0.03em", background:"linear-gradient(135deg,#e0e7ff,#a5b4fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CommaPro</div>
+        <div style={{ display:"flex", alignItems:"center", gap:10, color:"rgba(255,255,255,0.5)", fontSize:13 }}>
+          <div style={{ width:18, height:18, border:"2px solid rgba(255,255,255,0.15)", borderTopColor:"#818cf8", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+          Chargement…
+        </div>
+      </div>
     </div>
   );
   if (!session) return <LoginScreen users={users} onLogin={setSession} dark={dark} setDark={setDark} />;
