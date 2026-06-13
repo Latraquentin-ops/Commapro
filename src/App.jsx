@@ -368,6 +368,7 @@ export default function App() {
   const [suppliers, setSuppliers] = useState(INIT_SUPPLIERS);
   const [orders,    setOrders]    = useState(INIT_ORDERS);
   const [locations, setLocations] = useState(INIT_LOCATIONS);
+  const [stockImports, setStockImports] = useState([]);  // historique des imports d'état de stock
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
@@ -382,6 +383,7 @@ export default function App() {
         if (cloud.suppliers) setSuppliers(cloud.suppliers);
         if (cloud.orders)    setOrders(cloud.orders);
         if (cloud.locations) setLocations(cloud.locations);
+        if (cloud.stockImports) setStockImports(cloud.stockImports);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
         await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
@@ -393,8 +395,8 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations });
-  }, [users, suppliers, orders, locations, loaded]);
+    saveCloud({ users, suppliers, orders, locations, stockImports });
+  }, [users, suppliers, orders, locations, stockImports, loaded]);
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -406,6 +408,7 @@ export default function App() {
         if (cloud.suppliers) setSuppliers(cloud.suppliers);
         if (cloud.orders)    setOrders(cloud.orders);
         if (cloud.locations) setLocations(cloud.locations);
+        if (cloud.stockImports) setStockImports(cloud.stockImports);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -624,7 +627,7 @@ export default function App() {
         {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} T={T} />}
         {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} locations={locations} session={session} setPage={setPage} T={T} />}
         {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
-        {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} T={T} />}
+        {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
         {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
       </main>
     </div>
@@ -1401,11 +1404,125 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════════════════════════════
-function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
+function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStockImports }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [importMsg, setImportMsg] = useState("");
+  const [stockMsg, setStockMsg]   = useState("");
+
+  // ── Import ÉTAT DE STOCK (format revendeur, ex: Conforama) ──────────────────
+  // Met à jour le stock réel des produits déjà présents (par référence/Code),
+  // mémorise la date d'export et calcule les sorties vs l'import précédent.
+  function handleStockImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStockMsg("Lecture de l'état de stock…");
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: "binary" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        // Lecture en matrice brute (le format a des en-têtes répétés par sous-famille)
+        const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+        // 1) Trouver la date d'export (cellule en haut, souvent ligne 1)
+        let exportDate = null;
+        for (let r = 0; r < Math.min(4, grid.length); r++) {
+          for (const cell of grid[r]) {
+            // Excel renvoie parfois un numéro de série de date
+            if (typeof cell === "number" && cell > 40000 && cell < 60000) {
+              const d = new Date(Math.round((cell - 25569) * 86400 * 1000));
+              if (!isNaN(d)) { exportDate = d.toISOString().slice(0,10); break; }
+            }
+          }
+          if (exportDate) break;
+        }
+        if (!exportDate) exportDate = new Date().toISOString().slice(0,10);
+
+        // 2) Repérer la ligne d'en-tête (contient "Code" et "Dispo.")
+        const norm = (s) => String(s).toLowerCase().replace(/\s+/g," ").trim();
+        let headerCols = null;
+        const stockByRef = {};
+        for (const row of grid) {
+          const cells = row.map(norm);
+          const hasCode = cells.some(x => x === "code");
+          const hasDispo = cells.some(x => x.startsWith("dispo"));
+          if (hasCode && hasDispo) {
+            // mémorise l'index des colonnes utiles
+            headerCols = {};
+            row.forEach((h, i) => {
+              const n = norm(h);
+              if (n === "code") headerCols.code = i;
+              else if (n === "libellé" || n === "libelle") headerCols.label = i;
+              else if (n.startsWith("achat")) headerCols.achat = i;
+              else if (n === "facture") headerCols.facture = i;
+              else if (n === "stock") headerCols.stock = i;
+              else if (n === "reserve" || n === "réserve") headerCols.reserve = i;
+              else if (n === "emporte" || n === "emporté") headerCols.emporte = i;
+              else if (n === "livraison") headerCols.livraison = i;
+              else if (n.startsWith("dispo")) headerCols.dispo = i;
+              else if (n === "attendu") headerCols.attendu = i;
+            });
+            continue;
+          }
+          // ligne de données : a un code en colonne code et un nombre en dispo
+          if (headerCols && headerCols.code != null) {
+            const code = String(row[headerCols.code] || "").trim();
+            const dispoRaw = row[headerCols.dispo];
+            if (code && code.toLowerCase() !== "code" && !code.startsWith("CONFORAMA") && !code.includes(" - ")) {
+              const num = (i) => { const v = parseFloat(row[i]); return isNaN(v) ? 0 : v; };
+              stockByRef[code] = {
+                stock:     num(headerCols.stock),
+                dispo:     num(headerCols.dispo),
+                reserve:   num(headerCols.reserve),
+                emporte:   num(headerCols.emporte),
+                livraison: num(headerCols.livraison),
+                attendu:   num(headerCols.attendu),
+                achat:     num(headerCols.achat),
+                facture:   num(headerCols.facture),
+              };
+            }
+          }
+        }
+
+        const refsInFile = Object.keys(stockByRef);
+        if (refsInFile.length === 0) {
+          setStockMsg("⚠️ Aucune donnée de stock reconnue. Vérifie le format du fichier.");
+          return;
+        }
+
+        // 3) Mettre à jour UNIQUEMENT les produits déjà présents (par ref)
+        let updated = 0, matched = [];
+        setSuppliers(prev => prev.map(s => ({
+          ...s,
+          products: s.products.map(p => {
+            const st = stockByRef[p.ref];
+            if (!st) return p;
+            updated++; matched.push(p.ref);
+            return { ...p, stock: st.stock, dispo: st.dispo, reserve: st.reserve, emporte: st.emporte, livraison: st.livraison, attendu: st.attendu, achatRec: st.achat, facture: st.facture, stockDate: exportDate };
+          })
+        })));
+
+        // 4) Mémoriser cet import (date + dispo par ref) pour calcul des sorties
+        const snapshot = {};
+        matched.forEach(ref => { snapshot[ref] = stockByRef[ref].dispo; });
+        setStockImports(prev => {
+          const next = [...(prev||[]), { date: exportDate, dispo: snapshot, importedAt: new Date().toISOString() }];
+          // on garde les 12 derniers imports
+          return next.slice(-12);
+        });
+
+        const ignored = refsInFile.length - updated;
+        setStockMsg(`✅ État de stock du ${exportDate.split("-").reverse().join("/")} importé. ${updated} produit(s) mis à jour${ignored>0?`, ${ignored} référence(s) non présente(s) ignorée(s)`:""}.`);
+      } catch (err) {
+        console.error(err);
+        setStockMsg("❌ Erreur de lecture. Vérifie que c'est bien l'export .xlsx de l'état de stock.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  }
 
   // ── Import Excel : lit un .xlsx et ajoute les produits au formulaire ────────
   function handleExcelImport(e) {
@@ -1530,10 +1647,26 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap:"wrap", gap:10 }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Fournisseurs & Catalogues</h1>
-        {isAdmin && <button onClick={openNew} style={S.btnPrimary}>+ Ajouter</button>}
+        {isAdmin && (
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
+              <Package size={15} /> Importer état de stock
+              <input type="file" accept=".xlsx,.xls" onChange={handleStockImport} style={{ display:"none" }} />
+            </label>
+            <button onClick={openNew} style={S.btnPrimary}>+ Ajouter</button>
+          </div>
+        )}
       </div>
+      {stockMsg && (
+        <div style={{ fontSize:13, marginBottom:16, padding:"10px 14px", borderRadius:12, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", color:"var(--t-text-85)" }}>
+          {stockMsg}
+          {stockImports && stockImports.length >= 2 && (
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4 }}>{stockImports.length} imports mémorisés — les sorties sont calculées entre deux dates.</div>
+          )}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {suppliers.map(s => (
           <div key={s.id} style={S.card}>
@@ -1551,7 +1684,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
               <div style={{ marginTop: 14, borderTop: "1.5px solid #F1F5F9", paddingTop: 14, overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead><tr style={{ background:"var(--t-thead-bg)" }}>
-                    {["Réf.","Code EAN","Désignation","Famille","Sous-famille","Prix HT","Ventes/sem","Stock min"].map(h => (
+                    {["Réf.","Code EAN","Désignation","Sous-famille","Prix HT","Stock","Dispo.","Stock min"].map(h => (
                       <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color:"var(--t-text-55)", fontWeight:600 }}>{h}</th>
                     ))}
                   </tr></thead>
@@ -1560,10 +1693,10 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11 }}>{p.ref}</td>
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11, color:"var(--t-text-55)" }}>{p.ean || "—"}</td>
                       <td style={S.td}>{p.label}</td>
-                      <td style={{ ...S.td, fontSize: 12 }}>{p.family || "—"}</td>
                       <td style={S.td}><span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-tag-bg)", padding:"2px 8px", borderRadius:8, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily || "—"}</span></td>
                       <td style={{ ...S.td, fontWeight: 600, color: "#059669" }}>{fmt(p.price)}</td>
-                      <td style={{ ...S.td, color:"var(--t-text-85)" }}>{p.weeklyVolume || 0}</td>
+                      <td style={{ ...S.td, color:"var(--t-text-85)" }}>{p.stock != null ? p.stock : "—"}</td>
+                      <td style={{ ...S.td, fontWeight: 600, color: (p.dispo != null && p.dispo <= (p.stockMin ?? calcStockMin(p.weeklyVolume))) ? "#DC2626" : "var(--t-text-90)" }}>{p.dispo != null ? p.dispo : "—"}</td>
                       <td style={{ ...S.td, fontWeight: 600, color: "#D97706" }}>{p.stockMin ?? calcStockMin(p.weeklyVolume)}</td>
                     </tr>
                   ))}</tbody>
