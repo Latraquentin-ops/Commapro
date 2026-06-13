@@ -1,5 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus } from "lucide-react";
+
+// ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
+function CPLogo({ size = 36, light = false }) {
+  const main = light ? "#ffffff" : "#1e1b4b";
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* C - forme de poignée */}
+      <path d="M50 18 C30 18 18 32 18 50 C18 68 30 82 50 82 L50 66 C38 66 32 59 32 50 C32 41 38 34 50 34 Z" fill={main}/>
+      {/* P - corps */}
+      <path d="M52 26 L52 74 C52 76 53 78 56 78 C59 78 60 76 60 74 L60 58 L70 58 C82 58 88 50 88 42 C88 34 82 26 70 26 Z M60 38 L68 38 C72 38 74 40 74 42 C74 44 72 46 68 46 L60 46 Z" fill={main}/>
+      {/* Accent violet en bas du P */}
+      <rect x="52" y="74" width="8" height="14" rx="4" fill="#7c5cff"/>
+    </svg>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONFIGURATION SUPABASE
@@ -28,10 +45,10 @@ async function saveCloud(state) {
 // ─── INITIAL DATA ──────────────────────────────────────────────────────────────
 // Pages configurables (admins ont toujours tout)
 const ALL_PAGES = [
-  { key: "dashboard", label: "🏠 Accueil" },
-  { key: "orders",    label: "📋 Commandes" },
-  { key: "stats",     label: "📊 Statistiques" },
-  { key: "suppliers", label: "🏭 Fournisseurs" },
+  { key: "dashboard", label: "Accueil", icon: Home },
+  { key: "orders",    label: "Commandes", icon: ClipboardList },
+  { key: "stats",     label: "Statistiques", icon: BarChart3 },
+  { key: "suppliers", label: "Fournisseurs", icon: Factory },
 ];
 
 const INIT_USERS = [
@@ -227,18 +244,19 @@ function BarChart({ data, showValues = true }) {
 function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, dark, setDark, T }) {
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const pageLabels = { dashboard:"🏠 Accueil", orders:"📋 Commandes", new:"+ Nouvelle", stats:"📊 Statistiques", suppliers:"🏭 Fournisseurs", admin:"⚙️ Admin" };
+  const pageLabels = { dashboard:"Accueil", orders:"Commandes", new:"Nouvelle commande", stats:"Statistiques", suppliers:"Fournisseurs", admin:"Admin" };
   const dropStyle = { position:"absolute", top:"calc(100% + 10px)", right:0, backdropFilter:"blur(32px) saturate(180%)", WebkitBackdropFilter:"blur(32px) saturate(180%)", background:"var(--t-drop-bg)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:18, padding:"8px", boxShadow:"0 24px 60px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)", zIndex:300 };
   function navigate(v) { setPage(v); setMenuOpen(false); setNotifOpen(false); }
   function closeAll() { setMenuOpen(false); setNotifOpen(false); }
 
   return (
     <header style={{ backdropFilter:"blur(32px) saturate(200%)", WebkitBackdropFilter:"blur(32px) saturate(200%)", background:T.headerBg, borderBottom:"1px solid "+T.headerBorder, padding:"0 20px", display:"flex", alignItems:"center", justifyContent:"space-between", height:60, position:"sticky", top:0, zIndex:200 }}>
-      <button onClick={() => navigate("dashboard")} style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", padding:"6px 8px", borderRadius:12, flexShrink:0 }} className="lg-nav-btn">
-        <div style={{ width:32, height:32, borderRadius:9, background:"linear-gradient(135deg,rgba(99,102,241,0.9),rgba(139,92,246,0.9))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, boxShadow:"0 4px 14px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2)", flexShrink:0 }}>📦</div>
+      <button onClick={() => navigate("dashboard")} style={{ display:"flex", alignItems:"center", gap:11, background:"none", border:"none", cursor:"pointer", padding:"6px 8px", borderRadius:12, flexShrink:0 }} className="lg-nav-btn">
+        <div style={{ width:42, height:42, borderRadius:11, background:dark?"rgba(255,255,255,0.95)":"linear-gradient(135deg,#eef2ff,#e0e7ff)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 14px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.4)", flexShrink:0 }}>
+          <CPLogo size={28} light={false} />
+        </div>
         <div style={{ textAlign:"left" }}>
-          <div style={{ fontWeight:700, fontSize:14, letterSpacing:"-0.03em", background:T.accent, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", lineHeight:1.1 }}>CommaPro</div>
-          <div style={{ fontSize:9, color:"var(--t-text-30)", letterSpacing:"0.1em", textTransform:"uppercase" }}>Commandes HT</div>
+          <div style={{ fontWeight:800, fontSize:18, letterSpacing:"-0.03em", color:"var(--t-text-90)", lineHeight:1 }}>CommaPro</div>
         </div>
       </button>
 
@@ -248,8 +266,8 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
 
         {/* NOTIFICATION BELL */}
         <div style={{ position:"relative" }}>
-          <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }} style={{ position:"relative", width:36, height:36, borderRadius:10, border:"1px solid " + (notifOpen ? "rgba(239,68,68,0.5)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"), background: notifOpen ? "rgba(239,68,68,0.2)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.1)" : "var(--t-surface)", color:"var(--t-text-90)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, backdropFilter:"blur(8px)", flexShrink:0, transition:"all 0.18s" }}>
-            🔔
+          <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }} style={{ position:"relative", width:36, height:36, borderRadius:10, border:"1px solid " + (notifOpen ? "rgba(239,68,68,0.5)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"), background: notifOpen ? "rgba(239,68,68,0.2)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.1)" : "var(--t-surface)", color:"var(--t-text-90)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0, transition:"all 0.18s" }}>
+            <Bell size={17} />
             {stockAlerts.length > 0 && (
               <span style={{ position:"absolute", top:-4, right:-4, background:"linear-gradient(135deg,#ef4444,#dc2626)", borderRadius:"50%", width:16, height:16, fontSize:9, fontWeight:800, color:"white", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid rgba(8,8,18,0.9)", boxShadow:"0 2px 8px rgba(239,68,68,0.6)" }}>
                 {stockAlerts.length > 9 ? "9+" : stockAlerts.length}
@@ -260,12 +278,12 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
           {notifOpen && (
             <div style={{ ...dropStyle, minWidth:320, maxWidth:360, maxHeight:420, overflowY:"auto" }}>
               <div style={{ padding:"10px 12px 10px", borderBottom:"1px solid var(--t-separator)", marginBottom:6, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div style={{ fontSize:13, fontWeight:700, color:"var(--t-text-85)" }}>🔔 Alertes stock</div>
+                <div style={{ fontSize:13, fontWeight:700, color:"var(--t-text-85)", display:"flex", alignItems:"center", gap:6 }}><Bell size={15} /> Alertes stock</div>
                 {stockAlerts.length > 0 && <span style={{ background:"rgba(239,68,68,0.2)", color:"#f87171", border:"1px solid rgba(239,68,68,0.3)", borderRadius:12, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{stockAlerts.length}</span>}
               </div>
               {stockAlerts.length === 0 ? (
                 <div style={{ padding:"24px 12px", textAlign:"center", color:"var(--t-text-30)", fontSize:13 }}>
-                  <div style={{ fontSize:28, marginBottom:8 }}>✅</div>Aucune alerte — tout est en ordre
+                  <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}><CheckCircle2 size={28} color="#34d399" /></div>Aucune alerte — tout est en ordre
                 </div>
               ) : (
                 <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
@@ -316,16 +334,16 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
                 <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-85)" }}>{session.name}</div>
                 <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:1 }}>{session.email}</div>
               </div>
-              {navItems.map(([v, lbl]) => (
+              {navItems.map(([v, lbl, Icon]) => (
                 <button key={v} onClick={() => navigate(v)} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"9px 12px", borderRadius:12, border:"none", cursor:"pointer", background:page===v?"rgba(99,102,241,0.2)":"transparent", color:page===v?"#a5b4fc":"var(--t-text-85)", fontSize:13, fontWeight:page===v?600:400, textAlign:"left" }} className="lg-nav-btn">
-                  {page===v && <div style={{ width:3, height:14, borderRadius:2, background:"#818cf8", flexShrink:0 }} />}
+                  {Icon ? <Icon size={16} style={{ flexShrink:0 }} /> : null}
                   {lbl}
                 </button>
               ))}
               <div style={{ borderTop:"1px solid var(--t-separator)", marginTop:6, paddingTop:6 }}>
                 {/* Theme toggle */}
                 <button onClick={() => setDark(d => !d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"9px 12px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-color)", fontSize:13, textAlign:"left" }} className="lg-nav-btn">
-                  <span>{dark ? "🌙 Thème sombre" : "☀️ Thème clair"}</span>
+                  <span style={{ display:"flex", alignItems:"center", gap:8 }}>{dark ? <><Moon size={15} /> Thème sombre</> : <><Sun size={15} /> Thème clair</>}</span>
                   <div style={{ width:38, height:22, borderRadius:11, background:dark?"rgba(99,102,241,0.7)":"rgba(200,200,200,0.5)", position:"relative", transition:"background 0.3s", flexShrink:0 }}>
                     <div style={{ position:"absolute", top:3, left:dark?18:3, width:16, height:16, borderRadius:"50%", background:"white", transition:"left 0.3s", boxShadow:"0 1px 4px rgba(0,0,0,0.3)" }} />
                   </div>
@@ -418,7 +436,7 @@ export default function App() {
 
   if (!loaded) return (
     <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#0a0a0f,#0d1117)", color:"white", fontFamily:"-apple-system,sans-serif", gap:16 }}>
-      <div style={{ fontSize:40 }}>📦</div>
+      <CPLogo size={56} light={true} />
       <div style={{ fontSize:16, fontWeight:600 }}>Connexion à la base de données…</div>
       <div style={{ width:32, height:32, border:"3px solid rgba(255,255,255,0.15)", borderTopColor:"#818cf8", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
@@ -429,8 +447,8 @@ export default function App() {
 
   const allowedPages = isAdmin ? ALL_PAGES.map(p => p.key) : (session.pages || ["dashboard","orders"]);
   const navItems = [
-    ...ALL_PAGES.filter(p => allowedPages.includes(p.key)).map(p => [p.key, p.label]),
-    isAdmin ? ["admin", "⚙️ Admin"] : null,
+    ...ALL_PAGES.filter(p => allowedPages.includes(p.key)).map(p => [p.key, p.label, p.icon]),
+    isAdmin ? ["admin", "Admin", Settings] : null,
   ].filter(Boolean);
 
   // ── Theme tokens ────────────────────────────────────────────────────────────
@@ -602,11 +620,11 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
   const isAdmin = session.role === "admin";
 
   const navCards = [
-    { page:"new",       icon:"✏️", label:"Nouvelle commande",   desc:"Passer une commande fournisseur",  gradient:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.7))", glow:"rgba(99,102,241,0.35)" },
-    { page:"orders",    icon:"📋", label:"Historique",           desc:"Consulter les commandes passées",  gradient:"linear-gradient(135deg,rgba(14,165,233,0.7),rgba(6,182,212,0.6))", glow:"rgba(14,165,233,0.3)" },
-    { page:"stats",     icon:"📊", label:"Statistiques",         desc:"Analyses et parts fournisseurs",   gradient:"linear-gradient(135deg,rgba(168,85,247,0.7),rgba(217,70,239,0.6))", glow:"rgba(168,85,247,0.3)" },
-    { page:"suppliers", icon:"🏭", label:"Fournisseurs",         desc:"Catalogues et référencements",     gradient:"linear-gradient(135deg,rgba(5,150,105,0.7),rgba(16,185,129,0.6))", glow:"rgba(5,150,105,0.3)" },
-    isAdmin && { page:"admin", icon:"⚙️", label:"Administration", desc:"Utilisateurs et paramètres",     gradient:"linear-gradient(135deg,rgba(245,158,11,0.7),rgba(234,179,8,0.6))", glow:"rgba(245,158,11,0.3)" },
+    { page:"new",       Icon:PencilLine,    label:"Nouvelle commande", desc:"Passer une commande fournisseur",  gradient:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.7))", glow:"rgba(99,102,241,0.35)" },
+    { page:"orders",    Icon:ClipboardList, label:"Historique",        desc:"Consulter les commandes passées",  gradient:"linear-gradient(135deg,rgba(14,165,233,0.7),rgba(6,182,212,0.6))", glow:"rgba(14,165,233,0.3)" },
+    { page:"stats",     Icon:BarChart3,     label:"Statistiques",      desc:"Analyses et parts fournisseurs",   gradient:"linear-gradient(135deg,rgba(168,85,247,0.7),rgba(217,70,239,0.6))", glow:"rgba(168,85,247,0.3)" },
+    { page:"suppliers", Icon:Factory,       label:"Fournisseurs",      desc:"Catalogues et référencements",     gradient:"linear-gradient(135deg,rgba(5,150,105,0.7),rgba(16,185,129,0.6))", glow:"rgba(5,150,105,0.3)" },
+    isAdmin && { page:"admin", Icon:Settings, label:"Administration",   desc:"Utilisateurs et paramètres",       gradient:"linear-gradient(135deg,rgba(245,158,11,0.7),rgba(234,179,8,0.6))", glow:"rgba(245,158,11,0.3)" },
   ].filter(Boolean).filter(c => (session.pages||[]).includes(c.page) || isAdmin);
 
   return (
@@ -622,10 +640,10 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
         {[
-          { icon:"📋", label:"Total commandes", value:orders.length, sub:"toutes périodes" },
-          { icon:"⏳", label:"En cours HT",     value:fmt(pending),  sub:"en attente + validées", color:"#60a5fa" },
-          { icon:"💶", label:"Volume HT",        value:fmt(totalHT),  sub:"toutes commandes",      color:"#34d399" },
-          { icon:"✅", label:"Réceptions validées", value:byStatus.reception_validee||0, sub:"clôturées", color:"#a78bfa" },
+          { Icon:ClipboardList, label:"Total commandes", value:orders.length, sub:"toutes périodes" },
+          { Icon:Clock, label:"En cours HT", value:fmt(pending), sub:"en attente + validées", color:"#60a5fa" },
+          { Icon:Wallet, label:"Volume HT", value:fmt(totalHT), sub:"toutes commandes", color:"#34d399" },
+          { Icon:CheckCircle2, label:"Réceptions validées", value:byStatus.reception_validee||0, sub:"clôturées", color:"#a78bfa" },
         ].map((k,i) => (
           <div key={i} className="stat-card" style={{ ...S.card, padding:16 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
@@ -634,7 +652,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
                 <div style={{ fontSize:20, fontWeight:700, color:k.color||"rgba(255,255,255,0.9)", letterSpacing:"-0.02em" }}>{k.value}</div>
                 <div style={{ fontSize:10, color:"var(--t-text-30)", marginTop:3 }}>{k.sub}</div>
               </div>
-              <span style={{ fontSize:20 }}>{k.icon}</span>
+              {k.Icon && <k.Icon size={20} color={k.color||"var(--t-text-55)"} />}
             </div>
           </div>
         ))}
@@ -644,7 +662,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
         {navCards.map((c,i) => (
           <button key={i} onClick={() => setPage(c.page)} style={{ ...S.card, padding:20, border:"none", cursor:"pointer", textAlign:"left", background:c.gradient, boxShadow:`0 8px 28px ${c.glow}, inset 0 1px 0 rgba(255,255,255,0.15)`, position:"relative", overflow:"hidden" }} className="lg-card">
-            <div style={{ fontSize:28, marginBottom:10 }}>{c.icon}</div>
+            <div style={{ marginBottom:10 }}>{c.Icon && <c.Icon size={26} color="white" strokeWidth={2} />}</div>
             <div style={{ fontWeight:700, fontSize:14, color:"white", marginBottom:4, letterSpacing:"-0.02em" }}>{c.label}</div>
             <div style={{ fontSize:11, color:"var(--t-text-55)", lineHeight:1.4 }}>{c.desc}</div>
             <div style={{ position:"absolute", bottom:14, right:14, fontSize:16, color:"var(--t-text-55)" }}>→</div>
@@ -656,7 +674,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
       {stockAlerts.length > 0 && (
         <div style={{ background:"var(--t-notif-bg)", border:"1px solid var(--t-notif-border)", borderRadius:20, padding:20, marginBottom:20, backdropFilter:"blur(12px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <span style={{ fontSize: 18 }}>🔔</span>
+            <Bell size={18} color="#f87171" />
             <span style={{ fontWeight: 700, fontSize: 15, color:"#f87171" }}>Alertes stock minimum ({stockAlerts.length})</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -791,10 +809,10 @@ function StatsPage({ orders, suppliers, session }) {
           {/* KPIs période */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14 }}>
             {[
-              { icon: "📋", label: "Commandes", value: filtered.length },
-              { icon: "💶", label: "Volume HT", value: fmt(supplierTotal), color: "#059669" },
-              { icon: "🏭", label: "Fournisseurs actifs", value: bySupplier.length, color: "#1D4ED8" },
-              { icon: "🗂️", label: "Familles", value: byFamily.length, color: "#7C3AED" },
+              { Icon: ClipboardList, label: "Commandes", value: filtered.length },
+              { Icon: Wallet, label: "Volume HT", value: fmt(supplierTotal), color: "#059669" },
+              { Icon: Factory, label: "Fournisseurs actifs", value: bySupplier.length, color: "#1D4ED8" },
+              { Icon: FolderTree, label: "Familles", value: byFamily.length, color: "#7C3AED" },
             ].map((k, i) => (
               <div key={i} style={{ ...S.card, padding: 16 }}>
                 <div style={{ fontSize: 11, color:"var(--t-text-40)", marginBottom: 4 }}>{k.icon} {k.label}</div>
@@ -892,7 +910,7 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
       <div style={{ position:"absolute", bottom:"10%", right:"8%", width:350, height:350, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.16) 0%,transparent 70%)", animation:"lb2 18s ease-in-out infinite", pointerEvents:"none" }} />
       <div style={{ backdropFilter:"blur(32px) saturate(180%)", WebkitBackdropFilter:"blur(32px) saturate(180%)", background:"var(--t-surface)", borderRadius:28, padding:"44px 40px", width:"100%", maxWidth:400, border:"1px solid rgba(255,255,255,0.1)", boxShadow:"0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)", position:"relative", zIndex:1 }}>
         <div style={{ textAlign:"center", marginBottom:32 }}>
-          <div style={{ fontSize:44, marginBottom:12 }}>📦</div>
+          <div style={{ marginBottom:14, display:"flex", justifyContent:"center" }}><div style={{ width:72, height:72, borderRadius:18, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(99,102,241,0.3)" }}><CPLogo size={46} /></div></div>
           <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.03em", background:"linear-gradient(135deg,#e0e7ff,#a5b4fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CommaPro</div>
           <div style={{ fontSize:13, color:"var(--t-text-55)", marginTop:6, letterSpacing:"-0.01em" }}>Gestion des commandes fournisseurs</div>
         </div>
@@ -1000,7 +1018,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
             {isAdmin && <select value={order.status} onChange={e => setStatus(e.target.value)} style={{ ...S.input, width: "auto", fontSize: 12 }}>
               {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>}
-            <button onClick={() => generatePDF(order, showPrices)} style={S.btnSecondary}>📄 PDF</button>
+            <button onClick={() => generatePDF(order, showPrices)} style={{...S.btnSecondary, display:"inline-flex", alignItems:"center", gap:6}}><FileText size={15} /> PDF</button>
             {isAdmin && <button onClick={deleteOrder} style={S.btnDanger}>Supprimer</button>}
           </div>
         </div>
@@ -1076,11 +1094,11 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
 
   if (saved) return (
     <div style={{ ...S.card, maxWidth:500, margin:"0 auto", textAlign:"center", padding:44 }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+      <div style={{ marginBottom:12, display:"flex", justifyContent:"center" }}><CheckCircle2 size={48} color="#34d399" /></div>
       <div style={{ fontSize:20, fontWeight:700, letterSpacing:"-0.02em", marginBottom:8, color:"var(--t-text-90)" }}>Commande enregistrée</div>
       <div style={{ fontSize:24, fontWeight:700, color:"var(--t-btn-ghost)", marginBottom:20 }}>{saved.id}</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-        <button onClick={() => generatePDF(saved, session.canSeePrices)} style={S.btnPrimary}>📄 PDF</button>
+        <button onClick={() => generatePDF(saved, session.canSeePrices)} style={{...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6}}><FileText size={15} /> PDF</button>
         <button onClick={() => setPage("orders")} style={S.btnSecondary}>Voir l'historique</button>
         <button onClick={() => { setSaved(null); setSuppId(""); setLines([]); setDeliveryDate(""); setDeliveryPlace(""); setNotes(""); }} style={S.btnSecondary}>Nouvelle commande</button>
       </div>
@@ -1112,7 +1130,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, gap:12 }}>
                 <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>2. Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
                 <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, maxWidth:280, background:"var(--t-surface)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:22, padding:"6px 14px", backdropFilter:"blur(8px)" }} className="lg-search-bar">
-                  <span style={{ color:"var(--t-text-40)", fontSize:14, flexShrink:0 }}>🔍</span>
+                  <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
                   <input
                     value={catalogSearch}
                     onChange={e => setCatalogSearch(e.target.value)}
@@ -1135,7 +1153,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
                 );
                 if (filtered.length === 0) return (
                   <div style={{ textAlign:"center", padding:"30px 0", color:"var(--t-text-30)" }}>
-                    <div style={{ fontSize:28, marginBottom:8 }}>🔍</div>
+                    <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}><Search size={28} color="var(--t-text-30)" /></div>
                     <div style={{ fontSize:13 }}>Aucun produit pour "{catalogSearch}"</div>
                     <button onClick={() => setCatalogSearch("")} style={{ ...S.btnGhost, marginTop:8, fontSize:12 }}>Réinitialiser</button>
                   </div>
@@ -1234,6 +1252,54 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [importMsg, setImportMsg] = useState("");
+
+  // ── Import Excel : lit un .xlsx et ajoute les produits au formulaire ────────
+  function handleExcelImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportMsg("Lecture du fichier…");
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: "binary" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        // On accepte plusieurs noms de colonnes possibles (souples)
+        const norm = (s) => String(s).toLowerCase().replace(/[éè]/g,"e").trim();
+        const pick = (row, names) => {
+          for (const key of Object.keys(row)) {
+            if (names.includes(norm(key))) return row[key];
+          }
+          return "";
+        };
+        const imported = rows.map(r => {
+          const weeklyVolume = parseFloat(pick(r, ["ventes/sem","ventes","ventes semaine","ventes/semaine","volume"])) || 0;
+          return {
+            ref:        String(pick(r, ["ref","reference","référence","réf.","ref."]) || "").trim(),
+            label:      String(pick(r, ["designation","désignation","libelle","libellé","nom","produit"]) || "").trim(),
+            family:     String(pick(r, ["famille","rayon","categorie","catégorie"]) || "").trim(),
+            subFamily:  String(pick(r, ["sous-famille","sous famille","sousfamille"]) || "").trim(),
+            price:      parseFloat(String(pick(r, ["prix","prix ht","p.u. ht","pu","prix unitaire"])).replace(",",".")) || 0,
+            weeklyVolume,
+            stockMin:   calcStockMin(weeklyVolume),
+          };
+        }).filter(p => p.ref || p.label);  // on ignore les lignes vides
+
+        if (imported.length === 0) {
+          setImportMsg("⚠️ Aucun produit trouvé. Vérifie les noms de colonnes.");
+          return;
+        }
+        setForm(f => ({ ...f, products: [...f.products, ...imported] }));
+        setImportMsg(`✅ ${imported.length} produit(s) importé(s) ! Vérifie puis enregistre.`);
+      } catch (err) {
+        console.error(err);
+        setImportMsg("❌ Erreur de lecture du fichier. Vérifie que c'est bien un .xlsx.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";  // permet de réimporter le même fichier
+  }
 
   function openNew() {
     setForm({ id: "s"+Date.now(), name: "", commercial: "", email: "", products: [] });
@@ -1265,9 +1331,19 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin }) {
           <Field label="Commercial"><input value={form.commercial} onChange={e => setForm(f=>({...f,commercial:e.target.value}))} style={S.input} /></Field>
           <Field label="Email"><input value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={S.input} type="email" /></Field>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap:"wrap", gap:8 }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>Catalogue produits</h3>
-          <button onClick={addProduct} style={S.btnSecondary}>+ Produit</button>
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
+              <FileText size={15} style={{ marginRight:6, verticalAlign:"middle" }} /> Importer Excel
+              <input type="file" accept=".xlsx,.xls" onChange={handleExcelImport} style={{ display:"none" }} />
+            </label>
+            <button onClick={addProduct} style={S.btnSecondary}>+ Produit</button>
+          </div>
+        </div>
+        {importMsg && <div style={{ fontSize:12, marginBottom:10, padding:"8px 12px", borderRadius:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", color:"var(--t-text-85)" }}>{importMsg}</div>}
+        <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:12 }}>
+          💡 Colonnes attendues dans le fichier Excel : <b>Référence, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> (l'ordre n'a pas d'importance, le stock min est calculé automatiquement).
         </div>
         {form.products.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 6 }}>
@@ -1420,7 +1496,7 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
       {/* Lieux de livraison */}
       <div style={{ ...S.card, marginBottom:20 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-          <h2 style={{ margin:0, fontSize:15, fontWeight:700 }}>📍 Lieux de livraison</h2>
+          <h2 style={{ margin:0, fontSize:15, fontWeight:700, display:"flex", alignItems:"center", gap:8 }}><MapPin size={17} /> Lieux de livraison</h2>
           <button onClick={() => setLocations(prev => [...prev, { id:"l"+Date.now(), label:"" }])} style={S.btnSecondary}>+ Ajouter</button>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
