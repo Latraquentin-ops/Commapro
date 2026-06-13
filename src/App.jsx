@@ -5,8 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 // CONFIGURATION SUPABASE
 // 👉 Remplace les 2 valeurs ci-dessous par les tiennes (voir le guide GUIDE.md).
 // ═══════════════════════════════════════════════════════════════════════════════
-const SUPABASE_URL = "https://TON-PROJET.supabase.co";
-const SUPABASE_KEY = "TA-CLE-ANON-PUBLIQUE";
+const SUPABASE_URL = "https://gwzjfdxndxkewpvpkeoc.supabase.co/rest/v1/";
+const SUPABASE_KEY = "sb_publishable_WLY_2Srri6SS5MRMwAleBA_-nA9SGCF";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
