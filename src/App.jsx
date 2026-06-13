@@ -250,23 +250,23 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
   function closeAll() { setMenuOpen(false); setNotifOpen(false); }
 
   return (
-    <header style={{ backdropFilter:"blur(32px) saturate(200%)", WebkitBackdropFilter:"blur(32px) saturate(200%)", background:T.headerBg, borderBottom:"1px solid "+T.headerBorder, padding:"0 20px", display:"flex", alignItems:"center", justifyContent:"space-between", height:60, position:"sticky", top:0, zIndex:200 }}>
+    <header className="hdr-root" style={{ backdropFilter:"blur(32px) saturate(200%)", WebkitBackdropFilter:"blur(32px) saturate(200%)", background:T.headerBg, borderBottom:"1px solid "+T.headerBorder, padding:"0 20px", display:"flex", alignItems:"center", justifyContent:"space-between", height:60, position:"sticky", top:0, zIndex:200 }}>
       <button onClick={() => navigate("dashboard")} style={{ display:"flex", alignItems:"center", gap:11, background:"none", border:"none", cursor:"pointer", padding:"6px 8px", borderRadius:12, flexShrink:0 }} className="lg-nav-btn">
-        <div style={{ width:42, height:42, borderRadius:11, background:dark?"rgba(255,255,255,0.95)":"linear-gradient(135deg,#eef2ff,#e0e7ff)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 14px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.4)", flexShrink:0 }}>
+        <div className="hdr-logo-badge" style={{ width:42, height:42, borderRadius:11, background:dark?"rgba(255,255,255,0.95)":"linear-gradient(135deg,#eef2ff,#e0e7ff)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 14px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.4)", flexShrink:0 }}>
           <CPLogo size={28} light={false} />
         </div>
-        <div style={{ textAlign:"left" }}>
+        <div className="hdr-brand-text" style={{ textAlign:"left" }}>
           <div style={{ fontWeight:800, fontSize:18, letterSpacing:"-0.03em", color:"var(--t-text-90)", lineHeight:1 }}>CommaPro</div>
         </div>
       </button>
 
-      <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-55)", letterSpacing:"-0.01em" }}>{pageLabels[page] || ""}</div>
+      <div className="hdr-title-center" style={{ fontSize:13, fontWeight:600, color:"var(--t-text-55)", letterSpacing:"-0.01em" }}>{pageLabels[page] || ""}</div>
 
-      <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+      <div className="hdr-actions" style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
 
         {/* NOTIFICATION BELL */}
         <div style={{ position:"relative" }}>
-          <button onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }} style={{ position:"relative", width:36, height:36, borderRadius:10, border:"1px solid " + (notifOpen ? "rgba(239,68,68,0.5)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"), background: notifOpen ? "rgba(239,68,68,0.2)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.1)" : "var(--t-surface)", color:"var(--t-text-90)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0, transition:"all 0.18s" }}>
+          <button className="hdr-btn" onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }} style={{ position:"relative", width:36, height:36, borderRadius:10, border:"1px solid " + (notifOpen ? "rgba(239,68,68,0.5)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"), background: notifOpen ? "rgba(239,68,68,0.2)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.1)" : "var(--t-surface)", color:"var(--t-text-90)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0, transition:"all 0.18s" }}>
             <Bell size={17} />
             {stockAlerts.length > 0 && (
               <span style={{ position:"absolute", top:-4, right:-4, background:"linear-gradient(135deg,#ef4444,#dc2626)", borderRadius:"50%", width:16, height:16, fontSize:9, fontWeight:800, color:"white", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid rgba(8,8,18,0.9)", boxShadow:"0 2px 8px rgba(239,68,68,0.6)" }}>
@@ -317,13 +317,13 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
         </div>
 
         {/* User avatar */}
-        <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,rgba(99,102,241,0.7),rgba(168,85,247,0.7))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:"white", border:"1.5px solid rgba(255,255,255,0.12)", flexShrink:0 }}>
+        <div className="hdr-avatar" style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,rgba(99,102,241,0.7),rgba(168,85,247,0.7))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:"white", border:"1.5px solid rgba(255,255,255,0.12)", flexShrink:0 }}>
           {session.name.charAt(0).toUpperCase()}
         </div>
 
         {/* Hamburger */}
         <div style={{ position:"relative" }}>
-          <button onClick={() => { setMenuOpen(o => !o); setNotifOpen(false); }} style={{ width:36, height:36, borderRadius:10, border:"1px solid rgba(255,255,255,0.12)", background:menuOpen?"rgba(99,102,241,0.25)":"var(--t-surface)", color:"var(--t-text-85)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, backdropFilter:"blur(8px)", flexShrink:0 }}>
+          <button className="hdr-btn" onClick={() => { setMenuOpen(o => !o); setNotifOpen(false); }} style={{ width:36, height:36, borderRadius:10, border:"1px solid rgba(255,255,255,0.12)", background:menuOpen?"rgba(99,102,241,0.25)":"var(--t-surface)", color:"var(--t-text-85)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, backdropFilter:"blur(8px)", flexShrink:0 }}>
             <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", transform:menuOpen?"rotate(45deg) translate(2px,4px)":"none" }} />
             <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", opacity:menuOpen?0:1 }} />
             <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", transform:menuOpen?"rotate(-45deg) translate(2px,-4px)":"none" }} />
@@ -594,6 +594,19 @@ export default function App() {
         ::-webkit-scrollbar { width:5px; height:5px; }
         ::-webkit-scrollbar-track { background:transparent; }
         ::-webkit-scrollbar-thumb { background:var(--t-scroll); border-radius:3px; }
+        /* ── Responsive header (mobile) ─────────────────────────── */
+        .hdr-title-center { }
+        @media (max-width: 640px) {
+          .hdr-brand-text { display: none !important; }
+          .hdr-title-center { display: none !important; }
+          .hdr-logo-badge { width: 36px !important; height: 36px !important; }
+          .hdr-root { padding: 0 12px !important; }
+          .hdr-avatar { display: none !important; }
+          .hdr-actions { gap: 6px !important; }
+        }
+        @media (max-width: 380px) {
+          .hdr-btn { width: 34px !important; height: 34px !important; }
+        }
       `}</style>
 
       {/* Ambient blobs */}
