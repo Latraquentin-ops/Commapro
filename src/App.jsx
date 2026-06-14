@@ -750,8 +750,6 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
   }));
   reapproList.sort((a,b) => b.missing - a.missing);
 
-  const hasMorning = deliveriesToday.length > 0 || lateOrders.length > 0 || reapproList.length > 0;
-
   const navCards = [
     { page:"new",       Icon:PencilLine,    label:"Nouvelle commande", desc:"Passer une commande fournisseur",  gradient:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.7))", glow:"rgba(99,102,241,0.35)" },
     { page:"orders",    Icon:ClipboardList, label:"Historique",        desc:"Consulter les commandes passées",  gradient:"linear-gradient(135deg,rgba(14,165,233,0.7),rgba(6,182,212,0.6))", glow:"rgba(14,165,233,0.3)" },
@@ -827,8 +825,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
       {scanning && <BarcodeScanner onDetected={(code) => { setQuery(code); setScanning(false); }} onClose={() => setScanning(false)} />}
 
       {/* ── Ce matin : livraisons du jour, retards, réappro ── */}
-      {hasMorning && (
-        <div className="grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:24 }}>
+      <div className="grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:24 }}>
           {/* Livraisons aujourd'hui */}
           <div style={{ ...S.card, padding:16 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
@@ -892,7 +889,6 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
             ))}
           </div>
         </div>
-      )}
 
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
