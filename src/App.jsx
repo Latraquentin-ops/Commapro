@@ -454,6 +454,7 @@ export default function App() {
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [orderFilter, setOrderFilter] = useState("all");  // filtre pré-sélectionné depuis dashboard
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
@@ -758,8 +759,8 @@ export default function App() {
         <div className="app-content">
           <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(40px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
-            {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} T={T} />}
-            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} T={T} />}
+            {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} T={T} />}
+            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} locations={locations} session={session} setPage={setPage} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
@@ -884,7 +885,7 @@ function BarcodeScanner({ onDetected, onClose }) {
   );
 }
 
-function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
+function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOrderFilter }) {
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
@@ -1136,7 +1137,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
               const s = STATUS[k];
               const count = byStatus[k] || 0;
               return (
-                <button key={k} onClick={() => setPage("orders")} style={{ background:"var(--t-surface)", border:`1px solid ${count>0?s.color+"44":"var(--t-border-subtle)"}`, borderRadius:12, padding:"10px 8px", cursor:"pointer", textAlign:"center", transition:"all 0.15s" }}>
+                <button key={k} onClick={() => { if(setOrderFilter) setOrderFilter(k); setPage("orders"); }} style={{ background:"var(--t-surface)", border:`1px solid ${count>0?s.color+"44":"var(--t-border-subtle)"}`, borderRadius:12, padding:"10px 8px", cursor:"pointer", textAlign:"center", transition:"all 0.15s" }}>
                   <div style={{ fontSize:20, fontWeight:800, color: count>0 ? s.color : "var(--t-text-40)", lineHeight:1 }}>{count}</div>
                   <div style={{ fontSize:10, color:"var(--t-text-40)", marginTop:4, lineHeight:1.3 }}>{s.label}</div>
                 </button>
@@ -1449,12 +1450,20 @@ function OrderTable({ orders, session, onSelect, compact }) {
   );
 }
 
-function OrdersPage({ orders, setOrders, session, setPage }) {
+function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilterUsed }) {
   const [selected, setSelected] = useState(null);
-  const [filter, setFilter]     = useState("all");
+  const [filter, setFilter]     = useState(initialFilter || "all");
   const isAdmin = session.role === "admin";
   const visible = isAdmin ? orders : orders.filter(o => o.userId === session.id);
   const filtered = filter === "all" ? visible : visible.filter(o => o.status === filter);
+
+  // Applique le filtre initial venant du dashboard, puis le réinitialise
+  useEffect(() => {
+    if (initialFilter && initialFilter !== "all") {
+      setFilter(initialFilter);
+      if (onFilterUsed) onFilterUsed();
+    }
+  }, [initialFilter]);
 
   if (selected) {
     const order = orders.find(o => o.id === selected);
