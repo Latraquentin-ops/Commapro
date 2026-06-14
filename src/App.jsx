@@ -590,6 +590,7 @@ export default function App() {
         .stat-card { transition:all 0.22s cubic-bezier(0.4,0,0.2,1) !important; }
         .stat-card:hover { transform:translateY(-3px) !important; box-shadow:0 16px 40px rgba(99,102,241,0.15) !important; }
         * { box-sizing:border-box; }
+        html, body { max-width:100%; overflow-x:hidden; }
         input, select, textarea { color:var(--t-input-color) !important; background:var(--t-input-bg) !important; transition:all 0.18s !important; font-weight:500; }
         input:focus, select:focus, textarea:focus { outline:none !important; border-color:rgba(99,102,241,0.5) !important; box-shadow:0 0 0 3px rgba(99,102,241,0.12) !important; }
         input::placeholder, textarea::placeholder { color:var(--t-placeholder) !important; }
@@ -603,9 +604,13 @@ export default function App() {
           .hdr-brand-text { display: none !important; }
           .hdr-title-center { display: none !important; }
           .hdr-logo-badge { width: 36px !important; height: 36px !important; }
-          .hdr-root { padding: 0 12px !important; }
           .hdr-avatar { display: none !important; }
           .hdr-actions { gap: 6px !important; }
+          /* Empile les mises en page 2 colonnes sur mobile */
+          .order-layout { grid-template-columns: 1fr !important; }
+          .order-recap { position: static !important; }
+          .grid-2 { grid-template-columns: 1fr !important; }
+          .grid-3 { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 380px) {
           .hdr-btn { width: 34px !important; height: 34px !important; }
@@ -977,7 +982,7 @@ function StatsPage({ orders, suppliers, session }) {
           </div>
 
           {/* Fournisseurs + pie */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <StatSection title="Part par fournisseur (volume HT)">
               <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
                 <PieChart data={bySupplier.map((d, i) => ({ ...d, color: COLORS[i % COLORS.length] }))} size={120} />
@@ -1267,7 +1272,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
   return (
     <div>
       <h1 style={{ margin:"0 0 24px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Nouvelle commande</h1>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, alignItems: "start" }}>
+      <div className="order-layout" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={S.card}>
             <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>① Fournisseur</h2>
@@ -1349,7 +1354,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
           {supp && (
             <div style={S.card}>
               <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>③ Livraison</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <Field label="Date souhaitée *"><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} style={S.input} /></Field>
                 <Field label="Lieu de livraison *">
                   <select value={deliveryPlace} onChange={e => setDeliveryPlace(e.target.value)} style={{ ...S.input, background: "white" }}>
@@ -1366,7 +1371,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
         </div>
 
         {/* Recap */}
-        <div style={{ position:'sticky', top:80 }}>
+        <div className="order-recap" style={{ position:'sticky', top:80 }}>
           <div style={S.card}>
             <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Récapitulatif</h2>
             {lines.length===0 ? <div style={{ color:"var(--t-text-30)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Aucun produit</div> : (
@@ -1639,7 +1644,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
       <button onClick={() => { setEditing(null); setForm(null); }} style={{ ...S.btnGhost, marginBottom: 16 }}>← Annuler</button>
       <div style={S.card}>
         <h2 style={{ margin: "0 0 20px 0", fontSize: 16, fontWeight: 700 }}>{editing==="new" ? "Nouveau fournisseur" : "Modifier"}</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
+        <div className="grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
           <Field label="Nom société *"><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} style={S.input} /></Field>
           <Field label="Commercial"><input value={form.commercial} onChange={e => setForm(f=>({...f,commercial:e.target.value}))} style={S.input} /></Field>
           <Field label="Email"><input value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={S.input} type="email" /></Field>
