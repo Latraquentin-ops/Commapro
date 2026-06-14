@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera } from "lucide-react";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck } from "lucide-react";
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
@@ -729,6 +729,29 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
   const pending = orders.filter(o => ["en_attente","validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
   const isAdmin = session.role === "admin";
 
+  // ── Dashboard "ce matin" ────────────────────────────────────────────────
+  const todayStr = new Date().toISOString().slice(0,10);
+  const notReceived = (o) => !["livree","reception_validee"].includes(o.status);
+
+  // 1) Livraisons attendues aujourd'hui (date de livraison souhaitée = aujourd'hui)
+  const deliveriesToday = orders.filter(o => o.deliveryDate === todayStr && notReceived(o));
+
+  // 2) Commandes en retard (date souhaitée dépassée ET pas encore reçue)
+  const lateOrders = orders.filter(o => o.deliveryDate && o.deliveryDate < todayStr && notReceived(o))
+    .sort((a,b) => a.deliveryDate.localeCompare(b.deliveryDate));
+
+  // 3) Réapprovisionnement conseillé (dispo importé < stock min)
+  const reapproList = [];
+  suppliers.forEach(s => s.products.forEach(p => {
+    const stockMin = p.stockMin ?? calcStockMin(p.weeklyVolume);
+    if (p.dispo != null && stockMin > 0 && p.dispo < stockMin) {
+      reapproList.push({ ref:p.ref, label:p.label, supplier:s.name, dispo:p.dispo, stockMin, missing: stockMin - p.dispo });
+    }
+  }));
+  reapproList.sort((a,b) => b.missing - a.missing);
+
+  const hasMorning = deliveriesToday.length > 0 || lateOrders.length > 0 || reapproList.length > 0;
+
   const navCards = [
     { page:"new",       Icon:PencilLine,    label:"Nouvelle commande", desc:"Passer une commande fournisseur",  gradient:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.7))", glow:"rgba(99,102,241,0.35)" },
     { page:"orders",    Icon:ClipboardList, label:"Historique",        desc:"Consulter les commandes passées",  gradient:"linear-gradient(135deg,rgba(14,165,233,0.7),rgba(6,182,212,0.6))", glow:"rgba(14,165,233,0.3)" },
@@ -802,6 +825,74 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
       </div>
 
       {scanning && <BarcodeScanner onDetected={(code) => { setQuery(code); setScanning(false); }} onClose={() => setScanning(false)} />}
+
+      {/* ── Ce matin : livraisons du jour, retards, réappro ── */}
+      {hasMorning && (
+        <div className="grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:24 }}>
+          {/* Livraisons aujourd'hui */}
+          <div style={{ ...S.card, padding:16 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}><Truck size={16} style={{ color:"#0ea5e9" }} /> Livraisons aujourd'hui</div>
+              <span style={{ fontSize:12, fontWeight:700, color:"#0ea5e9", background:"rgba(14,165,233,0.12)", padding:"1px 8px", borderRadius:8 }}>{deliveriesToday.length}</span>
+            </div>
+            {deliveriesToday.length === 0 ? (
+              <div style={{ fontSize:12, color:"var(--t-text-40)", padding:"6px 0" }}>Aucune livraison prévue aujourd'hui.</div>
+            ) : deliveriesToday.slice(0,5).map(o => (
+              <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", cursor:"pointer" }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{o.deliveryPlace || "—"}</div>
+                </div>
+                <StatusBadge status={o.status} />
+              </div>
+            ))}
+          </div>
+
+          {/* Commandes en retard */}
+          <div style={{ ...S.card, padding:16 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}><Clock size={16} style={{ color:"#f87171" }} /> Commandes en retard</div>
+              <span style={{ fontSize:12, fontWeight:700, color:"#f87171", background:"rgba(239,68,68,0.12)", padding:"1px 8px", borderRadius:8 }}>{lateOrders.length}</span>
+            </div>
+            {lateOrders.length === 0 ? (
+              <div style={{ fontSize:12, color:"var(--t-text-40)", padding:"6px 0" }}>Aucun retard. 👍</div>
+            ) : lateOrders.slice(0,5).map(o => {
+              const daysLate = Math.round((new Date(todayStr) - new Date(o.deliveryDate)) / 86400000);
+              return (
+                <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", cursor:"pointer" }}>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:12, fontFamily:"monospace", fontWeight:700, color:"var(--t-text-90)" }}>{o.id}</div>
+                    <div style={{ fontSize:11, color:"var(--t-text-40)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
+                  </div>
+                  <span style={{ fontSize:11, fontWeight:600, color:"#f87171", flexShrink:0 }}>retard {daysLate}j</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Réapprovisionnement conseillé */}
+          <div style={{ ...S.card, padding:16 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}><Package size={16} style={{ color:"#f59e0b" }} /> Réappro conseillé</div>
+              <span style={{ fontSize:12, fontWeight:700, color:"#f59e0b", background:"rgba(245,158,11,0.12)", padding:"1px 8px", borderRadius:8 }}>{reapproList.length}</span>
+            </div>
+            {reapproList.length === 0 ? (
+              <div style={{ fontSize:12, color:"var(--t-text-40)", padding:"6px 0" }}>Rien à commander pour l'instant.</div>
+            ) : reapproList.slice(0,5).map((r,i) => (
+              <div key={i} onClick={() => setPage("suppliers")} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", cursor:"pointer" }}>
+                <div style={{ minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.label}</div>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{r.supplier}</div>
+                </div>
+                <div style={{ textAlign:"right", flexShrink:0 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b" }}>{r.dispo} / {r.stockMin}</div>
+                  <div style={{ fontSize:10, color:"var(--t-text-40)" }}>dispo / min</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
