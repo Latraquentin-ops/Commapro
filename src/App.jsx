@@ -2097,14 +2097,17 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {suppliers.map(s => (
           <div key={s.id} style={S.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap:10, flexWrap:"wrap" }}>
-              <div style={{ minWidth:0, flex:1 }}>
+            <div style={{ display: "flex", flexDirection:"column", gap:12 }}>
+              <div>
                 <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
-                <div style={{ fontSize: 12, color:"var(--t-text-40)", marginTop: 2, wordBreak:"break-all" }}>{s.commercial} · {s.email}</div>
+                <div style={{ fontSize: 12, color:"var(--t-text-40)", marginTop: 2 }}>{s.commercial} · {s.email}</div>
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap:"wrap", flexShrink:0 }}>
-                <button onClick={() => setExpanded(expanded===s.id ? null : s.id)} style={S.btnGhost}>{s.products.length} produit(s) {expanded===s.id?"▲":"▼"}</button>
-                {isAdmin && <><button onClick={() => openEdit(s)} style={S.btnSecondary}>Modifier</button><button onClick={() => del(s.id)} style={S.btnDanger}>Supprimer</button></>}
+              <div style={{ display: "flex", gap: 8, alignItems:"center" }}>
+                <button onClick={() => setExpanded(expanded===s.id ? null : s.id)} style={{ ...S.btnGhost, flex:1, textAlign:"center" }}>{s.products.length} produit(s) {expanded===s.id?"▲":"▼"}</button>
+                {isAdmin && <>
+                  <button onClick={() => openEdit(s)} style={{ ...S.btnSecondary, flex:1, textAlign:"center" }}>Modifier</button>
+                  <button onClick={() => del(s.id)} style={{ ...S.btnDanger, flex:1, textAlign:"center" }}>Supprimer</button>
+                </>}
               </div>
             </div>
             {expanded===s.id && (
