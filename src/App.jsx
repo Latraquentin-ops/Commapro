@@ -276,7 +276,7 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
           </button>
 
           {notifOpen && (
-            <div style={{ ...dropStyle, minWidth:320, maxWidth:360, maxHeight:420, overflowY:"auto" }}>
+            <div style={{ ...dropStyle, width:"min(360px, 88vw)", maxHeight:420, overflowY:"auto" }}>
               <div style={{ padding:"10px 12px 10px", borderBottom:"1px solid var(--t-separator)", marginBottom:6, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div style={{ fontSize:13, fontWeight:700, color:"var(--t-text-85)", display:"flex", alignItems:"center", gap:6 }}><Bell size={15} /> Alertes stock</div>
                 {stockAlerts.length > 0 && <span style={{ background:"rgba(239,68,68,0.2)", color:"#f87171", border:"1px solid rgba(239,68,68,0.3)", borderRadius:12, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{stockAlerts.length}</span>}
@@ -591,6 +591,12 @@ export default function App() {
         .stat-card:hover { transform:translateY(-3px) !important; box-shadow:0 16px 40px rgba(99,102,241,0.15) !important; }
         * { box-sizing:border-box; }
         html, body { max-width:100%; overflow-x:hidden; }
+        /* Tables : scroll horizontal au lieu de casser la page sur mobile */
+        table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; max-width: 100%; }
+        @media (max-width: 640px) {
+          /* Grille d'édition produit (9 colonnes) : scroll horizontal */
+          .product-edit-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
         input, select, textarea { color:var(--t-input-color) !important; background:var(--t-input-bg) !important; transition:all 0.18s !important; font-weight:500; }
         input:focus, select:focus, textarea:focus { outline:none !important; border-color:rgba(99,102,241,0.5) !important; box-shadow:0 0 0 3px rgba(99,102,241,0.12) !important; }
         input::placeholder, textarea::placeholder { color:var(--t-placeholder) !important; }
@@ -1663,6 +1669,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
         <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:12 }}>
           💡 Colonnes attendues dans le fichier Excel : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> (l'ordre n'a pas d'importance, le stock min est calculé automatiquement).
         </div>
+        <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
+        <div style={{ minWidth: 760 }}>
         {form.products.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 6 }}>
             {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Ventes/sem","Stock min",""].map(h => (
@@ -1683,6 +1691,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
             <button onClick={() => removeProduct(i)} style={{ background:"none",border:"none",cursor:"pointer",color:"#DC2626",fontSize:18,padding:0 }}>×</button>
           </div>
         ))}
+        </div>
+        </div>
         <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Le stock min est calculé automatiquement (ventes × 3 semaines) mais reste modifiable.</div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={() => { setEditing(null); setForm(null); }} style={S.btnSecondary}>Annuler</button>
