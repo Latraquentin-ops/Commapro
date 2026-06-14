@@ -645,6 +645,29 @@ export default function App() {
         {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
         {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
       </main>
+
+      {/* Bouton flottant « + Nouvelle commande » — visible partout sauf pendant la création */}
+      {page !== "new" && (isAdmin || allowedPages.includes("orders")) && (
+        <button
+          onClick={() => setPage("new")}
+          aria-label="Nouvelle commande"
+          className="fab-new"
+          style={{
+            position:"fixed", right:"max(20px, env(safe-area-inset-right))",
+            bottom:"calc(24px + env(safe-area-inset-bottom))", zIndex:300,
+            display:"flex", alignItems:"center", gap:10, padding:"15px 22px",
+            borderRadius:30, border:"none", cursor:"pointer", color:"white",
+            background:"linear-gradient(135deg,#6366f1,#8b5cf6)", fontWeight:700, fontSize:15,
+            boxShadow:"0 10px 32px rgba(99,102,241,0.55), inset 0 1px 0 rgba(255,255,255,0.25)",
+            letterSpacing:"-0.01em", transition:"transform 0.18s, box-shadow 0.18s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 14px 40px rgba(99,102,241,0.65)"; }}
+          onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 10px 32px rgba(99,102,241,0.55), inset 0 1px 0 rgba(255,255,255,0.25)"; }}
+        >
+          <Plus size={20} strokeWidth={2.5} />
+          <span className="fab-label">Nouvelle commande</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -1337,6 +1360,8 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
             })}
           </div>
         </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 20 }}>
           {[["Fournisseur",order.supplierName],["Commercial",order.commercial],["Email",order.email],["Livraison souhaitée",fmtDate(order.deliveryDate)],["Lieu",order.deliveryPlace]].map(([l,v]) => (
             <div key={l} style={{ background:"var(--t-surface)", borderRadius:14, padding:14, border:"1px solid rgba(255,255,255,0.07)" }}>
               <div style={{ fontSize:10, color:"var(--t-text-55)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:4 }}>{l}</div>
