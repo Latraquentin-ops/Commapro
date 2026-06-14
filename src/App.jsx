@@ -366,7 +366,7 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
         </div>
       </button>
 
-      <div className="hdr-title-center" style={{ fontSize:13, fontWeight:600, color:"var(--t-text-55)", letterSpacing:"-0.01em" }}>{pageLabels[page] || ""}</div>
+      <div className="hdr-title-center" style={{ fontSize:14, fontWeight:700, color:"var(--t-text-90)", letterSpacing:"-0.02em" }}>{pageLabels[page] || "CommaPro"}</div>
 
       <div className="hdr-actions" style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
 
@@ -699,10 +699,9 @@ export default function App() {
         ::-webkit-scrollbar-track { background:transparent; }
         ::-webkit-scrollbar-thumb { background:var(--t-scroll); border-radius:3px; }
         /* ── Responsive header (mobile) ─────────────────────────── */
-        .hdr-title-center { }
+        .hdr-title-center { font-size:14px; font-weight:700; }
         @media (max-width: 640px) {
           .hdr-brand-text { display: none !important; }
-          .hdr-title-center { display: none !important; }
           .hdr-logo-badge { width: 36px !important; height: 36px !important; }
           .hdr-avatar { display: none !important; }
           .hdr-actions { gap: 6px !important; }
@@ -738,6 +737,7 @@ export default function App() {
         @media (max-width: 1023px) {
           .app-shell { display:block; }
           .fab-label { display:none !important; }
+          .fab-new { padding:16px !important; border-radius:50% !important; width:52px; height:52px; justify-content:center; }
         }
       `}</style>
 
@@ -757,7 +757,7 @@ export default function App() {
       <div className="app-shell">
         <Sidebar session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} />
         <div className="app-content">
-          <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(40px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
+          <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(96px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
             {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} T={T} />}
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
@@ -951,7 +951,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Rechercher un produit par référence, code EAN ou nom…"
+            placeholder="Référence, EAN ou nom de produit…"
             style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, color:"var(--t-input-color)" }}
           />
           {query && <button onClick={() => setQuery("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", display:"flex", padding:0 }}><X size={18} /></button>}
