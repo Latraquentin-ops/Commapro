@@ -5,40 +5,20 @@ import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Cl
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
-  const id = "cpg" + Math.random().toString(36).slice(2,6);
-  const textCol = light ? "#1e1b4b" : "#1e1b4b";
+  const stroke = "#7c6cfc";
+  const stroke2 = "#a78bfa";
   return (
     <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id={id+"a"} x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#6366f1"/>
-          <stop offset="100%" stopColor="#8b5cf6"/>
-        </linearGradient>
-        <linearGradient id={id+"b"} x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#818cf8"/>
-          <stop offset="100%" stopColor="#a78bfa"/>
-        </linearGradient>
-      </defs>
-      {/* Lettre C — arc épuré, stroke premium */}
-      <path
-        d="M38 16 C24 16 14 27 14 40 C14 53 24 64 38 64"
-        stroke={"url(#"+id+"a)"}
-        strokeWidth="8"
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* Lettre P — jambe verticale */}
-      <line x1="44" y1="16" x2="44" y2="64" stroke={"url(#"+id+"a)"} strokeWidth="8" strokeLinecap="round"/>
-      {/* Lettre P — bosse supérieure arrondie */}
-      <path
-        d="M44 16 C44 16 66 16 66 28 C66 40 44 40 44 40"
-        stroke={"url(#"+id+"a)"}
-        strokeWidth="8"
-        strokeLinecap="round"
-        fill="none"
-      />
-      {/* Point accent violet — signature CommaPro (la virgule) */}
-      <circle cx="44" cy="72" r="4" fill={"url(#"+id+"b)"}/>
+      {/* C — arc épuré */}
+      <path d="M38 15 C23 15 13 27 13 40 C13 53 23 65 38 65"
+        stroke={stroke} strokeWidth="8.5" strokeLinecap="round" fill="none"/>
+      {/* P — jambe verticale */}
+      <line x1="45" y1="15" x2="45" y2="65" stroke={stroke} strokeWidth="8.5" strokeLinecap="round"/>
+      {/* P — bosse */}
+      <path d="M45 15 C65 15 67 42 45 42"
+        stroke={stroke} strokeWidth="8.5" strokeLinecap="round" fill="none"/>
+      {/* Point — virgule CommaPro */}
+      <circle cx="45" cy="73" r="4.5" fill={stroke2}/>
     </svg>
   );
 }
