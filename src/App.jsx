@@ -245,6 +245,73 @@ function BarChart({ data, showValues = true }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // APP HEADER with dropdown menu
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// SIDEBAR — Navigation desktop (≥1024px), cachée sur mobile
+// ═══════════════════════════════════════════════════════════════════════════════
+function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark, setDark }) {
+  const pageLabels = { dashboard:"Accueil", orders:"Commandes", stats:"Statistiques", suppliers:"Fournisseurs", admin:"Administration" };
+  return (
+    <aside className="app-sidebar">
+      {/* Logo + nom app */}
+      <div style={{ padding:"24px 20px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, cursor:"pointer" }} onClick={() => setPage("dashboard")}>
+          <div style={{ width:40, height:40, borderRadius:11, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}>
+            <CPLogo size={25} />
+          </div>
+          <div>
+            <div style={{ fontWeight:800, fontSize:16, letterSpacing:"-0.03em", color:"var(--t-sidebar-text-active)" }}>CommaPro</div>
+            <div style={{ fontSize:10, color:"var(--t-sidebar-text)", marginTop:1 }}>Cockpit des achats</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav style={{ flex:1, padding:"12px 10px", overflowY:"auto" }}>
+        {navItems.map(([v, lbl, Icon]) => {
+          const isActive = page === v;
+          return (
+            <button key={v} onClick={() => setPage(v)} style={{
+              width:"100%", display:"flex", alignItems:"center", gap:11, padding:"10px 12px",
+              borderRadius:10, border:"none", cursor:"pointer", marginBottom:2,
+              background: isActive ? "var(--t-sidebar-active)" : "transparent",
+              color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)",
+              fontWeight: isActive ? 700 : 500, fontSize:13.5, textAlign:"left",
+              transition:"all 0.15s", position:"relative"
+            }}>
+              {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
+              <Icon size={17} strokeWidth={isActive?2.2:1.8} />
+              {lbl}
+              {v === "orders" && stockAlerts.length > 0 && (
+                <span style={{ marginLeft:"auto", fontSize:10, fontWeight:700, color:"white", background:"#ef4444", borderRadius:10, padding:"1px 6px", minWidth:18, textAlign:"center" }}>{stockAlerts.length}</span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Bas : thème + utilisateur */}
+      <div style={{ padding:"12px 10px", borderTop:"1px solid var(--t-sidebar-border)" }}>
+        <button onClick={() => setDark(d => !d)} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"9px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6, transition:"all 0.15s" }}>
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
+          {dark ? "Mode clair" : "Mode sombre"}
+        </button>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, background:"var(--t-sidebar-active)" }}>
+          <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(168,85,247,0.8))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:"white", flexShrink:0 }}>
+            {session.name.charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"var(--t-sidebar-text-active)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{session.name}</div>
+            <div style={{ fontSize:10, color:"var(--t-sidebar-text)", marginTop:1 }}>{session.role === "admin" ? "Administrateur" : "Utilisateur"}</div>
+          </div>
+          <button onClick={onLogout} title="Déconnexion" style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-sidebar-text)", padding:4, borderRadius:6, display:"flex", transition:"color 0.15s" }}>
+            <X size={15} />
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, dark, setDark, T }) {
   const [menuOpen,  setMenuOpen]  = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -485,6 +552,11 @@ export default function App() {
       --t-row-hover: rgba(99,102,241,0.1);
       --t-drop-bg: rgba(14,14,26,0.96);
       --t-nav-hover: rgba(255,255,255,0.1);
+      --t-sidebar-bg: rgba(10,10,18,0.96);
+      --t-sidebar-border: rgba(255,255,255,0.07);
+      --t-sidebar-active: rgba(99,102,241,0.15);
+      --t-sidebar-text: rgba(255,255,255,0.55);
+      --t-sidebar-text-active: rgba(255,255,255,0.95);
       --t-card-bg: rgba(255,255,255,0.07);
       --t-card-border: rgba(255,255,255,0.13);
       --t-card-shadow: 0 4px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
@@ -525,6 +597,11 @@ export default function App() {
       --t-row-hover: rgba(20,184,166,0.08);
       --t-drop-bg: rgba(255,255,255,0.99);
       --t-nav-hover: rgba(20,184,166,0.1);
+      --t-sidebar-bg: rgba(248,248,252,0.98);
+      --t-sidebar-border: rgba(0,0,0,0.07);
+      --t-sidebar-active: rgba(99,102,241,0.10);
+      --t-sidebar-text: rgba(30,30,60,0.60);
+      --t-sidebar-text-active: rgba(20,20,50,0.95);
       --t-card-bg: rgba(255,255,255,0.96);
       --t-card-border: rgba(15,23,42,0.08);
       --t-card-shadow: 0 4px 20px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
@@ -625,6 +702,30 @@ export default function App() {
         @media (max-width: 380px) {
           .hdr-btn { width: 34px !important; height: 34px !important; }
         }
+        /* ── Sidebar desktop layout ──────────────────────────────── */
+        .app-shell { display:flex; min-height:100dvh; }
+        .app-sidebar { display:none; }
+        .app-content { flex:1; min-width:0; }
+        @media (min-width: 1024px) {
+          .app-header { display:none !important; }
+          .app-sidebar {
+            display:flex; flex-direction:column;
+            width:228px; flex-shrink:0;
+            position:fixed; top:0; left:0; bottom:0; z-index:100;
+            border-right:1px solid var(--t-sidebar-border);
+            background:var(--t-sidebar-bg);
+            backdrop-filter:blur(24px);
+            -webkit-backdrop-filter:blur(24px);
+            padding:0;
+            overflow:hidden;
+          }
+          .app-content { margin-left:228px; }
+          .fab-label { display:inline !important; }
+        }
+        @media (max-width: 1023px) {
+          .app-shell { display:block; }
+          .fab-label { display:none !important; }
+        }
       `}</style>
 
       {/* Ambient blobs */}
@@ -634,17 +735,25 @@ export default function App() {
         <div style={{ position:"absolute", bottom:"-15%", left:"30%", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,"+T.blob3+" 0%,transparent 70%)", animation:"float3 16s ease-in-out infinite" }} />
       </div>
 
-      {/* Liquid Glass Header */}
-      <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} T={T} />
+      {/* Liquid Glass Header — mobile only (hidden on desktop via CSS) */}
+      <div className="app-header">
+        <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} T={T} />
+      </div>
 
-      <main style={{ maxWidth:1100, margin:"0 auto", padding:"28px 16px", paddingLeft:"max(16px, env(safe-area-inset-left))", paddingRight:"max(16px, env(safe-area-inset-right))", paddingBottom:"calc(40px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
-        {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} T={T} />}
-        {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} T={T} />}
-        {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} locations={locations} session={session} setPage={setPage} T={T} />}
-        {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
-        {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
-        {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
-      </main>
+      {/* App shell : sidebar (desktop) + contenu */}
+      <div className="app-shell">
+        <Sidebar session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} />
+        <div className="app-content">
+          <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(40px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
+            {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} T={T} />}
+            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} T={T} />}
+            {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} locations={locations} session={session} setPage={setPage} T={T} />}
+            {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
+            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
+            {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
+          </main>
+        </div>
+      </div>
 
       {/* Bouton flottant « + Nouvelle commande » — visible partout sauf pendant la création */}
       {page !== "new" && (isAdmin || allowedPages.includes("orders")) && (
