@@ -453,6 +453,7 @@ export default function App() {
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
