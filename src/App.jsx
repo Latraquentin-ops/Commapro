@@ -250,7 +250,7 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
   function closeAll() { setMenuOpen(false); setNotifOpen(false); }
 
   return (
-    <header className="hdr-root" style={{ backdropFilter:"blur(32px) saturate(200%)", WebkitBackdropFilter:"blur(32px) saturate(200%)", background:T.headerBg, borderBottom:"1px solid "+T.headerBorder, padding:"0 20px", display:"flex", alignItems:"center", justifyContent:"space-between", height:60, position:"sticky", top:0, zIndex:200 }}>
+    <header className="hdr-root" style={{ backdropFilter:"blur(32px) saturate(200%)", WebkitBackdropFilter:"blur(32px) saturate(200%)", background:T.headerBg, borderBottom:"1px solid "+T.headerBorder, padding:"env(safe-area-inset-top) 20px 0", paddingLeft:"max(20px, env(safe-area-inset-left))", paddingRight:"max(20px, env(safe-area-inset-right))", display:"flex", alignItems:"center", justifyContent:"space-between", height:"calc(60px + env(safe-area-inset-top))", position:"sticky", top:0, zIndex:200 }}>
       <button onClick={() => navigate("dashboard")} style={{ display:"flex", alignItems:"center", gap:11, background:"none", border:"none", cursor:"pointer", padding:"6px 8px", borderRadius:12, flexShrink:0 }} className="lg-nav-btn">
         <div className="hdr-logo-badge" style={{ width:42, height:42, borderRadius:11, background:dark?"rgba(255,255,255,0.95)":"linear-gradient(135deg,#eef2ff,#e0e7ff)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 14px rgba(99,102,241,0.25), inset 0 1px 0 rgba(255,255,255,0.4)", flexShrink:0 }}>
           <CPLogo size={28} light={false} />
@@ -563,7 +563,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily:"-apple-system,'SF Pro Display','SF Pro Text',BlinkMacSystemFont,sans-serif", minHeight:"100vh", background:T.bg, color:T.color, position:"relative", overflow:"hidden", transition:"background 0.4s, color 0.3s" }}>
+    <div style={{ fontFamily:"-apple-system,'SF Pro Display','SF Pro Text',BlinkMacSystemFont,sans-serif", minHeight:"100dvh", background:T.bg, color:T.color, position:"relative", overflowX:"hidden", transition:"background 0.4s, color 0.3s" }}>
       <style>{themeCSS + `
         @keyframes float1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-30px) scale(1.05)} 66%{transform:translate(-20px,20px) scale(0.97)} }
         @keyframes float2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-50px,25px) scale(1.03)} 66%{transform:translate(30px,-40px) scale(0.98)} }
@@ -622,7 +622,7 @@ export default function App() {
       {/* Liquid Glass Header */}
       <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} T={T} />
 
-      <main style={{ maxWidth:1100, margin:"0 auto", padding:"28px 16px", position:"relative", zIndex:1 }}>
+      <main style={{ maxWidth:1100, margin:"0 auto", padding:"28px 16px", paddingLeft:"max(16px, env(safe-area-inset-left))", paddingRight:"max(16px, env(safe-area-inset-right))", paddingBottom:"calc(40px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
         {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} T={T} />}
         {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} T={T} />}
         {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} locations={locations} session={session} setPage={setPage} T={T} />}
@@ -1507,14 +1507,56 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
         // 4) Mémoriser cet import (date + dispo par ref) pour calcul des sorties
         const snapshot = {};
         matched.forEach(ref => { snapshot[ref] = stockByRef[ref].dispo; });
-        setStockImports(prev => {
-          const next = [...(prev||[]), { date: exportDate, dispo: snapshot, importedAt: new Date().toISOString() }];
-          // on garde les 12 derniers imports
-          return next.slice(-12);
+
+        // 5) ÉTAPE B — Calcul des sorties depuis l'import précédent
+        //    Sorties = Dispo_précédent − Dispo_actuel + Achats reçus sur la période
+        //    (les achats reçus ont fait remonter le dispo, on les rajoute pour
+        //     retrouver les vraies sorties). Normalisé sur 7 jours.
+        const prevImports = stockImports || [];
+        const prev = [...prevImports].reverse().find(im => im.date && im.date !== exportDate);
+        let computed = 0;
+        const weeklySalesByRef = {};
+        if (prev) {
+          const d1 = new Date(prev.date), d2 = new Date(exportDate);
+          const days = Math.max(1, Math.round((d2 - d1) / 86400000));
+          for (const ref of matched) {
+            const prevDispo = prev.dispo?.[ref];
+            if (prevDispo == null) continue;
+            const curDispo = stockByRef[ref].dispo;
+            const achat = stockByRef[ref].achat || 0;  // entrées sur la période
+            const sorties = Math.max(0, prevDispo - curDispo + achat);
+            const perWeek = sorties / days * 7;
+            weeklySalesByRef[ref] = Math.ceil(perWeek);
+            computed++;
+          }
+          // Appliquer : stock min = ventes d'1 semaine (passage hebdo des commerciaux)
+          if (computed > 0) {
+            setSuppliers(prev2 => prev2.map(s => ({
+              ...s,
+              products: s.products.map(p => {
+                const w = weeklySalesByRef[p.ref];
+                if (w == null) return p;
+                return { ...p, weeklyVolume: w, stockMin: w, stockMinAuto: true };
+              })
+            })));
+          }
+        }
+
+        setStockImports(prevList => {
+          const next = [...(prevList||[]), { date: exportDate, dispo: snapshot, importedAt: new Date().toISOString() }];
+          return next.slice(-12);  // on garde les 12 derniers imports
         });
 
         const ignored = refsInFile.length - updated;
-        setStockMsg(`✅ État de stock du ${exportDate.split("-").reverse().join("/")} importé. ${updated} produit(s) mis à jour${ignored>0?`, ${ignored} référence(s) non présente(s) ignorée(s)`:""}.`);
+        const dateFr = exportDate.split("-").reverse().join("/");
+        let msg = `✅ État de stock du ${dateFr} importé. ${updated} produit(s) mis à jour${ignored>0?`, ${ignored} référence(s) ignorée(s)`:""}.`;
+        if (prev && computed > 0) {
+          const prevFr = prev.date.split("-").reverse().join("/");
+          msg += ` 📊 Sorties calculées entre le ${prevFr} et le ${dateFr} : stock min ajusté pour couvrir 1 semaine sur ${computed} produit(s).`;
+        } else if (!prev) {
+          msg += ` ℹ️ Premier import enregistré — les sorties seront calculées au prochain import.`;
+        }
+        setStockMsg(msg);
       } catch (err) {
         console.error(err);
         setStockMsg("❌ Erreur de lecture. Vérifie que c'est bien l'export .xlsx de l'état de stock.");
@@ -1697,7 +1739,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
                       <td style={{ ...S.td, fontWeight: 600, color: "#059669" }}>{fmt(p.price)}</td>
                       <td style={{ ...S.td, color:"var(--t-text-85)" }}>{p.stock != null ? p.stock : "—"}</td>
                       <td style={{ ...S.td, fontWeight: 600, color: (p.dispo != null && p.dispo <= (p.stockMin ?? calcStockMin(p.weeklyVolume))) ? "#DC2626" : "var(--t-text-90)" }}>{p.dispo != null ? p.dispo : "—"}</td>
-                      <td style={{ ...S.td, fontWeight: 600, color: "#D97706" }}>{p.stockMin ?? calcStockMin(p.weeklyVolume)}</td>
+                      <td style={{ ...S.td, fontWeight: 600, color: "#D97706" }}>{p.stockMin ?? calcStockMin(p.weeklyVolume)}{p.stockMinAuto && <span title="Calculé automatiquement d'après les sorties entre 2 imports" style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", padding:"1px 5px", borderRadius:5, verticalAlign:"middle" }}>auto</span>}</td>
                     </tr>
                   ))}</tbody>
                 </table>
