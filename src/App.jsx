@@ -849,7 +849,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
                 <div>
                   <span style={{ fontFamily: "monospace", fontSize: 11, color:"var(--t-text-40)", marginRight: 8 }}>{a.ref}</span>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{a.label}</span>
-                  <span style={{ marginLeft: 8, fontSize: 11, background: "#F1F5F9", padding: "2px 7px", borderRadius: 10, color:"var(--t-text-40)" }}>{a.subFamily}</span>
+                  <span style={{ marginLeft: 8, fontSize: 11, background: "var(--t-surface)", padding: "2px 7px", borderRadius: 10, color:"var(--t-text-40)" }}>{a.subFamily}</span>
                 </div>
                 <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                   <div style={{ textAlign: "center" }}>
@@ -1102,13 +1102,13 @@ function OrderTable({ orders, session, onSelect, compact }) {
         <thead>
           <tr style={{ background:"var(--t-thead-bg)" }}>
             {["N° BC","Fournisseur","Date",!compact && "Livraison","Statut",session.canSeePrices && "Montant HT","Créé par",""].filter(Boolean).map(h => (
-              <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1.5px solid #F1F5F9" }}>{h}</th>
+              <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1.5px solid var(--t-border-subtle)" }}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {orders.map(o => (
-            <tr key={o.id} style={{ cursor: "pointer" }} onClick={() => onSelect(o.id)} onMouseEnter={e => e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e => e.currentTarget.style.background=""}>
+            <tr key={o.id} style={{ cursor: "pointer" }} onClick={() => onSelect(o.id)} onMouseEnter={e => e.currentTarget.style.background="var(--t-row-hover)"} onMouseLeave={e => e.currentTarget.style.background=""}>
               <td style={S.td}><span style={{ fontFamily:"monospace", fontWeight:700, fontSize:12, background:"linear-gradient(135deg,#a5b4fc,#818cf8)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>{o.id}</span></td>
               <td style={{ ...S.td, fontWeight: 500 }}>{o.supplierName}</td>
               <td style={S.td}>{fmtDate(o.date)}</td>
@@ -1208,7 +1208,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
             </tr></thead>
             <tbody>
               {order.lines.map((l, i) => (
-                <tr key={i} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                <tr key={i} style={{ borderBottom: "1px solid var(--t-border-subtle)" }}>
                   <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12, color:"var(--t-text-40)" }}>{l.ref}</td>
                   <td style={{ ...S.td, fontWeight: 500 }}>{l.label}</td>
                   <td style={{ ...S.td, fontSize: 12 }}>{l.family || "—"}</td>
@@ -1383,7 +1383,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
             {lines.length===0 ? <div style={{ color:"var(--t-text-30)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Aucun produit</div> : (
               <>
                 {lines.map(l => (
-                  <div key={l.ref} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 0", borderBottom: "1px solid #F1F5F9" }}>
+                  <div key={l.ref} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 0", borderBottom: "1px solid var(--t-border-subtle)" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.label}</div>
                       <div style={{ fontSize: 10, color:"var(--t-text-40)" }}>{l.subFamily}</div>
@@ -1687,7 +1687,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
             <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" />
             <input type="number" value={p.price} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" />
             <input type="number" value={p.weeklyVolume} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" />
-            <input type="number" value={p.stockMin} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11,background:"#FFFBEB"}} placeholder="Auto" />
+            <input type="number" value={p.stockMin} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" />
             <button onClick={() => removeProduct(i)} style={{ background:"none",border:"none",cursor:"pointer",color:"#DC2626",fontSize:18,padding:0 }}>×</button>
           </div>
         ))}
@@ -1738,7 +1738,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
               </div>
             </div>
             {expanded===s.id && (
-              <div style={{ marginTop: 14, borderTop: "1.5px solid #F1F5F9", paddingTop: 14, overflowX: "auto" }}>
+              <div style={{ marginTop: 14, borderTop: "1.5px solid var(--t-border-subtle)", paddingTop: 14, overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead><tr style={{ background:"var(--t-thead-bg)" }}>
                     {["Réf.","Code EAN","Désignation","Sous-famille","Prix HT","Stock","Dispo.","Stock min"].map(h => (
@@ -1746,7 +1746,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
                     ))}
                   </tr></thead>
                   <tbody>{s.products.map(p => (
-                    <tr key={p.ref} style={{ borderBottom: "1px solid #F1F5F9" }}>
+                    <tr key={p.ref} style={{ borderBottom: "1px solid var(--t-border-subtle)" }}>
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11 }}>{p.ref}</td>
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11, color:"var(--t-text-55)" }}>{p.ean || "—"}</td>
                       <td style={S.td}>{p.label}</td>
@@ -1808,9 +1808,9 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
           {form.role !== "admin" && (
             <div>
               <div style={{ fontSize:12,fontWeight:600,color:"var(--t-text-85)",marginBottom:8 }}>Onglets accessibles</div>
-              <div style={{ display:"flex",flexDirection:"column",gap:6,background:"#F8FAFC",borderRadius:8,padding:12 }}>
+              <div style={{ display:"flex",flexDirection:"column",gap:6,background:"var(--t-surface)",borderRadius:8,padding:12,border:"1px solid var(--t-border-subtle)" }}>
                 {ALL_PAGES.map(p => (
-                  <label key={p.key} style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13 }}>
+                  <label key={p.key} style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"var(--t-text-85)" }}>
                     <input type="checkbox"
                       checked={(form.pages||[]).includes(p.key)}
                       onChange={e => {
@@ -1862,13 +1862,13 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
 
       <div style={S.card}>
         <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
-          <thead><tr style={{ background:"#F8FAFC" }}>
+          <thead><tr style={{ background:"var(--t-thead-bg)" }}>
             {["Nom","Email","Rôle","Accès prix","Onglets","Actif","Actions"].map(h => (
-              <th key={h} style={{ padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:600,color:"var(--t-text-40)",textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:"1.5px solid #F1F5F9" }}>{h}</th>
+              <th key={h} style={{ padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:600,color:"var(--t-text-40)",textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:"1.5px solid var(--t-border-subtle)" }}>{h}</th>
             ))}
           </tr></thead>
           <tbody>{users.map(u => (
-            <tr key={u.id} style={{ borderBottom:"1px solid #F8FAFC" }}>
+            <tr key={u.id} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
               <td style={S.td}><span style={{ fontWeight:600 }}>{u.name}</span></td>
               <td style={{ ...S.td,color:"var(--t-text-40)" }}>{u.email}</td>
               <td style={S.td}><span style={{ padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:600,background:u.role==="admin"?"rgba(99,102,241,0.3)":"var(--t-border-subtle)",color:u.role==="admin"?"#a5b4fc":"var(--t-text-55)",border:`1px solid ${u.role==="admin"?"rgba(99,102,241,0.4)":"var(--t-border-subtle)"}` }}>{u.role==="admin"?"Admin":"Utilisateur"}</span></td>
