@@ -139,10 +139,14 @@ const COLORS = ["#1D4ED8","#059669","#D97706","#7C3AED","#DC2626","#0891B2","#65
 
 const STATUS = {
   en_attente:        { label: "En attente",        color: "#D97706", bg: "#FFFBEB" },
-  validee:           { label: "Validée",            color: "#2563EB", bg: "#EFF6FF" },
+  confirmee:         { label: "Confirmée",          color: "#2563EB", bg: "#EFF6FF" },
+  en_preparation:    { label: "En préparation",     color: "#7C3AED", bg: "#F5F3FF" },
+  en_livraison:      { label: "En livraison",       color: "#0891B2", bg: "#ECFEFF" },
   livree:            { label: "Livrée",             color: "#059669", bg: "#ECFDF5" },
-  reception_validee: { label: "Réception validée",  color: "#7C3AED", bg: "#F5F3FF" },
+  reception_validee: { label: "Réception validée",  color: "#16A34A", bg: "#F0FDF4" },
 };
+// Ordre du cycle de vie d'une commande (pour le suivi façon Colissimo + dates réelles)
+const STATUS_ORDER = ["en_attente","confirmee","en_preparation","en_livraison","livree","reception_validee"];
 
 // ─── PDF ───────────────────────────────────────────────────────────────────────
 function generatePDF(order, showPrices) {
@@ -190,7 +194,7 @@ const S = {
 
 function StatusBadge({ status }) {
   const s = STATUS[status] || STATUS.en_attente;
-  const glows = { en_attente:"rgba(217,119,6,0.3)", validee:"rgba(37,99,235,0.3)", livree:"rgba(5,150,105,0.3)", reception_validee:"rgba(124,58,237,0.3)" };
+  const glows = { en_attente:"rgba(217,119,6,0.3)", confirmee:"rgba(37,99,235,0.3)", en_preparation:"rgba(124,58,237,0.3)", en_livraison:"rgba(8,145,178,0.3)", livree:"rgba(5,150,105,0.3)", reception_validee:"rgba(22,163,74,0.3)" };
   return <span style={{ padding:"4px 12px", borderRadius:20, fontSize:11, fontWeight:600, background:`${s.bg}22`, color:s.color, border:`1px solid ${s.color}44`, backdropFilter:"blur(8px)", boxShadow:`0 0 10px ${glows[status]||"transparent"}` }}>{s.label}</span>;
 }
 function Field({ label, children }) {
@@ -425,7 +429,7 @@ export default function App() {
       s.products.forEach(p => {
         const stockMin = p.stockMin ?? calcStockMin(p.weeklyVolume);
         const ordered = orders
-          .filter(o => ["en_attente","validee"].includes(o.status))
+          .filter(o => !["livree","reception_validee"].includes(o.status))
           .flatMap(o => o.lines)
           .filter(l => l.ref === p.ref)
           .reduce((sum, l) => sum + l.qty, 0);
@@ -726,7 +730,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
   const [scanning, setScanning] = useState(false);
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
   const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
-  const pending = orders.filter(o => ["en_attente","validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
+  const pending = orders.filter(o => !["livree","reception_validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
   const isAdmin = session.role === "admin";
 
   // ── Dashboard "ce matin" ────────────────────────────────────────────────
@@ -1275,7 +1279,15 @@ function OrdersPage({ orders, setOrders, session, setPage }) {
 function OrderDetail({ order, orders, setOrders, session, onBack }) {
   const isAdmin = session.role === "admin";
   const showPrices = session.canSeePrices;
-  function setStatus(s) { setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: s } : o)); }
+  function setStatus(s) {
+    const now = new Date().toISOString();
+    setOrders(prev => prev.map(o => {
+      if (o.id !== order.id) return o;
+      const history = { ...(o.statusHistory || {}) };
+      if (!history[s]) history[s] = now;  // mémorise la 1ère date d'entrée dans ce statut
+      return { ...o, status: s, statusHistory: history };
+    }));
+  }
   function deleteOrder() {
     if (confirm("Supprimer définitivement cette commande ?")) { setOrders(prev => prev.filter(o => o.id !== order.id)); onBack(); }
   }
@@ -1298,7 +1310,33 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
             {isAdmin && <button onClick={deleteOrder} style={S.btnDanger}>Supprimer</button>}
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 20 }}>
+
+        {/* Suivi de la commande (façon Colissimo) */}
+        <div style={{ marginBottom:24, padding:"18px 16px", background:"var(--t-surface)", borderRadius:16, border:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
+          <div style={{ display:"flex", alignItems:"flex-start", minWidth:520 }}>
+            {STATUS_ORDER.map((k, i) => {
+              const currentIdx = STATUS_ORDER.indexOf(order.status);
+              const done = i <= currentIdx;
+              const isCurrent = i === currentIdx;
+              const stamp = (order.statusHistory || {})[k];
+              const col = STATUS[k].color;
+              return (
+                <div key={k} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", position:"relative" }}>
+                  {i < STATUS_ORDER.length - 1 && (
+                    <div style={{ position:"absolute", top:13, left:"50%", width:"100%", height:2, background: i < currentIdx ? col : "var(--t-border-subtle)" }} />
+                  )}
+                  <div style={{ width:26, height:26, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1,
+                    background: done ? col : "var(--t-surface)", border: done ? "none" : "2px solid var(--t-border-subtle)",
+                    boxShadow: isCurrent ? `0 0 0 4px ${col}33` : "none" }}>
+                    {done && <CheckCircle2 size={15} style={{ color:"#fff" }} />}
+                  </div>
+                  <div style={{ fontSize:10, fontWeight: isCurrent?700:500, color: done ? "var(--t-text-90)" : "var(--t-text-40)", marginTop:7, textAlign:"center", lineHeight:1.2, padding:"0 2px" }}>{STATUS[k].label}</div>
+                  {stamp && <div style={{ fontSize:9, color:"var(--t-text-40)", marginTop:2 }}>{new Date(stamp).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"})}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
           {[["Fournisseur",order.supplierName],["Commercial",order.commercial],["Email",order.email],["Livraison souhaitée",fmtDate(order.deliveryDate)],["Lieu",order.deliveryPlace]].map(([l,v]) => (
             <div key={l} style={{ background:"var(--t-surface)", borderRadius:14, padding:14, border:"1px solid rgba(255,255,255,0.07)" }}>
               <div style={{ fontSize:10, color:"var(--t-text-55)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:4 }}>{l}</div>
@@ -1363,7 +1401,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
 
   function submit() {
     if (!supp || lines.length===0 || !deliveryDate || !deliveryPlace) return;
-    const newOrder = { id: genOrderId(orders), userId: session.id, supplierName: supp.name, commercial: supp.commercial, email: supp.email, date: new Date().toISOString().split("T")[0], deliveryDate, deliveryPlace, notes, lines, status: "en_attente", createdBy: session.name };
+    const newOrder = { id: genOrderId(orders), userId: session.id, supplierName: supp.name, commercial: supp.commercial, email: supp.email, date: new Date().toISOString().split("T")[0], deliveryDate, deliveryPlace, notes, lines, status: "en_attente", statusHistory: { en_attente: new Date().toISOString() }, createdBy: session.name };
     setOrders(prev => [...prev, newOrder]);
     setSaved(newOrder);
   }
