@@ -337,13 +337,111 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
   );
 }
 
-function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, dark, setDark, T }) {
-  const [menuOpen,  setMenuOpen]  = useState(false);
+// ═══════════════════════════════════════════════════════════════════════════════
+// TIROIR MOBILE — Rendu au niveau App (hors header sticky) pour position:fixed correct
+// ═══════════════════════════════════════════════════════════════════════════════
+function MobileDrawer({ open, onClose, session, page, setPage, navItems, onLogout, dark, setDark }) {
+  function navigate(v) { setPage(v); onClose(); }
+  return (
+    <>
+      {/* Overlay */}
+      <div onClick={onClose} style={{
+        position:"fixed", inset:0, zIndex:399,
+        background:"rgba(0,0,0,0.50)",
+        backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)",
+        opacity: open ? 1 : 0,
+        pointerEvents: open ? "auto" : "none",
+        transition:"opacity 0.28s cubic-bezier(0.4,0,0.2,1)",
+      }} />
+
+      {/* Tiroir */}
+      <div style={{
+        position:"fixed", top:0, left:0, bottom:0, zIndex:400,
+        width:285,
+        background:"var(--t-sidebar-bg)",
+        backdropFilter:"blur(40px) saturate(200%)",
+        WebkitBackdropFilter:"blur(40px) saturate(200%)",
+        borderRight:"1px solid var(--t-sidebar-border)",
+        boxShadow: open ? "12px 0 48px rgba(0,0,0,0.5)" : "none",
+        transform: open ? "translateX(0)" : "translateX(-100%)",
+        transition:"transform 0.32s cubic-bezier(0.4,0,0.2,1), box-shadow 0.32s",
+        display:"flex", flexDirection:"column",
+        paddingTop:"env(safe-area-inset-top)",
+        paddingBottom:"env(safe-area-inset-bottom)",
+      }}>
+        {/* En-tête */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 20px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(99,102,241,0.35)" }}>
+              <CPLogo size={26} />
+            </div>
+            <div>
+              <div style={{ fontWeight:800, fontSize:16, letterSpacing:"-0.03em", color:"var(--t-sidebar-text-active)" }}>CommaPro</div>
+              <div style={{ fontSize:10, color:"var(--t-sidebar-text)", marginTop:1 }}>Cockpit des achats</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:"1px solid var(--t-sidebar-border)", background:"transparent", cursor:"pointer", color:"var(--t-sidebar-text)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Profil */}
+        <div style={{ padding:"14px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"var(--t-sidebar-active)" }}>
+            <div style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>
+              {session.name.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"var(--t-sidebar-text-active)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{session.name}</div>
+              <div style={{ fontSize:11, color:"var(--t-sidebar-text)", marginTop:1 }}>{session.email}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav style={{ flex:1, padding:"12px 12px", overflowY:"auto" }}>
+          {navItems.map(([v, lbl, Icon]) => {
+            const isActive = page === v;
+            return (
+              <button key={v} onClick={() => navigate(v)} style={{
+                display:"flex", alignItems:"center", gap:13, width:"100%",
+                padding:"12px 14px", borderRadius:12, border:"none", cursor:"pointer", marginBottom:4,
+                background: isActive ? "var(--t-sidebar-active)" : "transparent",
+                color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)",
+                fontWeight: isActive ? 700 : 500, fontSize:15, textAlign:"left",
+                transition:"all 0.15s", position:"relative",
+              }}>
+                {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
+                {Icon && <Icon size={19} strokeWidth={isActive?2.2:1.8} />}
+                {lbl}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Bas */}
+        <div style={{ padding:"12px 12px 16px", borderTop:"1px solid var(--t-sidebar-border)" }}>
+          <button onClick={() => setDark(d => !d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"11px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:14, marginBottom:6, transition:"all 0.15s" }}>
+            <span style={{ display:"flex", alignItems:"center", gap:10 }}>{dark ? <Sun size={17}/> : <Moon size={17}/>}{dark ? "Mode clair" : "Mode sombre"}</span>
+            <div style={{ width:36, height:20, borderRadius:10, background:dark?"rgba(99,102,241,0.7)":"rgba(200,200,200,0.5)", position:"relative", transition:"background 0.3s", flexShrink:0 }}>
+              <div style={{ position:"absolute", top:2, left:dark?16:2, width:16, height:16, borderRadius:"50%", background:"white", transition:"left 0.3s" }} />
+            </div>
+          </button>
+          <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"11px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.08)", color:"#ef4444", fontSize:14, fontWeight:600, transition:"all 0.15s" }}>
+            <X size={17}/> Se déconnecter
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, dark, setDark, T, onMenuOpen }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const pageLabels = { dashboard:"Accueil", orders:"Commandes", new:"Nouvelle commande", stats:"Statistiques", suppliers:"Fournisseurs", admin:"Admin" };
   const dropStyle = { position:"absolute", top:"calc(100% + 10px)", right:0, backdropFilter:"blur(32px) saturate(180%)", WebkitBackdropFilter:"blur(32px) saturate(180%)", background:"var(--t-drop-bg)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:18, padding:"8px", boxShadow:"0 24px 60px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.08)", zIndex:300 };
-  function navigate(v) { setPage(v); setMenuOpen(false); setNotifOpen(false); }
-  function closeAll() { setMenuOpen(false); setNotifOpen(false); }
+  function navigate(v) { setPage(v); setNotifOpen(false); }
+  function closeAll() { setNotifOpen(false); }
 
   return (
     <header className="hdr-root" style={{ backdropFilter:"blur(32px) saturate(200%)", WebkitBackdropFilter:"blur(32px) saturate(200%)", background:T.headerBg, borderBottom:"1px solid "+T.headerBorder, padding:"env(safe-area-inset-top) 20px 0", paddingLeft:"max(20px, env(safe-area-inset-left))", paddingRight:"max(20px, env(safe-area-inset-right))", display:"flex", alignItems:"center", justifyContent:"space-between", height:"calc(60px + env(safe-area-inset-top))", position:"sticky", top:0, zIndex:200 }}>
@@ -362,7 +460,7 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
 
         {/* NOTIFICATION BELL */}
         <div style={{ position:"relative" }}>
-          <button className="hdr-btn" onClick={() => { setNotifOpen(o => !o); setMenuOpen(false); }} style={{ position:"relative", width:36, height:36, borderRadius:10, border:"1px solid " + (notifOpen ? "rgba(239,68,68,0.5)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"), background: notifOpen ? "rgba(239,68,68,0.2)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.1)" : "var(--t-surface)", color:"var(--t-text-90)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0, transition:"all 0.18s" }}>
+          <button className="hdr-btn" onClick={() => { setNotifOpen(o => !o); }} style={{ position:"relative", width:36, height:36, borderRadius:10, border:"1px solid " + (notifOpen ? "rgba(239,68,68,0.5)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.3)" : "rgba(255,255,255,0.12)"), background: notifOpen ? "rgba(239,68,68,0.2)" : stockAlerts.length > 0 ? "rgba(239,68,68,0.1)" : "var(--t-surface)", color:"var(--t-text-90)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(8px)", flexShrink:0, transition:"all 0.18s" }}>
             <Bell size={17} />
             {stockAlerts.length > 0 && (
               <span style={{ position:"absolute", top:-4, right:-4, background:"linear-gradient(135deg,#ef4444,#dc2626)", borderRadius:"50%", width:16, height:16, fontSize:9, fontWeight:800, color:"white", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid rgba(8,8,18,0.9)", boxShadow:"0 2px 8px rgba(239,68,68,0.6)" }}>
@@ -419,106 +517,16 @@ function AppHeader({ session, page, setPage, navItems, stockAlerts, onLogout, da
 
         {/* Hamburger */}
         <div style={{ position:"relative" }}>
-          <button className="hdr-btn" onClick={() => { setMenuOpen(o => !o); setNotifOpen(false); }} style={{ width:36, height:36, borderRadius:10, border:"1px solid rgba(255,255,255,0.12)", background:menuOpen?"rgba(99,102,241,0.25)":"var(--t-surface)", color:"var(--t-text-85)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, backdropFilter:"blur(8px)", flexShrink:0 }}>
-            <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", transform:menuOpen?"rotate(45deg) translate(2px,4px)":"none" }} />
-            <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", opacity:menuOpen?0:1 }} />
-            <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", transform:menuOpen?"rotate(-45deg) translate(2px,-4px)":"none" }} />
+          <button className="hdr-btn" onClick={() => { onMenuOpen(); setNotifOpen(false); }} style={{ width:36, height:36, borderRadius:10, border:"1px solid rgba(255,255,255,0.12)", background:"var(--t-surface)", color:"var(--t-text-85)", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4, backdropFilter:"blur(8px)", flexShrink:0 }}>
+            <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", transform:"none" }} />
+            <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", opacity:1 }} />
+            <div style={{ width:14, height:1.5, background:"currentColor", borderRadius:2, transition:"all 0.2s", transform:"none" }} />
           </button>
         </div>
       </div>
 
-      {/* ── Overlay sombre — clic pour fermer ── */}
-      <div
-        onClick={closeAll}
-        style={{
-          position:"fixed", inset:0, zIndex:299,
-          background:"rgba(0,0,0,0.45)",
-          backdropFilter:"blur(2px)",
-          opacity: menuOpen ? 1 : 0,
-          pointerEvents: menuOpen ? "auto" : "none",
-          transition:"opacity 0.28s cubic-bezier(0.4,0,0.2,1)",
-        }}
-      />
 
-      {/* ── Tiroir latéral gauche ── */}
-      <div style={{
-        position:"fixed", top:0, left:0, bottom:0, zIndex:300,
-        width:280,
-        background:"var(--t-sidebar-bg)",
-        backdropFilter:"blur(32px) saturate(200%)",
-        WebkitBackdropFilter:"blur(32px) saturate(200%)",
-        borderRight:"1px solid var(--t-sidebar-border)",
-        boxShadow: menuOpen ? "8px 0 40px rgba(0,0,0,0.45)" : "none",
-        transform: menuOpen ? "translateX(0)" : "translateX(-100%)",
-        transition:"transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s",
-        display:"flex", flexDirection:"column",
-        overflowY:"auto",
-        paddingTop:"env(safe-area-inset-top)",
-      }}>
-        {/* En-tête du tiroir */}
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 20px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:38, height:38, borderRadius:10, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}>
-              <CPLogo size={24} />
-            </div>
-            <div>
-              <div style={{ fontWeight:800, fontSize:15, letterSpacing:"-0.03em", color:"var(--t-sidebar-text-active)" }}>CommaPro</div>
-              <div style={{ fontSize:10, color:"var(--t-sidebar-text)" }}>Cockpit des achats</div>
-            </div>
-          </div>
-          <button onClick={() => setMenuOpen(false)} style={{ width:32, height:32, borderRadius:8, border:"1px solid var(--t-sidebar-border)", background:"transparent", cursor:"pointer", color:"var(--t-sidebar-text)", display:"flex", alignItems:"center", justifyContent:"center", transition:"all 0.15s" }}>
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Profil */}
-        <div style={{ padding:"14px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"var(--t-sidebar-active)" }}>
-            <div style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>
-              {session.name.charAt(0).toUpperCase()}
-            </div>
-            <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:"var(--t-sidebar-text-active)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{session.name}</div>
-              <div style={{ fontSize:11, color:"var(--t-sidebar-text)" }}>{session.email}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav style={{ flex:1, padding:"10px 12px" }}>
-          {navItems.map(([v, lbl, Icon]) => {
-            const isActive = page === v;
-            return (
-              <button key={v} onClick={() => navigate(v)} style={{
-                display:"flex", alignItems:"center", gap:12, width:"100%",
-                padding:"11px 14px", borderRadius:12, border:"none", cursor:"pointer",
-                marginBottom:3,
-                background: isActive ? "var(--t-sidebar-active)" : "transparent",
-                color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)",
-                fontWeight: isActive ? 700 : 500, fontSize:14, textAlign:"left",
-                transition:"all 0.15s", position:"relative",
-              }} className="lg-nav-btn">
-                {isActive && <div style={{ position:"absolute", left:0, top:"18%", bottom:"18%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
-                {Icon && <Icon size={18} strokeWidth={isActive?2.2:1.8} />}
-                {lbl}
-              </button>
-            );
-          })}
-        </nav>
-
-        {/* Bas : thème + déconnexion */}
-        <div style={{ padding:"12px 12px 16px", borderTop:"1px solid var(--t-sidebar-border)" }}>
-          <button onClick={() => setDark(d => !d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6, transition:"all 0.15s" }} className="lg-nav-btn">
-            <span style={{ display:"flex", alignItems:"center", gap:10 }}>{dark ? <Sun size={16}/> : <Moon size={16}/>}{dark ? "Mode clair" : "Mode sombre"}</span>
-            <div style={{ width:36, height:20, borderRadius:10, background:dark?"rgba(99,102,241,0.7)":"rgba(200,200,200,0.5)", position:"relative", transition:"background 0.3s", flexShrink:0 }}>
-              <div style={{ position:"absolute", top:2, left:dark?16:2, width:16, height:16, borderRadius:"50%", background:"white", transition:"left 0.3s", boxShadow:"0 1px 4px rgba(0,0,0,0.3)" }} />
-            </div>
-          </button>
-          <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.08)", color:"#ef4444", fontSize:13, fontWeight:600, transition:"all 0.15s" }} className="lg-nav-btn">
-            <X size={16}/> Se déconnecter
-          </button>
-        </div>
-      </div>
+      {notifOpen && <div onClick={closeAll} style={{ position:"fixed", inset:0, zIndex:199 }} />}
     </header>
   );
 }
@@ -828,7 +836,7 @@ export default function App() {
 
       {/* Liquid Glass Header — mobile only (hidden on desktop via CSS) */}
       <div className="app-header">
-        <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} T={T} />
+        <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} T={T} onMenuOpen={() => setMobileMenuOpen(true)} />
       </div>
 
       {/* App shell : sidebar (desktop) + contenu */}
@@ -847,6 +855,19 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {/* Tiroir mobile — rendu au niveau App pour position:fixed correct */}
+      <MobileDrawer
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        session={session}
+        page={page}
+        setPage={(v) => { setPage(v); setMobileMenuOpen(false); }}
+        navItems={navItems}
+        onLogout={() => { setSession(null); setMobileMenuOpen(false); }}
+        dark={dark}
+        setDark={setDark}
+      />
 
       {/* Bouton flottant « + Nouvelle commande » — visible partout sauf pendant la création */}
       {page !== "new" && (isAdmin || allowedPages.includes("orders")) && (
