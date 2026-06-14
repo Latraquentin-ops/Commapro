@@ -737,11 +737,9 @@ export default function App() {
         @media (max-width: 1023px) {
           .app-shell { display:block; }
           .fab-label { display:none !important; }
-          .fab-new { padding:16px !important; border-radius:50% !important; width:52px; height:52px; justify-content:center; bottom:calc(72px + env(safe-area-inset-bottom)) !important; }
+          .fab-new { padding:16px !important; border-radius:50% !important; width:52px; height:52px; justify-content:center; }
         }
-        /* ── Bottom nav (mobile only) ─── */
-        .bottom-nav { display:flex; }
-        @media (min-width: 1024px) { .bottom-nav { display:none !important; } }
+
       `}</style>
 
       {/* Ambient blobs */}
@@ -786,7 +784,7 @@ export default function App() {
         setDark={setDark}
       />
 
-      {/* Bouton flottant « + Nouvelle commande » — desktop uniquement */}
+      {/* Bouton flottant « + Nouvelle commande » — visible partout sauf pendant la création */}
       {page !== "new" && (isAdmin || allowedPages.includes("orders")) && (
         <button
           onClick={() => setPage("new")}
@@ -808,52 +806,6 @@ export default function App() {
           <span className="fab-label">Nouvelle commande</span>
         </button>
       )}
-
-      {/* ── Barre de navigation mobile (bas de l'écran) ── */}
-      <nav className="bottom-nav" style={{
-        position:"fixed", bottom:0, left:0, right:0, zIndex:250,
-        height:"calc(60px + env(safe-area-inset-bottom))",
-        paddingBottom:"env(safe-area-inset-bottom)",
-        background:"var(--t-sidebar-bg)",
-        backdropFilter:"blur(32px) saturate(200%)",
-        WebkitBackdropFilter:"blur(32px) saturate(200%)",
-        borderTop:"1px solid var(--t-sidebar-border)",
-        alignItems:"center", justifyContent:"space-around",
-        boxShadow:"0 -4px 24px rgba(0,0,0,0.15)",
-      }}>
-        {/* Items de nav */}
-        {navItems.slice(0,4).map(([v, lbl, Icon]) => {
-          const isActive = page === v;
-          return (
-            <button key={v} onClick={() => setPage(v)} style={{
-              display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-              gap:3, flex:1, height:"100%", border:"none", cursor:"pointer", padding:"6px 4px",
-              background:"transparent",
-              color: isActive ? "#818cf8" : "var(--t-sidebar-text)",
-              transition:"all 0.15s",
-              position:"relative",
-            }}>
-              {isActive && <div style={{ position:"absolute", top:0, left:"20%", right:"20%", height:2, borderRadius:"0 0 3px 3px", background:"#818cf8" }} />}
-              <Icon size={22} strokeWidth={isActive?2.2:1.8} />
-              <span style={{ fontSize:10, fontWeight:isActive?700:400, letterSpacing:"-0.01em" }}>{lbl}</span>
-            </button>
-          );
-        })}
-        {/* Bouton + central */}
-        {(isAdmin || allowedPages.includes("orders")) && (
-          <button onClick={() => setPage("new")} style={{
-            display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            gap:3, flex:1, height:"100%", border:"none", cursor:"pointer", padding:"6px 4px",
-            background:"transparent",
-            color: page === "new" ? "#818cf8" : "var(--t-sidebar-text)",
-            transition:"all 0.15s",
-          }}>
-            <div style={{ width:36, height:36, borderRadius:12, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(99,102,241,0.45)", marginBottom:1 }}>
-              <Plus size={20} color="white" strokeWidth={2.5} />
-            </div>
-          </button>
-        )}
-      </nav>
     </div>
   );
 }
