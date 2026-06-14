@@ -148,33 +148,181 @@ const STATUS_ORDER = ["en_attente","confirmee","en_preparation","en_livraison","
 // ─── PDF ───────────────────────────────────────────────────────────────────────
 function generatePDF(order, showPrices) {
   const total = orderTotal(order);
-  const linesHTML = order.lines.map(l => `
-    <tr>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;">${l.ref}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;">${l.label}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;">${l.subFamily || "—"}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;text-align:center;">${l.qty}</td>
+  const tva = total * 0.085; // TVA 8.5% La Réunion
+  const ttc = total + tva;
+  const linesHTML = order.lines.map((l, i) => `
+    <tr style="background:${i%2===0?'#ffffff':'#f9fafb'}">
+      <td style="padding:10px 14px;font-size:12px;color:#374151;font-family:monospace">${l.ref}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#111827;font-weight:500">${l.label}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#6b7280">${l.subFamily || "—"}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#111827;text-align:center;font-weight:600">${l.qty}</td>
       ${showPrices ? `
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;text-align:right;">${fmt(l.price)}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;text-align:right;font-weight:600;">${fmt(lineTotal(l))}</td>` : ""}
+      <td style="padding:10px 14px;font-size:12px;color:#374151;text-align:right">${fmt(l.price)}</td>
+      <td style="padding:10px 14px;font-size:12px;color:#111827;text-align:right;font-weight:700">${fmt(lineTotal(l))}</td>` : ""}
     </tr>`).join("");
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Bon de commande ${order.id}</title>
-  <style>body{font-family:Arial,sans-serif;margin:0;padding:30px;color:#1a1a1a;font-size:13px}.header{display:flex;justify-content:space-between;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #1a1a1a}.logo{font-size:22px;font-weight:800}.bc-num{font-size:14px;font-weight:700;color:#2563EB;margin-top:4px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}.block{background:#f8f9fb;border-radius:8px;padding:14px}.block h3{margin:0 0 8px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b7280}.block p{margin:3px 0;font-size:12px}table{width:100%;border-collapse:collapse;margin-bottom:16px}thead tr{background:#1a1a1a;color:#fff}th{padding:9px 10px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}.footer{margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#6b7280;text-align:center}</style>
-  </head><body>
-  <div class="header"><div><div class="logo">BON DE COMMANDE</div><div class="bc-num">${order.id}</div><div style="margin-top:6px;font-size:11px;color:#6b7280">Émis le ${fmtDate(order.date)} · Par ${order.createdBy}</div></div></div>
-  <div class="grid">
-    <div class="block"><h3>Fournisseur</h3><p><strong>${order.supplierName}</strong></p><p>Commercial : ${order.commercial}</p><p>Email : ${order.email}</p></div>
-    <div class="block"><h3>Livraison</h3><p>Date souhaitée : <strong>${fmtDate(order.deliveryDate)}</strong></p><p>Lieu : ${order.deliveryPlace}</p>${order.notes ? `<p style="font-style:italic;color:#6b7280">${order.notes}</p>` : ""}</div>
+
+  const statusLabels = { en_attente:"En attente", confirmee:"Confirmée", en_preparation:"En préparation", en_livraison:"En livraison", livree:"Livrée", reception_validee:"Réception validée" };
+  const statusColors = { en_attente:"#d97706", confirmee:"#2563eb", en_preparation:"#7c3aed", en_livraison:"#0891b2", livree:"#059669", reception_validee:"#16a34a" };
+  const statusCol = statusColors[order.status] || "#6b7280";
+  const statusLbl = statusLabels[order.status] || order.status;
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Bon de commande ${order.id}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; background:#fff; color:#111827; font-size:13px; }
+    .page { max-width:780px; margin:0 auto; padding:48px 48px 60px; }
+
+    /* En-tête */
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:36px; padding-bottom:28px; border-bottom:2px solid #111827; }
+    .header-left .company { font-size:22px; font-weight:900; letter-spacing:-0.04em; color:#111827; }
+    .header-left .tagline { font-size:10px; color:#9ca3af; margin-top:3px; letter-spacing:0.1em; text-transform:uppercase; }
+    .header-right { text-align:right; }
+    .bc-label { font-size:10px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+    .bc-num { font-size:24px; font-weight:800; color:#4f46e5; letter-spacing:-0.02em; }
+    .bc-date { font-size:11px; color:#6b7280; margin-top:4px; }
+    .status-badge { display:inline-block; margin-top:8px; padding:4px 12px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:${statusCol}; border:1.5px solid ${statusCol}; }
+
+    /* Infos grid */
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px; }
+    .info-block { background:#f9fafb; border-radius:10px; padding:16px 18px; border:1px solid #e5e7eb; }
+    .info-block h3 { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#9ca3af; margin-bottom:10px; }
+    .info-block p { font-size:12px; color:#374151; line-height:1.7; }
+    .info-block strong { color:#111827; font-weight:600; }
+
+    /* Tableau */
+    .table-wrap { margin-bottom:24px; border-radius:10px; overflow:hidden; border:1px solid #e5e7eb; }
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background:#111827; }
+    th { padding:11px 14px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:#ffffff; }
+    th.right { text-align:right; }
+    th.center { text-align:center; }
+    tbody tr:last-child td { border-bottom:none; }
+    td { border-bottom:1px solid #f3f4f6; }
+
+    /* Totaux */
+    .totals { display:flex; justify-content:flex-end; margin-bottom:40px; }
+    .totals-box { width:260px; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; }
+    .totals-row { display:flex; justify-content:space-between; padding:10px 16px; font-size:12px; border-bottom:1px solid #f3f4f6; }
+    .totals-row:last-child { border-bottom:none; background:#111827; color:#fff; }
+    .totals-row.total { font-weight:800; font-size:14px; }
+    .totals-row span:last-child { font-weight:600; }
+    .totals-row.total span:last-child { font-weight:900; }
+
+    /* Signature */
+    .sig-section { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:40px; }
+    .sig-block { border:1px solid #e5e7eb; border-radius:10px; padding:16px 18px; }
+    .sig-block h3 { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#9ca3af; margin-bottom:12px; }
+    .sig-line { border-bottom:1.5px solid #d1d5db; margin:32px 0 8px; }
+    .sig-label { font-size:10px; color:#9ca3af; }
+
+    /* Footer */
+    .footer { padding-top:20px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; }
+    .footer-left { font-size:10px; color:#9ca3af; line-height:1.8; }
+    .footer-right { font-size:10px; color:#9ca3af; text-align:right; }
+    .footer-id { font-size:11px; font-weight:700; color:#6b7280; }
+
+    @media print {
+      body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .page { padding:30px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- En-tête -->
+    <div class="header">
+      <div class="header-left">
+        <div class="company">CommaPro</div>
+        <div class="tagline">Bon de commande fournisseur</div>
+      </div>
+      <div class="header-right">
+        <div class="bc-label">Numéro BC</div>
+        <div class="bc-num">${order.id}</div>
+        <div class="bc-date">Émis le ${fmtDate(order.date)} · Par ${order.createdBy || "—"}</div>
+        <span class="status-badge">${statusLbl}</span>
+      </div>
+    </div>
+
+    <!-- Infos fournisseur + livraison -->
+    <div class="info-grid">
+      <div class="info-block">
+        <h3>Fournisseur</h3>
+        <p><strong>${order.supplierName}</strong></p>
+        ${order.commercial ? `<p>Commercial : <strong>${order.commercial}</strong></p>` : ""}
+        ${order.email ? `<p>Email : ${order.email}</p>` : ""}
+      </div>
+      <div class="info-block">
+        <h3>Livraison</h3>
+        <p>Date souhaitée : <strong>${fmtDate(order.deliveryDate) || "Non précisée"}</strong></p>
+        <p>Lieu : <strong>${order.deliveryPlace || "Non précisé"}</strong></p>
+        ${order.notes ? `<p style="margin-top:8px;font-style:italic;color:#6b7280">${order.notes}</p>` : ""}
+      </div>
+    </div>
+
+    <!-- Tableau produits -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Référence</th>
+            <th>Désignation</th>
+            <th>Sous-famille</th>
+            <th class="center">Qté</th>
+            ${showPrices ? `<th class="right">P.U. HT</th><th class="right">Total HT</th>` : ""}
+          </tr>
+        </thead>
+        <tbody>${linesHTML}</tbody>
+      </table>
+    </div>
+
+    <!-- Totaux -->
+    ${showPrices ? `
+    <div class="totals">
+      <div class="totals-box">
+        <div class="totals-row"><span>Sous-total HT</span><span>${fmt(total)}</span></div>
+        <div class="totals-row"><span>TVA (8,5%)</span><span>${fmt(tva)}</span></div>
+        <div class="totals-row total"><span>Total TTC</span><span>${fmt(ttc)}</span></div>
+      </div>
+    </div>` : ""}
+
+    <!-- Zone de signature -->
+    <div class="sig-section">
+      <div class="sig-block">
+        <h3>Signature émetteur</h3>
+        <div class="sig-line"></div>
+        <div class="sig-label">${order.createdBy || "Émetteur"} · ${fmtDate(order.date)}</div>
+      </div>
+      <div class="sig-block">
+        <h3>Signature réception</h3>
+        <div class="sig-line"></div>
+        <div class="sig-label">Date de réception : ________________</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-left">
+        Document généré par CommaPro<br>
+        Cockpit des achats fournisseurs
+      </div>
+      <div class="footer-right">
+        <div class="footer-id">${order.id}</div>
+        <div>${new Date().toLocaleDateString("fr-FR", {day:"2-digit",month:"long",year:"numeric"})}</div>
+      </div>
+    </div>
+
   </div>
-  <table><thead><tr><th>Réf.</th><th>Désignation</th><th>Sous-famille</th><th style="text-align:center">Qté</th>${showPrices ? "<th style='text-align:right'>P.U. HT</th><th style='text-align:right'>Total HT</th>" : ""}</tr></thead>
-  <tbody>${linesHTML}</tbody>
-  ${showPrices ? `<tfoot><tr><td colspan="4" style="padding:10px;text-align:right;font-weight:700;border-top:2px solid #1a1a1a">TOTAL HT</td><td style="padding:10px;text-align:right;font-weight:800;font-size:15px;border-top:2px solid #1a1a1a">${fmt(total)}</td></tr></tfoot>` : ""}
-  </table>
-  <div class="footer">Document généré automatiquement · ${order.id} · ${new Date().toLocaleDateString("fr-FR")}</div>
-  </body></html>`;
+</body>
+</html>`;
+
   const blob = new Blob([html], { type: "text/html" });
   const win = window.open(URL.createObjectURL(blob), "_blank");
-  if (win) setTimeout(() => win.print(), 800);
+  if (win) setTimeout(() => win.print(), 900);
 }
 
 // ─── STYLES ────────────────────────────────────────────────────────────────────
