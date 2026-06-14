@@ -1664,15 +1664,15 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
 
           {supp && (
             <div style={S.card}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16, gap:12 }}>
-                <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>2. Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
-                <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, maxWidth:280, background:"var(--t-surface)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:22, padding:"6px 14px", backdropFilter:"blur(8px)" }} className="lg-search-bar">
+              <div style={{ marginBottom:14 }}>
+                <h2 style={{ margin:"0 0 10px 0", fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>2. Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
+                <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:22, padding:"8px 14px", backdropFilter:"blur(8px)" }} className="lg-search-bar">
                   <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
                   <input
                     value={catalogSearch}
                     onChange={e => setCatalogSearch(e.target.value)}
                     placeholder="Rechercher un produit…"
-                    style={{ background:"transparent", border:"none", outline:"none", fontSize:12, color:"var(--t-btn-sec-color)", width:"100%", padding:0 }}
+                    style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%", padding:0 }}
                   />
                   {catalogSearch && (
                     <button onClick={() => setCatalogSearch("")} style={{ background:"none", border:"none", color:"var(--t-text-40)", cursor:"pointer", fontSize:14, padding:0, flexShrink:0 }}>✕</button>
@@ -1731,7 +1731,7 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
             <div style={S.card}>
               <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>③ Livraison</h2>
               <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <Field label="Date souhaitée *"><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} style={S.input} /></Field>
+                <Field label="Date souhaitée *"><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} style={{ ...S.input, textAlign:"center", WebkitAppearance:"none" }} /></Field>
                 <Field label="Lieu de livraison *">
                   <select value={deliveryPlace} onChange={e => setDeliveryPlace(e.target.value)} style={{ ...S.input, background: "white" }}>
                     <option value="">— Choisir un lieu —</option>
