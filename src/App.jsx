@@ -1122,13 +1122,65 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage }) {
         </div>
       )}
 
-      {/* Recent orders */}
-      <div style={S.card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>Commandes récentes</h2>
-          <button onClick={() => setPage("orders")} style={S.btnGhost}>Voir tout →</button>
+      {/* ── Activité récente ── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:14, marginBottom:8 }}>
+
+        {/* Compteurs par statut — cliquables */}
+        <div style={{ ...S.card, padding:18 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+            <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>État des commandes</h2>
+            <button onClick={() => setPage("orders")} style={S.btnGhost}>Voir tout →</button>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
+            {STATUS_ORDER.map(k => {
+              const s = STATUS[k];
+              const count = byStatus[k] || 0;
+              return (
+                <button key={k} onClick={() => setPage("orders")} style={{ background:"var(--t-surface)", border:`1px solid ${count>0?s.color+"44":"var(--t-border-subtle)"}`, borderRadius:12, padding:"10px 8px", cursor:"pointer", textAlign:"center", transition:"all 0.15s" }}>
+                  <div style={{ fontSize:20, fontWeight:800, color: count>0 ? s.color : "var(--t-text-40)", lineHeight:1 }}>{count}</div>
+                  <div style={{ fontSize:10, color:"var(--t-text-40)", marginTop:4, lineHeight:1.3 }}>{s.label}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <OrderTable orders={[...orders].reverse().slice(0, 5)} session={session} onSelect={(id) => setPage("orders")} compact />
+
+        {/* 5 dernières commandes */}
+        <div style={{ ...S.card, padding:18 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+            <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>Activité récente</h2>
+          </div>
+          {orders.length === 0 ? (
+            <div style={{ textAlign:"center", color:"var(--t-text-40)", fontSize:13, padding:"20px 0" }}>Aucune commande pour l'instant.</div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {[...orders].reverse().slice(0,5).map((o,i) => {
+                const total = o.lines.reduce((s,l)=>s+(l.qty*(l.price||0)),0);
+                const showPrice = session.canSeePrices;
+                const d = o.date ? new Date(o.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}) : "—";
+                return (
+                  <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", borderRadius:12, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", cursor:"pointer", transition:"all 0.15s" }} className="lg-row">
+                    <div style={{ width:36, height:36, borderRadius:10, background:"linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.15))", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, border:"1px solid rgba(99,102,241,0.2)" }}>
+                      <ClipboardList size={16} color="#818cf8" />
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                        <span style={{ fontFamily:"monospace", fontSize:11, color:"var(--t-text-55)", fontWeight:600 }}>{o.id}</span>
+                        <StatusBadge status={o.status} />
+                      </div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
+                    </div>
+                    <div style={{ textAlign:"right", flexShrink:0 }}>
+                      {showPrice && <div style={{ fontSize:13, fontWeight:700, color:"#34d399" }}>{fmt(total)}</div>}
+                      <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{d}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
