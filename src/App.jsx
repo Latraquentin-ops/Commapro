@@ -5,20 +5,12 @@ import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Cl
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
-  const stroke = "#7c6cfc";
-  const stroke2 = "#a78bfa";
+  const main = light ? "#ffffff" : "#1e1b4b";
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* C — arc épuré */}
-      <path d="M38 15 C23 15 13 27 13 40 C13 53 23 65 38 65"
-        stroke={stroke} strokeWidth="8.5" strokeLinecap="round" fill="none"/>
-      {/* P — jambe verticale */}
-      <line x1="45" y1="15" x2="45" y2="65" stroke={stroke} strokeWidth="8.5" strokeLinecap="round"/>
-      {/* P — bosse */}
-      <path d="M45 15 C65 15 67 42 45 42"
-        stroke={stroke} strokeWidth="8.5" strokeLinecap="round" fill="none"/>
-      {/* Point — virgule CommaPro */}
-      <circle cx="45" cy="73" r="4.5" fill={stroke2}/>
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50 18 C30 18 18 32 18 50 C18 68 30 82 50 82 L50 66 C38 66 32 59 32 50 C32 41 38 34 50 34 Z" fill={main}/>
+      <path d="M52 26 L52 74 C52 76 53 78 56 78 C59 78 60 76 60 74 L60 58 L70 58 C82 58 88 50 88 42 C88 34 82 26 70 26 Z M60 38 L68 38 C72 38 74 40 74 42 C74 44 72 46 68 46 L60 46 Z" fill={main}/>
+      <rect x="52" y="74" width="8" height="14" rx="4" fill="#7c5cff"/>
     </svg>
   );
 }
@@ -251,15 +243,13 @@ function BarChart({ data, showValues = true }) {
 // APP HEADER with dropdown menu
 // ═══════════════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════════
-// SIDEBAR — Navigation desktop (≥1024px), cachée sur mobile
+// SIDEBAR — Navigation desktop (≥1024px)
 // ═══════════════════════════════════════════════════════════════════════════════
 function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark, setDark }) {
-  const pageLabels = { dashboard:"Accueil", orders:"Commandes", stats:"Statistiques", suppliers:"Fournisseurs", admin:"Administration" };
   return (
     <aside className="app-sidebar">
-      {/* Logo + nom app */}
       <div style={{ padding:"24px 20px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, cursor:"pointer" }} onClick={() => setPage("dashboard")}>
+        <button onClick={() => setPage("dashboard")} style={{ display:"flex", alignItems:"center", gap:12, background:"none", border:"none", cursor:"pointer", padding:0 }}>
           <div style={{ width:40, height:40, borderRadius:11, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}>
             <CPLogo size={25} />
           </div>
@@ -267,34 +257,20 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
             <div style={{ fontWeight:800, fontSize:16, letterSpacing:"-0.03em", color:"var(--t-sidebar-text-active)" }}>CommaPro</div>
             <div style={{ fontSize:10, color:"var(--t-sidebar-text)", marginTop:1 }}>Cockpit des achats</div>
           </div>
-        </div>
+        </button>
       </div>
-
-      {/* Navigation */}
       <nav style={{ flex:1, padding:"12px 10px", overflowY:"auto" }}>
         {navItems.map(([v, lbl, Icon]) => {
           const isActive = page === v;
           return (
-            <button key={v} onClick={() => setPage(v)} style={{
-              width:"100%", display:"flex", alignItems:"center", gap:11, padding:"10px 12px",
-              borderRadius:10, border:"none", cursor:"pointer", marginBottom:2,
-              background: isActive ? "var(--t-sidebar-active)" : "transparent",
-              color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)",
-              fontWeight: isActive ? 700 : 500, fontSize:13.5, textAlign:"left",
-              transition:"all 0.15s", position:"relative"
-            }}>
+            <button key={v} onClick={() => setPage(v)} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", marginBottom:2, background: isActive ? "var(--t-sidebar-active)" : "transparent", color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)", fontWeight: isActive ? 700 : 500, fontSize:13.5, textAlign:"left", transition:"all 0.15s", position:"relative" }}>
               {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
               <Icon size={17} strokeWidth={isActive?2.2:1.8} />
               {lbl}
-              {v === "orders" && stockAlerts.length > 0 && (
-                <span style={{ marginLeft:"auto", fontSize:10, fontWeight:700, color:"white", background:"#ef4444", borderRadius:10, padding:"1px 6px", minWidth:18, textAlign:"center" }}>{stockAlerts.length}</span>
-              )}
             </button>
           );
         })}
       </nav>
-
-      {/* Bas : thème + utilisateur */}
       <div style={{ padding:"12px 10px", borderTop:"1px solid var(--t-sidebar-border)" }}>
         <button onClick={() => setDark(d => !d)} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"9px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6, transition:"all 0.15s" }}>
           {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -318,97 +294,53 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TIROIR MOBILE — Rendu au niveau App (hors header sticky) pour position:fixed correct
+// TIROIR MOBILE — Menu latéral glissant (mobile uniquement)
 // ═══════════════════════════════════════════════════════════════════════════════
 function MobileDrawer({ open, onClose, session, page, setPage, navItems, onLogout, dark, setDark }) {
-  function navigate(v) { setPage(v); onClose(); }
   return (
     <>
-      {/* Overlay */}
-      <div onClick={onClose} style={{
-        position:"fixed", inset:0, zIndex:399,
-        background:"rgba(0,0,0,0.50)",
-        backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)",
-        opacity: open ? 1 : 0,
-        pointerEvents: open ? "auto" : "none",
-        transition:"opacity 0.28s cubic-bezier(0.4,0,0.2,1)",
-      }} />
-
-      {/* Tiroir */}
-      <div style={{
-        position:"fixed", top:0, left:0, bottom:0, zIndex:400,
-        width:285,
-        background:"var(--t-sidebar-bg)",
-        backdropFilter:"blur(40px) saturate(200%)",
-        WebkitBackdropFilter:"blur(40px) saturate(200%)",
-        borderRight:"1px solid var(--t-sidebar-border)",
-        boxShadow: open ? "12px 0 48px rgba(0,0,0,0.5)" : "none",
-        transform: open ? "translateX(0)" : "translateX(-100%)",
-        transition:"transform 0.32s cubic-bezier(0.4,0,0.2,1), box-shadow 0.32s",
-        display:"flex", flexDirection:"column",
-        paddingTop:"env(safe-area-inset-top)",
-        paddingBottom:"env(safe-area-inset-bottom)",
-      }}>
-        {/* En-tête */}
+      <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:399, background:"rgba(0,0,0,0.50)", opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none", transition:"opacity 0.28s ease" }} />
+      <div style={{ position:"fixed", top:0, left:0, bottom:0, zIndex:400, width:280, background:"var(--t-sidebar-bg)", backdropFilter:"blur(32px)", WebkitBackdropFilter:"blur(32px)", borderRight:"1px solid var(--t-sidebar-border)", boxShadow: open ? "12px 0 40px rgba(0,0,0,0.4)" : "none", transform: open ? "translateX(0)" : "translateX(-100%)", transition:"transform 0.3s cubic-bezier(0.4,0,0.2,1)", display:"flex", flexDirection:"column", paddingTop:"env(safe-area-inset-top)", paddingBottom:"env(safe-area-inset-bottom)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"18px 20px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:40, height:40, borderRadius:11, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(99,102,241,0.35)" }}>
-              <CPLogo size={26} />
-            </div>
+            <div style={{ width:38, height:38, borderRadius:10, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center" }}><CPLogo size={24} /></div>
             <div>
-              <div style={{ fontWeight:800, fontSize:16, letterSpacing:"-0.03em", color:"var(--t-sidebar-text-active)" }}>CommaPro</div>
-              <div style={{ fontSize:10, color:"var(--t-sidebar-text)", marginTop:1 }}>Cockpit des achats</div>
+              <div style={{ fontWeight:800, fontSize:15, color:"var(--t-sidebar-text-active)" }}>CommaPro</div>
+              <div style={{ fontSize:10, color:"var(--t-sidebar-text)" }}>Cockpit des achats</div>
             </div>
           </div>
-          <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:"1px solid var(--t-sidebar-border)", background:"transparent", cursor:"pointer", color:"var(--t-sidebar-text)", display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <X size={16} />
-          </button>
+          <button onClick={onClose} style={{ width:32, height:32, borderRadius:8, border:"1px solid var(--t-sidebar-border)", background:"transparent", cursor:"pointer", color:"var(--t-sidebar-text)", display:"flex", alignItems:"center", justifyContent:"center" }}><X size={16} /></button>
         </div>
-
-        {/* Profil */}
-        <div style={{ padding:"14px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
+        <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"var(--t-sidebar-active)" }}>
-            <div style={{ width:34, height:34, borderRadius:"50%", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>
-              {session.name.charAt(0).toUpperCase()}
-            </div>
+            <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>{session.name.charAt(0).toUpperCase()}</div>
             <div style={{ minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:700, color:"var(--t-sidebar-text-active)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{session.name}</div>
-              <div style={{ fontSize:11, color:"var(--t-sidebar-text)", marginTop:1 }}>{session.email}</div>
+              <div style={{ fontSize:11, color:"var(--t-sidebar-text)" }}>{session.email}</div>
             </div>
           </div>
         </div>
-
-        {/* Navigation */}
-        <nav style={{ flex:1, padding:"12px 12px", overflowY:"auto" }}>
+        <nav style={{ flex:1, padding:"12px", overflowY:"auto" }}>
           {navItems.map(([v, lbl, Icon]) => {
             const isActive = page === v;
             return (
-              <button key={v} onClick={() => navigate(v)} style={{
-                display:"flex", alignItems:"center", gap:13, width:"100%",
-                padding:"12px 14px", borderRadius:12, border:"none", cursor:"pointer", marginBottom:4,
-                background: isActive ? "var(--t-sidebar-active)" : "transparent",
-                color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)",
-                fontWeight: isActive ? 700 : 500, fontSize:15, textAlign:"left",
-                transition:"all 0.15s", position:"relative",
-              }}>
+              <button key={v} onClick={() => { setPage(v); onClose(); }} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"12px 14px", borderRadius:12, border:"none", cursor:"pointer", marginBottom:4, background: isActive ? "var(--t-sidebar-active)" : "transparent", color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)", fontWeight: isActive ? 700 : 500, fontSize:15, textAlign:"left", transition:"all 0.15s", position:"relative" }}>
                 {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
-                {Icon && <Icon size={19} strokeWidth={isActive?2.2:1.8} />}
+                {Icon && <Icon size={18} strokeWidth={isActive?2.2:1.8} />}
                 {lbl}
               </button>
             );
           })}
         </nav>
-
-        {/* Bas */}
-        <div style={{ padding:"12px 12px 16px", borderTop:"1px solid var(--t-sidebar-border)" }}>
-          <button onClick={() => setDark(d => !d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"11px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:14, marginBottom:6, transition:"all 0.15s" }}>
-            <span style={{ display:"flex", alignItems:"center", gap:10 }}>{dark ? <Sun size={17}/> : <Moon size={17}/>}{dark ? "Mode clair" : "Mode sombre"}</span>
+        <div style={{ padding:"12px", borderTop:"1px solid var(--t-sidebar-border)" }}>
+          <button onClick={() => setDark(d => !d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6 }}>
+            <span style={{ display:"flex", alignItems:"center", gap:10 }}>{dark ? <Sun size={16}/> : <Moon size={16}/>}{dark ? "Mode clair" : "Mode sombre"}</span>
             <div style={{ width:36, height:20, borderRadius:10, background:dark?"rgba(99,102,241,0.7)":"rgba(200,200,200,0.5)", position:"relative", transition:"background 0.3s", flexShrink:0 }}>
               <div style={{ position:"absolute", top:2, left:dark?16:2, width:16, height:16, borderRadius:"50%", background:"white", transition:"left 0.3s" }} />
             </div>
           </button>
-          <button onClick={onLogout} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"11px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.08)", color:"#ef4444", fontSize:14, fontWeight:600, transition:"all 0.15s" }}>
-            <X size={17}/> Se déconnecter
+          <button onClick={() => { onLogout(); onClose(); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.08)", color:"#ef4444", fontSize:13, fontWeight:600 }}>
+            <X size={16}/> Se déconnecter
           </button>
         </div>
       </div>
