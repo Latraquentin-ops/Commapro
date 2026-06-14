@@ -1065,28 +1065,50 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
   const [email, setEmail] = useState("");
   const [pw, setPw]       = useState("");
   const [err, setErr]     = useState("");
+  const [focus, setFocus] = useState("");
   function submit() {
     const u = users.find(u => u.email === email.trim() && u.password === pw && u.active);
     if (u) onLogin(u); else setErr("Email ou mot de passe incorrect.");
   }
-  const loginInput = { width:"100%", padding:"12px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.14)", fontSize:14, outline:"none", boxSizing:"border-box", background:"rgba(255,255,255,0.07)", color:"#ffffff" };
-  const loginLabel = { display:"block", fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.5)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" };
+  // Champ minimaliste : label + ligne soulignée (style glassmorphism)
+  const fieldWrap = { marginBottom:26 };
+  const labelStyle = { display:"block", fontSize:13, color:"rgba(255,255,255,0.55)", marginBottom:8, letterSpacing:"-0.01em" };
+  const underlineInput = (name) => ({
+    width:"100%", padding:"6px 2px 10px", border:"none", borderBottom:`1.5px solid ${focus===name?"rgba(165,180,252,0.9)":"rgba(255,255,255,0.18)"}`,
+    background:"transparent", color:"#ffffff", fontSize:16, outline:"none", boxSizing:"border-box", transition:"border-color 0.2s",
+  });
   return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#0a0a0f 0%,#0d1117 50%,#0a0f1a 100%)", position:"relative", overflow:"hidden", fontFamily:"-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif" }}>
-      <style>{`@keyframes lb1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-20px)}} @keyframes lb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-25px,30px)}}`}</style>
-      <div style={{ position:"absolute", top:"15%", left:"10%", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.2) 0%,transparent 70%)", animation:"lb1 14s ease-in-out infinite", pointerEvents:"none" }} />
-      <div style={{ position:"absolute", bottom:"10%", right:"8%", width:350, height:350, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.16) 0%,transparent 70%)", animation:"lb2 18s ease-in-out infinite", pointerEvents:"none" }} />
-      <div style={{ backdropFilter:"blur(32px) saturate(180%)", WebkitBackdropFilter:"blur(32px) saturate(180%)", background:"rgba(255,255,255,0.06)", borderRadius:28, padding:"44px 40px", width:"100%", maxWidth:400, border:"1px solid rgba(255,255,255,0.1)", boxShadow:"0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)", position:"relative", zIndex:1 }}>
-        <div style={{ textAlign:"center", marginBottom:32 }}>
-          <div style={{ marginBottom:14, display:"flex", justifyContent:"center" }}><div style={{ width:72, height:72, borderRadius:18, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 8px 24px rgba(99,102,241,0.3)" }}><CPLogo size={46} /></div></div>
-          <div style={{ fontSize:26, fontWeight:700, letterSpacing:"-0.03em", background:"linear-gradient(135deg,#e0e7ff,#a5b4fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CommaPro</div>
-          <div style={{ fontSize:13, color:"rgba(255,255,255,0.55)", marginTop:6, letterSpacing:"-0.01em" }}>Gestion des commandes fournisseurs</div>
+    <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px", background:"linear-gradient(135deg,#0a0a0f 0%,#0d1117 45%,#10081f 100%)", position:"relative", overflow:"hidden", fontFamily:"-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif" }}>
+      <style>{`@keyframes lb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.1)}} @keyframes lb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-35px,40px) scale(1.05)}} @keyframes lb3{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,25px)}}`}</style>
+      {/* Halos colorés flous */}
+      <div style={{ position:"absolute", top:"8%", left:"5%", width:440, height:440, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.28) 0%,transparent 70%)", animation:"lb1 16s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", bottom:"5%", right:"2%", width:380, height:380, borderRadius:"50%", background:"radial-gradient(circle,rgba(168,85,247,0.22) 0%,transparent 70%)", animation:"lb2 20s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", top:"40%", right:"30%", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.14) 0%,transparent 70%)", animation:"lb3 22s ease-in-out infinite", pointerEvents:"none" }} />
+
+      {/* Carte verre dépoli */}
+      <div style={{ backdropFilter:"blur(40px) saturate(180%)", WebkitBackdropFilter:"blur(40px) saturate(180%)", background:"rgba(255,255,255,0.07)", borderRadius:32, padding:"48px 36px 40px", width:"100%", maxWidth:400, border:"1px solid rgba(255,255,255,0.12)", boxShadow:"0 32px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15)", position:"relative", zIndex:1 }}>
+        {/* Logo + sous-titre centrés */}
+        <div style={{ textAlign:"center", marginBottom:40 }}>
+          <div style={{ marginBottom:18, display:"flex", justifyContent:"center" }}>
+            <div style={{ width:76, height:76, borderRadius:20, background:"rgba(255,255,255,0.96)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 12px 32px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.6)" }}><CPLogo size={48} /></div>
+          </div>
+          <div style={{ fontSize:30, fontWeight:800, letterSpacing:"-0.04em", background:"linear-gradient(135deg,#ffffff,#c7d2fe)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", lineHeight:1 }}>CommaPro</div>
+          <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:8, letterSpacing:"-0.01em" }}>Gestion des commandes fournisseurs</div>
         </div>
-        <div><label style={loginLabel}>Email</label><input value={email} onChange={e => setEmail(e.target.value)} style={loginInput} type="email" placeholder="votre@email.com" onKeyDown={e => e.key==="Enter" && submit()} /></div>
-        <div style={{ height:14 }} />
-        <div><label style={loginLabel}>Mot de passe</label><input value={pw} onChange={e => setPw(e.target.value)} style={loginInput} type="password" placeholder="••••••••" onKeyDown={e => e.key==="Enter" && submit()} /></div>
-        {err && <div style={{ marginTop:10, fontSize:12, color:"#f87171", background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.25)", padding:"8px 14px", borderRadius:12 }}>{err}</div>}
-        <button onClick={submit} className="lg-btn-primary" style={{ ...S.btnPrimary, width:"100%", marginTop:22, padding:"13px", fontSize:15, borderRadius:16, transition:"all 0.18s" }}>Se connecter</button>
+
+        {/* Champs soulignés */}
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Email</label>
+          <input value={email} onChange={e => setEmail(e.target.value)} onFocus={()=>setFocus("email")} onBlur={()=>setFocus("")} style={underlineInput("email")} type="email" placeholder="votre@email.com" onKeyDown={e => e.key==="Enter" && submit()} />
+        </div>
+        <div style={fieldWrap}>
+          <label style={labelStyle}>Mot de passe</label>
+          <input value={pw} onChange={e => setPw(e.target.value)} onFocus={()=>setFocus("pw")} onBlur={()=>setFocus("")} style={underlineInput("pw")} type="password" placeholder="••••••••" onKeyDown={e => e.key==="Enter" && submit()} />
+        </div>
+
+        {err && <div style={{ marginBottom:16, fontSize:12, color:"#fca5a5", background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)", padding:"10px 14px", borderRadius:14, textAlign:"center" }}>{err}</div>}
+
+        <button onClick={submit} className="lg-btn-primary" style={{ width:"100%", marginTop:8, padding:"15px", fontSize:15, fontWeight:700, borderRadius:18, border:"none", cursor:"pointer", color:"white", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", boxShadow:"0 8px 28px rgba(99,102,241,0.5)", letterSpacing:"-0.01em", transition:"all 0.18s" }}>Se connecter</button>
       </div>
     </div>
   );
