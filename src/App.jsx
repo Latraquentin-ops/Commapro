@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck, ChevronRight } from "lucide-react";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck } from "lucide-react";
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
@@ -603,8 +603,8 @@ export default function App() {
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [orderFilter, setOrderFilter] = useState("all");
-  const [selectedProduct, setSelectedProduct] = useState(null);  // filtre pré-sélectionné depuis dashboard
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
@@ -813,7 +813,6 @@ export default function App() {
         @keyframes float3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,35px) scale(1.04)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes overlayIn { from{opacity:0} to{opacity:1} }
-        @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes pulse-glow { 0%,100%{box-shadow:0 0 12px rgba(99,102,241,0.4)} 50%{box-shadow:0 0 24px rgba(99,102,241,0.7)} }
         .lg-btn-primary { transition:all 0.2s cubic-bezier(0.4,0,0.2,1) !important; }
         .lg-btn-primary:hover { opacity:0.88; transform:translateY(-1px) scale(0.99); box-shadow:0 8px 28px rgba(99,102,241,0.5) !important; }
@@ -922,7 +921,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Fiche produit — rendu au niveau App pour position:fixed correct (hors overflow) */}
       {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} session={session} />}
 
       {/* Tiroir mobile — rendu au niveau App pour position:fixed correct */}
@@ -968,82 +966,55 @@ export default function App() {
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════════
-// FICHE PRODUIT — Panneau qui glisse depuis le bas
+// FICHE PRODUIT — Panneau bas (position:fixed au niveau App)
 // ═══════════════════════════════════════════════════════════════════════════════
 function ProductSheet({ product, onClose, session }) {
   if (!product) return null;
   const hasPrice = session.canSeePrices;
-  const tva = 0.085;
-  const prixAchatTTC = product.price ? product.price * (1 + tva) : null;
   const ecotaxe = product.ecotaxe || 0;
   const prixVente = product.prixVente || null;
-
   return (
     <>
-      {/* Overlay */}
       <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:490, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)" }} />
-
-      {/* Panneau bas */}
-      <div style={{
-        position:"fixed", bottom:0, left:0, right:0, zIndex:500,
-        background:"var(--t-card-bg)",
-        borderRadius:"24px 24px 0 0",
-        paddingBottom:"max(24px, env(safe-area-inset-bottom))",
-        boxShadow:"0 -8px 40px rgba(0,0,0,0.4)",
-        animation:"slideUp 0.3s cubic-bezier(0.4,0,0.2,1) both",
-        maxHeight:"80vh", overflowY:"auto",
-      }}>
-        {/* Handle */}
+      <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:500, background:"var(--t-card-bg)", borderRadius:"24px 24px 0 0", paddingBottom:"max(24px, env(safe-area-inset-bottom))", boxShadow:"0 -8px 40px rgba(0,0,0,0.4)", maxHeight:"80vh", overflowY:"auto", animation:"psUp 0.3s cubic-bezier(0.4,0,0.2,1) both" }}>
+        <style>{`@keyframes psUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
         <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
           <div style={{ width:40, height:4, borderRadius:2, background:"var(--t-border-subtle)" }} />
         </div>
-
-        <div style={{ padding:"8px 24px 28px" }}>
-          {/* Header */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+        <div style={{ padding:"8px 24px 20px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.02em", color:"var(--t-text-90)", lineHeight:1.2, marginBottom:6 }}>{product.label}</div>
-              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.02em", color:"var(--t-text-90)", lineHeight:1.2, marginBottom:8 }}>{product.label}</div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 <span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-surface)", color:"var(--t-text-55)", padding:"2px 8px", borderRadius:6, fontWeight:600 }}>{product.ref}</span>
                 {product.ean && <span style={{ fontFamily:"monospace", fontSize:11, background:"rgba(99,102,241,0.1)", color:"#818cf8", padding:"2px 8px", borderRadius:6 }}>EAN {product.ean}</span>}
                 {product.subFamily && <span style={{ fontSize:11, background:"var(--t-tag-bg)", color:"var(--t-tag-color)", padding:"2px 8px", borderRadius:6, border:"1px solid var(--t-tag-border)" }}>{product.subFamily}</span>}
               </div>
             </div>
-            <button onClick={onClose} style={{ width:34, height:34, borderRadius:10, border:"1px solid var(--t-border-subtle)", background:"var(--t-surface)", cursor:"pointer", color:"var(--t-text-55)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginLeft:12 }}>
-              <X size={16} />
-            </button>
+            <button onClick={onClose} style={{ width:34, height:34, borderRadius:10, border:"1px solid var(--t-border-subtle)", background:"var(--t-surface)", cursor:"pointer", color:"var(--t-text-55)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginLeft:12 }}><X size={16} /></button>
           </div>
-
-          {/* Fournisseur */}
-          <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"12px 16px", marginBottom:16, border:"1px solid var(--t-border-subtle)" }}>
+          <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"12px 16px", marginBottom:14, border:"1px solid var(--t-border-subtle)" }}>
             <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Fournisseur</div>
             <div style={{ fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>{product.supplierName || "—"}</div>
           </div>
-
-          {/* Prix */}
           {hasPrice && (
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
               <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"14px 16px", border:"1px solid var(--t-border-subtle)" }}>
                 <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Prix achat HT</div>
-                <div style={{ fontSize:20, fontWeight:800, color:"#34d399" }}>{product.price ? fmt(product.price) : "—"}</div>
-                {prixAchatTTC && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>soit {fmt(prixAchatTTC)} TTC</div>}
+                <div style={{ fontSize:22, fontWeight:800, color:"#34d399" }}>{product.price ? fmt(product.price) : "—"}</div>
               </div>
               <div style={{ background: prixVente ? "rgba(99,102,241,0.08)" : "var(--t-surface)", borderRadius:14, padding:"14px 16px", border: prixVente ? "1px solid rgba(99,102,241,0.25)" : "1px solid var(--t-border-subtle)" }}>
                 <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Prix de vente TTC</div>
                 {prixVente ? (
                   <>
-                    <div style={{ fontSize:20, fontWeight:800, color:"#818cf8" }}>{fmt(prixVente)}</div>
+                    <div style={{ fontSize:22, fontWeight:800, color:"#818cf8" }}>{fmt(prixVente)}</div>
                     {ecotaxe > 0 && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>dont {fmt(ecotaxe)} d'écotaxe incluse</div>}
                   </>
-                ) : (
-                  <div style={{ fontSize:13, color:"var(--t-text-30)", fontStyle:"italic" }}>Non renseigné</div>
-                )}
+                ) : <div style={{ fontSize:12, color:"var(--t-text-30)", fontStyle:"italic" }}>Non renseigné</div>}
               </div>
             </div>
           )}
-
-          {/* Stock */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
             <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"14px 16px", border:"1px solid var(--t-border-subtle)" }}>
               <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Stock dispo</div>
               {product.dispoParDepot ? (
@@ -1055,11 +1026,9 @@ function ProductSheet({ product, onClose, session }) {
                     </div>
                   ))}
                 </div>
-              ) : product.dispo != null ? (
-                <div style={{ fontSize:24, fontWeight:800, color: product.dispo===0?"#ef4444": product.dispo<=(product.stockMin||0)?"#f59e0b":"#34d399" }}>{product.dispo}</div>
-              ) : (
-                <div style={{ fontSize:13, color:"var(--t-text-30)", fontStyle:"italic" }}>Aucun import</div>
-              )}
+              ) : product.dispo != null
+                ? <div style={{ fontSize:24, fontWeight:800, color: product.dispo===0?"#ef4444":product.dispo<=(product.stockMin||0)?"#f59e0b":"#34d399" }}>{product.dispo}</div>
+                : <div style={{ fontSize:12, color:"var(--t-text-30)", fontStyle:"italic" }}>Aucun import</div>}
             </div>
             <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"14px 16px", border:"1px solid var(--t-border-subtle)" }}>
               <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Stock minimum</div>
@@ -1067,14 +1036,6 @@ function ProductSheet({ product, onClose, session }) {
               {product.weeklyVolume > 0 && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{product.weeklyVolume} ventes/sem</div>}
             </div>
           </div>
-
-          {/* Famille */}
-          {(product.family || product.subFamily) && (
-            <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"12px 16px", border:"1px solid var(--t-border-subtle)" }}>
-              <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Catégorie</div>
-              <div style={{ fontSize:13, color:"var(--t-text-85)" }}>{[product.family, product.subFamily].filter(Boolean).join(" › ")}</div>
-            </div>
-          )}
         </div>
       </div>
     </>
@@ -1237,7 +1198,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
               <>
                 <div style={{ padding:"8px 16px", fontSize:11, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"1px solid var(--t-border-subtle)" }}>{searchResults.length} résultat(s)</div>
                 {searchResults.map((p, i) => (
-                  <div key={i} onClick={() => setSelectedProduct(p)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"11px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none", cursor:"pointer", transition:"background 0.15s" }} className="lg-row">
+                  <div key={i} onClick={() => setSelectedProduct(p)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"11px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none", cursor:"pointer" }}>
                     <div style={{ minWidth:0 }}>
                       <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
                       <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
@@ -1249,10 +1210,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
                         )) : p.dispo != null && <span style={{ fontSize:11, fontWeight:600, color: p.dispo===0?"#ef4444":"#34d399" }}>Dispo : {p.dispo}</span>}
                       </div>
                     </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                      {session.canSeePrices && p.price && <div style={{ fontWeight:700, fontSize:13, color:"#059669" }}>{fmt(p.price)}</div>}
-                      <ChevronRight size={14} style={{ color:"var(--t-text-30)" }} />
-                    </div>
+                    <div style={{ fontWeight:700, fontSize:14, color:"#059669", flexShrink:0 }}>{fmt(p.price)}</div>
                   </div>
                 ))}
               </>
@@ -1262,11 +1220,8 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
       </div>
 
       {scanning && <BarcodeScanner onDetected={(code) => {
-        setQuery(code);
-        setScanning(false);
-        // Auto-ouvrir la fiche si un seul produit correspond
-        const allProds = suppliers.flatMap(s => s.products.map(p=>({...p,supplierName:s.name})));
-        const match = allProds.find(p => (p.ean||"").toLowerCase() === code.toLowerCase() || (p.ref||"").toLowerCase() === code.toLowerCase());
+        setQuery(code); setScanning(false);
+        const match = suppliers.flatMap(s=>s.products.map(p=>({...p,supplierName:s.name}))).find(p=>(p.ean||"").toLowerCase()===code.toLowerCase()||(p.ref||"").toLowerCase()===code.toLowerCase());
         if (match) setSelectedProduct(match);
       }} onClose={() => setScanning(false)} />}
 
@@ -1465,7 +1420,6 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
         </div>
 
       </div>
-      {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} session={session} />}
     </div>
   );
 }
