@@ -1462,8 +1462,8 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
         </div>
 
       </div>
+      {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} session={session} />}
     </div>
-    {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} session={session} />}
   );
 }
 // ═══════════════════════════════════════════════════════════════════════════════
