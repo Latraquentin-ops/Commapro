@@ -1791,7 +1791,17 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
   // Ajouter un nouveau produit au catalogue ET à la commande
   function saveNewProduct() {
     if (!newProd.ref || !newProd.label) return;
-    const p = { ref: newProd.ref.trim(), ean: newProd.ean.trim(), label: newProd.label.trim(), family: newProd.family.trim(), subFamily: newProd.subFamily.trim(), price: parseFloat(newProd.price)||0, weeklyVolume:0 };
+    const ref = newProd.ref.trim();
+    // Vérifier si la référence existe déjà dans ce catalogue
+    const existing = supp?.products.find(p => p.ref.toLowerCase() === ref.toLowerCase());
+    if (existing) {
+      // Référence déjà présente → on l'ajoute juste à la commande
+      addProduct(existing);
+      setNewProd({ ref:"", ean:"", label:"", family:"", subFamily:"", price:"" });
+      setShowAddProduct(false);
+      return;
+    }
+    const p = { ref, ean: newProd.ean.trim(), label: newProd.label.trim(), family: newProd.family.trim(), subFamily: newProd.subFamily.trim(), price: parseFloat(newProd.price)||0, weeklyVolume:0 };
     setSuppliers(prev => prev.map(s => s.id===suppId ? { ...s, products: [...s.products, p] } : s));
     addProduct(p);
     setNewProd({ ref:"", ean:"", label:"", family:"", subFamily:"", price:"" });
@@ -1857,7 +1867,13 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                   <div style={{ background:"var(--t-surface)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:14, padding:14, marginBottom:12 }}>
                     <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-70)", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit — {supp.name}</div>
                     <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-                      <div><label style={S.label}>Référence *</label><input value={newProd.ref} onChange={e=>setNewProd(p=>({...p,ref:e.target.value}))} style={S.input} placeholder="Ex: TAB906" /></div>
+                      <div>
+                        <label style={S.label}>Référence *</label>
+                        <input value={newProd.ref} onChange={e=>setNewProd(p=>({...p,ref:e.target.value}))} style={S.input} placeholder="Ex: TAB906" />
+                        {newProd.ref && supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()) && (
+                          <div style={{ fontSize:11, color:"#f59e0b", marginTop:4 }}>⚠️ Référence déjà présente dans le catalogue — le produit sera ajouté à la commande directement.</div>
+                        )}
+                      </div>
                       <div><label style={S.label}>Code EAN</label><input value={newProd.ean} onChange={e=>setNewProd(p=>({...p,ean:e.target.value}))} style={S.input} placeholder="Code-barres" /></div>
                     </div>
                     <div style={{ marginBottom:8 }}><label style={S.label}>Désignation *</label><input value={newProd.label} onChange={e=>setNewProd(p=>({...p,label:e.target.value}))} style={S.input} placeholder="Nom du produit" /></div>
@@ -1867,7 +1883,11 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                     </div>
                     <div style={{ marginBottom:12 }}><label style={S.label}>Prix HT</label><input type="number" value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))} style={S.input} placeholder="0.00" /></div>
                     <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={saveNewProduct} disabled={!newProd.ref||!newProd.label} style={{ ...S.btnPrimary, flex:1, opacity:newProd.ref&&newProd.label?1:0.45 }}>✓ Ajouter au catalogue et à la commande</button>
+                      <button onClick={saveNewProduct} disabled={!newProd.ref||(!newProd.label && !supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()))} style={{ ...S.btnPrimary, flex:1, opacity:(newProd.ref&&(newProd.label||supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase())))?1:0.45 }}>
+                        {supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase())
+                          ? "✓ Ajouter à la commande"
+                          : "✓ Ajouter au catalogue et à la commande"}
+                      </button>
                       <button onClick={()=>{setShowAddProduct(false);setNewProd({ref:"",ean:"",label:"",family:"",subFamily:"",price:""}); }} style={S.btnGhost}>Annuler</button>
                     </div>
                   </div>
@@ -2285,7 +2305,24 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap:"wrap", gap:8 }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>Catalogue produits</h3>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+            <button onClick={() => {
+              // Génère et télécharge un modèle Excel avec exemples
+              const data = [
+                ["Référence","Code EAN","Désignation","Famille","Sous-famille","Prix HT","Ventes/sem"],
+                ["TAB906","3700123456789","ASPIRATEUR LAVEUR 1400W","Electroménager","E41AS","149.90","2"],
+                ["REF002","3700987654321","LAVE-LINGE 7KG A+++","Electroménager","E21LL","299.00","1"],
+                ["REF003","","MICRO-ONDES 20L SOLO","Electroménager","E31MO","89.50","3"],
+              ];
+              const ws = XLSX.utils.aoa_to_sheet(data);
+              // Largeurs de colonnes
+              ws['!cols'] = [{wch:14},{wch:16},{wch:32},{wch:18},{wch:14},{wch:10},{wch:12}];
+              const wb = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(wb, ws, "Catalogue");
+              XLSX.writeFile(wb, "modele-catalogue-commapro.xlsx");
+            }} style={{ ...S.btnGhost, display:"inline-flex", alignItems:"center", gap:6, fontSize:12 }}>
+              ⬇ Modèle Excel
+            </button>
             <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
               <FileText size={15} style={{ marginRight:6, verticalAlign:"middle" }} /> Importer Excel
               <input type="file" accept=".xlsx,.xls" onChange={handleExcelImport} style={{ display:"none" }} />
@@ -2295,7 +2332,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
         </div>
         {importMsg && <div style={{ fontSize:12, marginBottom:10, padding:"8px 12px", borderRadius:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", color:"var(--t-text-85)" }}>{importMsg}</div>}
         <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:12 }}>
-          💡 Colonnes attendues dans le fichier Excel : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> (l'ordre n'a pas d'importance, le stock min est calculé automatiquement).
+          💡 Colonnes attendues : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> — télécharge le modèle pour être sûr du format.
         </div>
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
         <div style={{ minWidth: 760 }}>
