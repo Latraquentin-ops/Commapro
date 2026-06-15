@@ -603,7 +603,8 @@ export default function App() {
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [orderFilter, setOrderFilter] = useState("all");  // filtre pré-sélectionné depuis dashboard
+  const [orderFilter, setOrderFilter] = useState("all");
+  const [selectedProduct, setSelectedProduct] = useState(null);  // filtre pré-sélectionné depuis dashboard
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
@@ -910,7 +911,7 @@ export default function App() {
         <div className="app-content">
           <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(80px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
-            {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} T={T} />}
+            {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} setSelectedProduct={setSelectedProduct} T={T} />}
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
@@ -920,6 +921,9 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      {/* Fiche produit — rendu au niveau App pour position:fixed correct (hors overflow) */}
+      {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} session={session} />}
 
       {/* Tiroir mobile — rendu au niveau App pour position:fixed correct */}
       <MobileDrawer
@@ -984,10 +988,10 @@ function ProductSheet({ product, onClose, session }) {
         position:"fixed", bottom:0, left:0, right:0, zIndex:500,
         background:"var(--t-card-bg)",
         borderRadius:"24px 24px 0 0",
-        padding:"0 0 env(safe-area-inset-bottom)",
+        paddingBottom:"max(24px, env(safe-area-inset-bottom))",
         boxShadow:"0 -8px 40px rgba(0,0,0,0.4)",
         animation:"slideUp 0.3s cubic-bezier(0.4,0,0.2,1) both",
-        maxHeight:"85vh", overflowY:"auto",
+        maxHeight:"80vh", overflowY:"auto",
       }}>
         {/* Handle */}
         <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
@@ -1150,10 +1154,9 @@ function BarcodeScanner({ onDetected, onClose }) {
   );
 }
 
-function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOrderFilter }) {
+function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOrderFilter, setSelectedProduct }) {
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
   const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
   const pending = orders.filter(o => !["brouillon","livree","reception_validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
