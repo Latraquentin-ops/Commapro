@@ -135,6 +135,7 @@ const calcStockMin = (weeklyVolume, weeks = 3) => Math.ceil((weeklyVolume || 0) 
 const COLORS = ["#1D4ED8","#059669","#D97706","#7C3AED","#DC2626","#0891B2","#65A30D","#DB2777"];
 
 const STATUS = {
+  brouillon:         { label: "Brouillon",          color: "#6B7280", bg: "#F3F4F6" },
   en_attente:        { label: "En attente",        color: "#D97706", bg: "#FFFBEB" },
   confirmee:         { label: "Confirmée",          color: "#2563EB", bg: "#EFF6FF" },
   en_preparation:    { label: "En préparation",     color: "#7C3AED", bg: "#F5F3FF" },
@@ -339,7 +340,7 @@ const S = {
 
 function StatusBadge({ status }) {
   const s = STATUS[status] || STATUS.en_attente;
-  const glows = { en_attente:"rgba(217,119,6,0.3)", confirmee:"rgba(37,99,235,0.3)", en_preparation:"rgba(124,58,237,0.3)", en_livraison:"rgba(8,145,178,0.3)", livree:"rgba(5,150,105,0.3)", reception_validee:"rgba(22,163,74,0.3)" };
+  const glows = { brouillon:"rgba(107,114,128,0.2)", en_attente:"rgba(217,119,6,0.3)", confirmee:"rgba(37,99,235,0.3)", en_preparation:"rgba(124,58,237,0.3)", en_livraison:"rgba(8,145,178,0.3)", livree:"rgba(5,150,105,0.3)", reception_validee:"rgba(22,163,74,0.3)" };
   return <span style={{ padding:"4px 12px", borderRadius:20, fontSize:11, fontWeight:600, background:`${s.bg}22`, color:s.color, border:`1px solid ${s.color}44`, backdropFilter:"blur(8px)", boxShadow:`0 0 10px ${glows[status]||"transparent"}` }}>{s.label}</span>;
 }
 function Field({ label, children }) {
@@ -910,7 +911,7 @@ export default function App() {
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
             {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} T={T} />}
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
-            {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} locations={locations} session={session} setPage={setPage} T={T} />}
+            {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
@@ -1039,7 +1040,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
   const [scanning, setScanning] = useState(false);
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
   const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
-  const pending = orders.filter(o => !["livree","reception_validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
+  const pending = orders.filter(o => !["brouillon","livree","reception_validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
   const isAdmin = session.role === "admin";
 
   // ── Dashboard "ce matin" ────────────────────────────────────────────────
@@ -1124,6 +1125,9 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
                         <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-mono-bg)", padding:"1px 6px", borderRadius:5 }}>{p.ref}</span>
                         {p.ean && <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-mono-color)", background:"var(--t-mono-bg)", padding:"1px 6px", borderRadius:5 }}>EAN {p.ean}</span>}
                         <span style={{ fontSize:11, color:"var(--t-text-40)" }}>· {p.supplierName}</span>
+                        {p.dispoParDepot ? Object.entries(p.dispoParDepot).map(([depot, d]) => (
+                          <span key={depot} style={{ fontSize:10, fontWeight:600, color: d.dispo===0?"#ef4444":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 6px", borderRadius:5 }}>{depot} : {d.dispo}</span>
+                        )) : p.dispo != null && <span style={{ fontSize:11, fontWeight:600, color: p.dispo===0?"#ef4444":"#34d399" }}>Dispo : {p.dispo}</span>}
                       </div>
                     </div>
                     <div style={{ fontWeight:700, fontSize:14, color:"#059669", flexShrink:0 }}>{fmt(p.price)}</div>
@@ -1680,8 +1684,8 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
           </div>
         </div>
 
-        {/* Suivi de la commande (façon Colissimo) */}
-        <div style={{ marginBottom:24, padding:"18px 16px", background:"var(--t-surface)", borderRadius:16, border:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
+        {/* Suivi de la commande (façon Colissimo) — masqué pour les brouillons */}
+        {order.status !== "brouillon" && <div style={{ marginBottom:24, padding:"18px 16px", background:"var(--t-surface)", borderRadius:16, border:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
           <div style={{ display:"flex", alignItems:"flex-start", minWidth:520 }}>
             {STATUS_ORDER.map((k, i) => {
               const currentIdx = STATUS_ORDER.indexOf(order.status);
@@ -1705,7 +1709,18 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
               );
             })}
           </div>
-        </div>
+        </div>}
+
+        {/* Bannière brouillon */}
+        {order.status === "brouillon" && (
+          <div style={{ marginBottom:20, padding:"14px 18px", background:"rgba(107,114,128,0.12)", border:"1px solid rgba(107,114,128,0.3)", borderRadius:14, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontWeight:700, fontSize:13, color:"var(--t-text-85)" }}>📝 Brouillon — commande non envoyée</div>
+              <div style={{ fontSize:12, color:"var(--t-text-40)", marginTop:2 }}>Cette commande n'a pas encore été transmise au fournisseur.</div>
+            </div>
+            {isAdmin && <button onClick={deleteOrder} style={{ ...S.btnDanger, flexShrink:0 }}>🗑 Supprimer ce brouillon</button>}
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 20 }}>
           {[["Fournisseur",order.supplierName],["Commercial",order.commercial],["Email",order.email],["Livraison souhaitée",fmtDate(order.deliveryDate)],["Lieu",order.deliveryPlace]].map(([l,v]) => (
@@ -1750,14 +1765,17 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW ORDER
 // ═══════════════════════════════════════════════════════════════════════════════
-function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPage }) {
-  const [suppId, setSuppId]             = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
+function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, session, setPage }) {
+  const [suppId, setSuppId]               = useState("");
+  const [deliveryDate, setDeliveryDate]   = useState("");
   const [deliveryPlace, setDeliveryPlace] = useState("");
-  const [notes, setNotes]               = useState("");
-  const [lines, setLines]               = useState([]);
-  const [saved, setSaved]               = useState(null);
+  const [notes, setNotes]                 = useState("");
+  const [lines, setLines]                 = useState([]);
+  const [saved, setSaved]                 = useState(null);
   const [catalogSearch, setCatalogSearch] = useState("");
+  // Ajout produit rapide
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProd, setNewProd] = useState({ ref:"", ean:"", label:"", family:"", subFamily:"", price:"" });
   const supp = suppliers.find(s => s.id === suppId);
 
   function addProduct(p) {
@@ -1769,6 +1787,24 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
   }
   function updateQty(ref, qty) { setLines(prev => prev.map(l => l.ref===ref ? {...l, qty: Math.max(1,parseInt(qty)||1)} : l)); }
   function removeLine(ref) { setLines(prev => prev.filter(l => l.ref!==ref)); }
+
+  // Ajouter un nouveau produit au catalogue ET à la commande
+  function saveNewProduct() {
+    if (!newProd.ref || !newProd.label) return;
+    const p = { ref: newProd.ref.trim(), ean: newProd.ean.trim(), label: newProd.label.trim(), family: newProd.family.trim(), subFamily: newProd.subFamily.trim(), price: parseFloat(newProd.price)||0, weeklyVolume:0 };
+    setSuppliers(prev => prev.map(s => s.id===suppId ? { ...s, products: [...s.products, p] } : s));
+    addProduct(p);
+    setNewProd({ ref:"", ean:"", label:"", family:"", subFamily:"", price:"" });
+    setShowAddProduct(false);
+  }
+
+  // Enregistrer en brouillon
+  function saveDraft() {
+    if (!supp) return;
+    const draft = { id: genOrderId(orders), userId: session.id, supplierName: supp.name, commercial: supp.commercial, email: supp.email, date: new Date().toISOString().split("T")[0], deliveryDate: deliveryDate||"", deliveryPlace: deliveryPlace||"", notes, lines, status: "brouillon", statusHistory: { brouillon: new Date().toISOString() }, createdBy: session.name };
+    setOrders(prev => [...prev, draft]);
+    setPage("orders");
+  }
 
   function submit() {
     if (!supp || lines.length===0 || !deliveryDate || !deliveryPlace) return;
@@ -1813,7 +1849,29 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
           {supp && (
             <div style={S.card}>
               <div style={{ marginBottom:14 }}>
-                <h2 style={{ margin:"0 0 10px 0", fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>2. Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>2. Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
+                  <button onClick={() => setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:12, padding:"5px 10px", color:"#818cf8" }}>+ Nouveau produit</button>
+                </div>
+                {showAddProduct && (
+                  <div style={{ background:"var(--t-surface)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:14, padding:14, marginBottom:12 }}>
+                    <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-70)", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit — {supp.name}</div>
+                    <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                      <div><label style={S.label}>Référence *</label><input value={newProd.ref} onChange={e=>setNewProd(p=>({...p,ref:e.target.value}))} style={S.input} placeholder="Ex: TAB906" /></div>
+                      <div><label style={S.label}>Code EAN</label><input value={newProd.ean} onChange={e=>setNewProd(p=>({...p,ean:e.target.value}))} style={S.input} placeholder="Code-barres" /></div>
+                    </div>
+                    <div style={{ marginBottom:8 }}><label style={S.label}>Désignation *</label><input value={newProd.label} onChange={e=>setNewProd(p=>({...p,label:e.target.value}))} style={S.input} placeholder="Nom du produit" /></div>
+                    <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                      <div><label style={S.label}>Famille</label><input value={newProd.family} onChange={e=>setNewProd(p=>({...p,family:e.target.value}))} style={S.input} placeholder="Ex: Electroménager" /></div>
+                      <div><label style={S.label}>Sous-famille</label><input value={newProd.subFamily} onChange={e=>setNewProd(p=>({...p,subFamily:e.target.value}))} style={S.input} placeholder="Ex: E31MO" /></div>
+                    </div>
+                    <div style={{ marginBottom:12 }}><label style={S.label}>Prix HT</label><input type="number" value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))} style={S.input} placeholder="0.00" /></div>
+                    <div style={{ display:"flex", gap:8 }}>
+                      <button onClick={saveNewProduct} disabled={!newProd.ref||!newProd.label} style={{ ...S.btnPrimary, flex:1, opacity:newProd.ref&&newProd.label?1:0.45 }}>✓ Ajouter au catalogue et à la commande</button>
+                      <button onClick={()=>{setShowAddProduct(false);setNewProd({ref:"",ean:"",label:"",family:"",subFamily:"",price:""}); }} style={S.btnGhost}>Annuler</button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:22, padding:"8px 14px", backdropFilter:"blur(8px)" }} className="lg-search-bar">
                   <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
                   <input
@@ -1856,10 +1914,13 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
                       return (
                         <div key={p.ref} className="lg-product-row" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:14, border:`1px solid ${inCart?'rgba(99,102,241,0.45)':'rgba(255,255,255,0.07)'}`, background:inCart?'rgba(99,102,241,0.15)':'rgba(255,255,255,0.03)', marginBottom:6, backdropFilter:'blur(6px)', boxShadow:inCart?'0 0 20px rgba(99,102,241,0.18)':'none' }}>
                           <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                               <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 7px", borderRadius:6 }}>{p.ref}</span>
                               {p.subFamily && <span style={{ fontFamily:"monospace", fontSize:10, background:"var(--t-tag-bg)", padding:"1px 7px", borderRadius:6, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily}</span>}
                               {session.canSeePrices && <span style={{ fontSize:11, color:"#34d399", fontWeight:600 }}>{fmt(p.price)}</span>}
+                              {p.dispoParDepot ? Object.entries(p.dispoParDepot).map(([depot, d]) => (
+                                <span key={depot} style={{ fontSize:10, fontWeight:600, color: d.dispo===0?"#ef4444": d.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume))?"#f59e0b":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 6px", borderRadius:5 }}>{depot} : {d.dispo}</span>
+                              )) : p.dispo != null && <span style={{ fontSize:10, fontWeight:600, color: p.dispo===0?"#ef4444": p.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume))?"#f59e0b":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 6px", borderRadius:5 }}>Dispo : {p.dispo}</span>}
                             </div>
                             <span style={{ fontWeight:500, fontSize:13, color:"var(--t-text-85)" }}>{p.label}</span>
                           </div>
@@ -1922,6 +1983,9 @@ function NewOrderPage({ orders, setOrders, suppliers, locations, session, setPag
               </>
             )}
             <button onClick={submit} disabled={!canSubmit} style={{ ...S.btnPrimary, width: "100%", marginTop: 16, padding: 12, opacity: canSubmit ? 1 : 0.45 }}>Valider la commande</button>
+            {supp && lines.length>0 && (
+              <button onClick={saveDraft} style={{ ...S.btnSecondary, width:"100%", marginTop:8, padding:10 }}>💾 Enregistrer en brouillon</button>
+            )}
             {!canSubmit && <div style={{ fontSize:11, color:"var(--t-text-30)", textAlign:"center", marginTop:6 }}>Fournisseur, produit(s) et livraison requis</div>}
           </div>
         </div>
@@ -1952,14 +2016,12 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
       try {
         const wb = XLSX.read(evt.target.result, { type: "binary" });
         const sheet = wb.Sheets[wb.SheetNames[0]];
-        // Lecture en matrice brute (le format a des en-têtes répétés par sous-famille)
         const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-        // 1) Trouver la date d'export (cellule en haut, souvent ligne 1)
+        // 1) Date d'export
         let exportDate = null;
         for (let r = 0; r < Math.min(4, grid.length); r++) {
           for (const cell of grid[r]) {
-            // Excel renvoie parfois un numéro de série de date
             if (typeof cell === "number" && cell > 40000 && cell < 60000) {
               const d = new Date(Math.round((cell - 25569) * 86400 * 1000));
               if (!isNaN(d)) { exportDate = d.toISOString().slice(0,10); break; }
@@ -1969,16 +2031,51 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
         }
         if (!exportDate) exportDate = new Date().toISOString().slice(0,10);
 
-        // 2) Repérer la ligne d'en-tête (contient "Code" et "Dispo.")
+        // 2) Mapping noms de dépôts → labels courts
+        function depotLabel(raw) {
+          const u = raw.toUpperCase();
+          if (u.includes("PORT") || u.includes("CENTRAL")) return "Dépôt Port";
+          if (u.includes("EXPO") && u.includes("SUD"))  return "Expo Sud";
+          if (u.includes("EXPO") && u.includes("NORD")) return "Expo Nord";
+          if (u.includes("DEPOT") || u.includes("DÉPÔT")) {
+            if (u.includes("SUD"))  return "Dépôt Sud";
+            if (u.includes("NORD")) return "Dépôt Nord";
+          }
+          // Fallback : prendre la dernière partie après le dernier "-"
+          const parts = raw.split("-").map(s=>s.trim()).filter(Boolean);
+          return parts[parts.length-1] || raw;
+        }
+
+        // 3) Parser multi-dépôts :
+        //    stockByRef[ref][depotLabel] = { stock, dispo, achat, facture... }
         const norm = (s) => String(s).toLowerCase().replace(/\s+/g," ").trim();
+        const isDepotHeader = (row) => {
+          const v = String(row[0]||"").trim();
+          return v.length > 5 && (
+            v.toUpperCase().includes("CONFORAMA") ||
+            v.toUpperCase().includes("EXPO") ||
+            v.toUpperCase().includes("DEPOT") ||
+            v.toUpperCase().includes("DÉPÔT") ||
+            v.toUpperCase().includes("PORT")
+          ) && !v.toUpperCase().includes("ELECTRO") && !v.toUpperCase().includes("CUISSON");
+        };
+
+        let currentDepot = "Principal";
         let headerCols = null;
-        const stockByRef = {};
+        const stockByRef = {};  // { ref: { "Expo Nord": {dispo,stock,...}, "Dépôt Sud": {...} } }
+        const depotsFound = new Set();
+
         for (const row of grid) {
+          // Détection ligne dépôt
+          if (isDepotHeader(row)) {
+            currentDepot = depotLabel(String(row[0]).trim());
+            depotsFound.add(currentDepot);
+            headerCols = null; // reset pour ce dépôt
+            continue;
+          }
+          // Détection ligne en-tête colonnes
           const cells = row.map(norm);
-          const hasCode = cells.some(x => x === "code");
-          const hasDispo = cells.some(x => x.startsWith("dispo"));
-          if (hasCode && hasDispo) {
-            // mémorise l'index des colonnes utiles
+          if (cells.some(x => x === "code") && cells.some(x => x.startsWith("dispo"))) {
             headerCols = {};
             row.forEach((h, i) => {
               const n = norm(h);
@@ -1995,13 +2092,13 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
             });
             continue;
           }
-          // ligne de données : a un code en colonne code et un nombre en dispo
+          // Ligne de données
           if (headerCols && headerCols.code != null) {
             const code = String(row[headerCols.code] || "").trim();
-            const dispoRaw = row[headerCols.dispo];
-            if (code && code.toLowerCase() !== "code" && !code.startsWith("CONFORAMA") && !code.includes(" - ")) {
+            if (code && code.toLowerCase() !== "code" && code.length > 2 && !code.includes(" - ")) {
               const num = (i) => { const v = parseFloat(row[i]); return isNaN(v) ? 0 : v; };
-              stockByRef[code] = {
+              if (!stockByRef[code]) stockByRef[code] = {};
+              stockByRef[code][currentDepot] = {
                 stock:     num(headerCols.stock),
                 dispo:     num(headerCols.dispo),
                 reserve:   num(headerCols.reserve),
@@ -2021,21 +2118,34 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
           return;
         }
 
-        // 3) Mettre à jour UNIQUEMENT les produits déjà présents (par ref)
+        // 4) Mettre à jour les produits : stocker dispoParDepot + dispo total
         let updated = 0, matched = [];
         setSuppliers(prev => prev.map(s => ({
           ...s,
           products: s.products.map(p => {
-            const st = stockByRef[p.ref];
-            if (!st) return p;
+            const depots = stockByRef[p.ref];
+            if (!depots) return p;
             updated++; matched.push(p.ref);
-            return { ...p, stock: st.stock, dispo: st.dispo, reserve: st.reserve, emporte: st.emporte, livraison: st.livraison, attendu: st.attendu, achatRec: st.achat, facture: st.facture, stockDate: exportDate };
+            // Calcul totaux toutes dépôts
+            const allDepots = Object.values(depots);
+            const totalDispo = allDepots.reduce((s,d)=>s+(d.dispo||0),0);
+            const totalStock = allDepots.reduce((s,d)=>s+(d.stock||0),0);
+            return {
+              ...p,
+              stock: totalStock,
+              dispo: totalDispo,
+              dispoParDepot: depots,  // { "Expo Nord": {dispo:3,...}, "Dépôt Sud": {dispo:1,...} }
+              stockDate: exportDate,
+            };
           })
         })));
 
-        // 4) Mémoriser cet import (date + dispo par ref) pour calcul des sorties
+        // 5) Mémoriser snapshot (dispo total par ref pour calcul des sorties)
         const snapshot = {};
-        matched.forEach(ref => { snapshot[ref] = stockByRef[ref].dispo; });
+        matched.forEach(ref => {
+          const depots = stockByRef[ref];
+          snapshot[ref] = Object.values(depots).reduce((s,d)=>s+(d.dispo||0),0);
+        });
 
         // 5) ÉTAPE B — Calcul des sorties depuis l'import précédent
         //    Sorties = Dispo_précédent − Dispo_actuel + Achats reçus sur la période
