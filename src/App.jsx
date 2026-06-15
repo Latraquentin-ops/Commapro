@@ -914,7 +914,7 @@ export default function App() {
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
-            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
+            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
             </div>
           </main>
@@ -2213,7 +2213,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════════════════════════════
-function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStockImports }) {
+function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stockImports, setStockImports }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -2587,47 +2587,87 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
           )}
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {suppliers.map(s => (
-          <div key={s.id} style={S.card}>
-            <div style={{ display: "flex", flexDirection:"column", gap:12 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
-                <div style={{ fontSize: 12, color:"var(--t-text-40)", marginTop: 2 }}>{s.commercial} · {s.email}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {suppliers.map(s => {
+          // Stats du fournisseur
+          const supplierOrders = (orders||[]).filter(o => o.supplierName === s.name);
+          const lastOrder = supplierOrders.length > 0 ? [...supplierOrders].sort((a,b)=>b.date?.localeCompare(a.date||"")||0)[0] : null;
+          const alertCount = s.products.filter(p => p.dispo != null && p.dispo <= (p.stockMin ?? calcStockMin(p.weeklyVolume)) && p.stockMin > 0).length;
+          const initials = s.name.split(/\s+/).slice(0,2).map(w=>w[0]?.toUpperCase()||"").join("");
+          const colors = ["#6366f1","#8b5cf6","#0891b2","#059669","#d97706","#e11d48"];
+          const color = colors[s.name.charCodeAt(0) % colors.length];
+
+          return (
+            <div key={s.id} style={{ ...S.card, padding:0, overflow:"hidden" }}>
+              {/* Corps de la carte */}
+              <div style={{ padding:"18px 20px", display:"flex", alignItems:"center", gap:16 }}>
+                {/* Avatar initiales */}
+                <div style={{ width:48, height:48, borderRadius:14, background:`${color}22`, border:`1.5px solid ${color}44`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:800, color, flexShrink:0, letterSpacing:"-0.02em" }}>
+                  {initials}
+                </div>
+                {/* Infos */}
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                    <div style={{ fontWeight:700, fontSize:15, color:"var(--t-text-90)" }}>{s.name}</div>
+                    {alertCount > 0 && <span style={{ fontSize:10, fontWeight:700, color:"#ef4444", background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)", padding:"1px 7px", borderRadius:10 }}>⚠ {alertCount} alerte{alertCount>1?"s":""}</span>}
+                  </div>
+                  <div style={{ fontSize:12, color:"var(--t-text-40)", marginTop:3, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{s.commercial}{s.email ? ` · ${s.email}` : ""}</div>
+                  {/* Stats rapides */}
+                  <div style={{ display:"flex", gap:14, marginTop:8, flexWrap:"wrap" }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ fontSize:13, fontWeight:700, color }}>{s.products.length}</span>
+                      <span style={{ fontSize:11, color:"var(--t-text-40)" }}>produit{s.products.length>1?"s":""}</span>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ fontSize:13, fontWeight:700, color:"var(--t-text-70)" }}>{supplierOrders.length}</span>
+                      <span style={{ fontSize:11, color:"var(--t-text-40)" }}>commande{supplierOrders.length>1?"s":""}</span>
+                    </div>
+                    {lastOrder && <div style={{ fontSize:11, color:"var(--t-text-40)" }}>Dernière : {fmtDate(lastOrder.date)}</div>}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems:"center" }}>
-                <button onClick={() => setExpanded(expanded===s.id ? null : s.id)} style={{ ...S.btnGhost, flex:1, textAlign:"center" }}>{s.products.length} produit(s) {expanded===s.id?"▲":"▼"}</button>
+
+              {/* Barre d'actions */}
+              <div style={{ borderTop:"1px solid var(--t-border-subtle)", padding:"10px 16px", display:"flex", gap:8, background:"var(--t-surface)", flexWrap:"wrap" }}>
+                <button onClick={() => setExpanded(expanded===s.id ? null : s.id)} style={{ ...S.btnGhost, flex:1, minWidth:80, fontSize:12 }}>
+                  {expanded===s.id ? "▲ Masquer" : "▼ Catalogue"}
+                </button>
                 {isAdmin && <>
-                  <button onClick={() => openEdit(s)} style={{ ...S.btnSecondary, flex:1, textAlign:"center" }}>Modifier</button>
-                  <button onClick={() => del(s.id)} style={{ ...S.btnDanger, flex:1, textAlign:"center" }}>Supprimer</button>
+                  <button onClick={() => openEdit(s)} style={{ ...S.btnSecondary, flex:1, minWidth:80, fontSize:12 }}>Modifier</button>
+                  <button onClick={() => del(s.id)} style={{ ...S.btnDanger, flex:1, minWidth:80, fontSize:12 }}>Supprimer</button>
                 </>}
+                <button onClick={() => setPage && setPage("new")} style={{ flex:2, minWidth:120, padding:"8px 14px", borderRadius:22, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${color},${color}bb)`, color:"white", fontWeight:700, fontSize:12, boxShadow:`0 4px 12px ${color}44` }}>
+                  + Commander
+                </button>
               </div>
+
+              {/* Catalogue déroulant */}
+              {expanded===s.id && (
+                <div style={{ borderTop:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                    <thead><tr style={{ background:"var(--t-thead-bg)" }}>
+                      {["Réf.","Code EAN","Désignation","Sous-famille","Prix HT","Stock","Dispo.","Stock min"].map(h => (
+                        <th key={h} style={{ padding:"7px 10px", textAlign:"left", fontSize:11, color:"var(--t-text-55)", fontWeight:600, whiteSpace:"nowrap" }}>{h}</th>
+                      ))}
+                    </tr></thead>
+                    <tbody>{s.products.map(p => (
+                      <tr key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
+                        <td style={{ ...S.td, fontFamily:"monospace", fontSize:11 }}>{p.ref}</td>
+                        <td style={{ ...S.td, fontFamily:"monospace", fontSize:11, color:"var(--t-text-55)" }}>{p.ean || "—"}</td>
+                        <td style={S.td}>{p.label}</td>
+                        <td style={S.td}><span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-tag-bg)", padding:"2px 8px", borderRadius:8, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily || "—"}</span></td>
+                        <td style={{ ...S.td, fontWeight:600, color:"#059669" }}>{fmt(p.price)}</td>
+                        <td style={{ ...S.td, color:"var(--t-text-85)" }}>{p.stock != null ? p.stock : "—"}</td>
+                        <td style={{ ...S.td, fontWeight:600, color:(p.dispo!=null&&p.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume)))?"#DC2626":"var(--t-text-90)" }}>{p.dispo!=null?p.dispo:"—"}</td>
+                        <td style={{ ...S.td, fontWeight:600, color:"#D97706" }}>{p.stockMin??calcStockMin(p.weeklyVolume)}{p.stockMinAuto&&<span style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", padding:"1px 5px", borderRadius:5 }}>auto</span>}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
             </div>
-            {expanded===s.id && (
-              <div style={{ marginTop: 14, borderTop: "1.5px solid var(--t-border-subtle)", paddingTop: 14, overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead><tr style={{ background:"var(--t-thead-bg)" }}>
-                    {["Réf.","Code EAN","Désignation","Sous-famille","Prix HT","Stock","Dispo.","Stock min"].map(h => (
-                      <th key={h} style={{ padding: "7px 10px", textAlign: "left", fontSize: 11, color:"var(--t-text-55)", fontWeight:600 }}>{h}</th>
-                    ))}
-                  </tr></thead>
-                  <tbody>{s.products.map(p => (
-                    <tr key={p.ref} style={{ borderBottom: "1px solid var(--t-border-subtle)" }}>
-                      <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11 }}>{p.ref}</td>
-                      <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11, color:"var(--t-text-55)" }}>{p.ean || "—"}</td>
-                      <td style={S.td}>{p.label}</td>
-                      <td style={S.td}><span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-tag-bg)", padding:"2px 8px", borderRadius:8, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily || "—"}</span></td>
-                      <td style={{ ...S.td, fontWeight: 600, color: "#059669" }}>{fmt(p.price)}</td>
-                      <td style={{ ...S.td, color:"var(--t-text-85)" }}>{p.stock != null ? p.stock : "—"}</td>
-                      <td style={{ ...S.td, fontWeight: 600, color: (p.dispo != null && p.dispo <= (p.stockMin ?? calcStockMin(p.weeklyVolume))) ? "#DC2626" : "var(--t-text-90)" }}>{p.dispo != null ? p.dispo : "—"}</td>
-                      <td style={{ ...S.td, fontWeight: 600, color: "#D97706" }}>{p.stockMin ?? calcStockMin(p.weeklyVolume)}{p.stockMinAuto && <span title="Calculé automatiquement d'après les sorties entre 2 imports" style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", padding:"1px 5px", borderRadius:5, verticalAlign:"middle" }}>auto</span>}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
