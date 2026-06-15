@@ -1919,178 +1919,229 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 
   const total = lines.reduce((s,l) => s+lineTotal(l), 0);
   const canSubmit = supp && lines.length>0 && deliveryDate && deliveryPlace;
+  // Produit sélectionné pour saisie inline de quantité
+  const [expandedRef, setExpandedRef] = useState(null);
+  const [inputQty, setInputQty] = useState("");
+
+  function handleAddOrExpand(p) {
+    if (expandedRef === p.ref) { setExpandedRef(null); return; }
+    setExpandedRef(p.ref);
+    const ex = lines.find(l => l.ref === p.ref);
+    setInputQty(ex ? String(ex.qty) : "");
+  }
+  function confirmQty(p) {
+    const qty = parseInt(inputQty) || 0;
+    if (qty <= 0) { setLines(prev => prev.filter(l => l.ref !== p.ref)); }
+    else {
+      setLines(prev => {
+        const ex = prev.find(l => l.ref === p.ref);
+        if (ex) return prev.map(l => l.ref===p.ref ? {...l, qty} : l);
+        return [...prev, { ref:p.ref, label:p.label, qty, price:p.price||0, family:p.family||"", subFamily:p.subFamily||"" }];
+      });
+    }
+    setExpandedRef(null);
+    setInputQty("");
+  }
 
   return (
     <div>
-      <h1 style={{ margin:"0 0 24px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Nouvelle commande</h1>
-      <div className="order-layout" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20, alignItems: "start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={S.card}>
-            <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>① Fournisseur</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
-              {suppliers.map(s => (
-                <div key={s.id} onClick={() => { setSuppId(s.id); setLines([]); setCatalogSearch(''); }} className='lg-supplier-card' style={{ padding:14, borderRadius:14, border:`2px solid ${suppId===s.id?'rgba(99,102,241,0.8)':'rgba(255,255,255,0.1)'}`, cursor:'pointer', background:suppId===s.id?'rgba(99,102,241,0.2)':'rgba(255,255,255,0.05)', backdropFilter:'blur(8px)', boxShadow:suppId===s.id?'0 0 20px rgba(99,102,241,0.35)':'none' }}>
-                  <div style={{ fontWeight:700, fontSize:13, color:"var(--t-text-90)" }}>{s.name}</div>
-                  <div style={{ fontSize:11, color:"var(--t-text-55)", marginTop:3 }}>{s.commercial}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+      <h1 style={{ margin:"0 0 20px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Nouvelle commande</h1>
 
-          {supp && (
-            <div style={S.card}>
-              <div style={{ marginBottom:14 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                  <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>2. Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
-                  <button onClick={() => setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:12, padding:"5px 10px", color:"#818cf8" }}>+ Nouveau produit</button>
-                </div>
-                {showAddProduct && (
-                  <div style={{ background:"var(--t-surface)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:14, padding:14, marginBottom:12 }}>
-                    <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-70)", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit — {supp.name}</div>
-                    <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-                      <div>
-                        <label style={S.label}>Référence *</label>
-                        <input value={newProd.ref} onChange={e=>setNewProd(p=>({...p,ref:e.target.value}))} style={S.input} placeholder="Ex: TAB906" />
-                        {newProd.ref && supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()) && (
-                          <div style={{ fontSize:11, color:"#f59e0b", marginTop:4 }}>⚠️ Référence déjà présente dans le catalogue — le produit sera ajouté à la commande directement.</div>
-                        )}
-                      </div>
-                      <div><label style={S.label}>Code EAN</label><input value={newProd.ean} onChange={e=>setNewProd(p=>({...p,ean:e.target.value}))} style={S.input} placeholder="Code-barres" /></div>
-                    </div>
-                    <div style={{ marginBottom:8 }}><label style={S.label}>Désignation *</label><input value={newProd.label} onChange={e=>setNewProd(p=>({...p,label:e.target.value}))} style={S.input} placeholder="Nom du produit" /></div>
-                    <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-                      <div><label style={S.label}>Famille</label><input value={newProd.family} onChange={e=>setNewProd(p=>({...p,family:e.target.value}))} style={S.input} placeholder="Ex: Electroménager" /></div>
-                      <div><label style={S.label}>Sous-famille</label><input value={newProd.subFamily} onChange={e=>setNewProd(p=>({...p,subFamily:e.target.value}))} style={S.input} placeholder="Ex: E31MO" /></div>
-                    </div>
-                    <div style={{ marginBottom:12 }}><label style={S.label}>Prix HT</label><input type="number" value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))} style={S.input} placeholder="0.00" /></div>
-                    <div style={{ display:"flex", gap:8 }}>
-                      <button onClick={saveNewProduct} disabled={!newProd.ref||(!newProd.label && !supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()))} style={{ ...S.btnPrimary, flex:1, opacity:(newProd.ref&&(newProd.label||supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase())))?1:0.45 }}>
-                        {supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase())
-                          ? "✓ Ajouter à la commande"
-                          : "✓ Ajouter au catalogue et à la commande"}
-                      </button>
-                      <button onClick={()=>{setShowAddProduct(false);setNewProd({ref:"",ean:"",label:"",family:"",subFamily:"",price:""}); }} style={S.btnGhost}>Annuler</button>
-                    </div>
-                  </div>
-                )}
-                <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:22, padding:"8px 14px", backdropFilter:"blur(8px)" }} className="lg-search-bar">
-                  <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
-                  <input
-                    value={catalogSearch}
-                    onChange={e => setCatalogSearch(e.target.value)}
-                    placeholder="Rechercher un produit…"
-                    style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%", padding:0 }}
-                  />
-                  {catalogSearch && (
-                    <button onClick={() => setCatalogSearch("")} style={{ background:"none", border:"none", color:"var(--t-text-40)", cursor:"pointer", fontSize:14, padding:0, flexShrink:0 }}>✕</button>
-                  )}
-                </div>
-              </div>
-              {(() => {
-                const q = catalogSearch.toLowerCase().trim();
-                const filtered = supp.products.filter(p =>
-                  !q ||
-                  p.label.toLowerCase().includes(q) ||
-                  p.ref.toLowerCase().includes(q) ||
-                  (p.subFamily||"").toLowerCase().includes(q) ||
-                  (p.family||"").toLowerCase().includes(q)
-                );
-                if (filtered.length === 0) return (
-                  <div style={{ textAlign:"center", padding:"30px 0", color:"var(--t-text-30)" }}>
-                    <div style={{ marginBottom:8, display:"flex", justifyContent:"center" }}><Search size={28} color="var(--t-text-30)" /></div>
-                    <div style={{ fontSize:13 }}>Aucun produit pour "{catalogSearch}"</div>
-                    <button onClick={() => setCatalogSearch("")} style={{ ...S.btnGhost, marginTop:8, fontSize:12 }}>Réinitialiser</button>
-                  </div>
-                );
-                const groups = filtered.reduce((acc, p) => { const f = p.family || "Autre"; if (!acc[f]) acc[f] = []; acc[f].push(p); return acc; }, {});
-                return Object.entries(groups).map(([fam, prods]) => (
-                  <div key={fam} style={{ marginBottom:16 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:"var(--t-tag-color)", textTransform:"uppercase", letterSpacing:"0.1em" }}>{fam}</div>
-                      <div style={{ flex:1, height:"1px", background:"var(--t-surface)" }} />
-                      <div style={{ fontSize:10, color:"var(--t-text-30)" }}>{prods.length} produit{prods.length>1?"s":""}</div>
-                    </div>
-                    {prods.map(p => {
-                      const inCart = lines.find(l => l.ref===p.ref);
-                      return (
-                        <div key={p.ref} className="lg-product-row" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', borderRadius:14, border:`1px solid ${inCart?'rgba(99,102,241,0.45)':'rgba(255,255,255,0.07)'}`, background:inCart?'rgba(99,102,241,0.15)':'rgba(255,255,255,0.03)', marginBottom:6, backdropFilter:'blur(6px)', boxShadow:inCart?'0 0 20px rgba(99,102,241,0.18)':'none' }}>
-                          <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
-                            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                              <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 7px", borderRadius:6 }}>{p.ref}</span>
-                              {p.subFamily && <span style={{ fontFamily:"monospace", fontSize:10, background:"var(--t-tag-bg)", padding:"1px 7px", borderRadius:6, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily}</span>}
-                              {session.canSeePrices && <span style={{ fontSize:11, color:"#34d399", fontWeight:600 }}>{fmt(p.price)}</span>}
-                              {p.dispoParDepot ? Object.entries(p.dispoParDepot).map(([depot, d]) => (
-                                <span key={depot} style={{ fontSize:10, fontWeight:600, color: d.dispo===0?"#ef4444": d.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume))?"#f59e0b":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 6px", borderRadius:5 }}>{depot} : {d.dispo}</span>
-                              )) : p.dispo != null && <span style={{ fontSize:10, fontWeight:600, color: p.dispo===0?"#ef4444": p.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume))?"#f59e0b":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 6px", borderRadius:5 }}>Dispo : {p.dispo}</span>}
-                            </div>
-                            <span style={{ fontWeight:500, fontSize:13, color:"var(--t-text-85)" }}>{p.label}</span>
-                          </div>
-                          <button onClick={() => addProduct(p)} className="lg-btn-primary" style={{ ...S.btnPrimary, padding:"6px 14px", fontSize:12, flexShrink:0, minWidth:90, background:inCart?"linear-gradient(135deg,rgba(52,211,153,0.8),rgba(16,185,129,0.8))":"linear-gradient(135deg,rgba(99,102,241,0.9),rgba(139,92,246,0.9))" }}>
-                            {inCart ? `✓ ${inCart.qty} ajouté` : "+ Ajouter"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ));
-              })()}
+      {/* ① Fournisseur */}
+      <div style={{ ...S.card, marginBottom:16 }}>
+        <h2 style={{ margin:"0 0 14px 0", fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>① Fournisseur</h2>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
+          {suppliers.map(s => (
+            <div key={s.id} onClick={() => { setSuppId(s.id); setLines([]); setCatalogSearch(''); setExpandedRef(null); }} style={{ padding:14, borderRadius:14, border:`2px solid ${suppId===s.id?'rgba(99,102,241,0.8)':'rgba(255,255,255,0.08)'}`, cursor:'pointer', background:suppId===s.id?'rgba(99,102,241,0.2)':'rgba(255,255,255,0.04)', backdropFilter:'blur(8px)', boxShadow:suppId===s.id?'0 0 20px rgba(99,102,241,0.35)':'none', transition:"all 0.15s" }}>
+              <div style={{ fontWeight:700, fontSize:13, color:"var(--t-text-90)" }}>{s.name}</div>
+              <div style={{ fontSize:11, color:"var(--t-text-55)", marginTop:3 }}>{s.commercial}</div>
             </div>
-          )}
-
-          {supp && (
-            <div style={S.card}>
-              <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>③ Livraison</h2>
-              <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                <Field label="Date souhaitée *"><input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} style={{ ...S.input, textAlign:"center", WebkitAppearance:"none" }} /></Field>
-                <Field label="Lieu de livraison *">
-                  <select value={deliveryPlace} onChange={e => setDeliveryPlace(e.target.value)} style={{ ...S.input, background: "white" }}>
-                    <option value="">— Choisir un lieu —</option>
-                    {locations.map(l => <option key={l.id} value={l.label}>{l.label}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <Field label="Notes"><textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ ...S.input, minHeight: 65, resize: "vertical" }} placeholder="Instructions particulières…" /></Field>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Recap */}
-        <div className="order-recap" style={{ position:'sticky', top:80 }}>
-          <div style={S.card}>
-            <h2 style={{ margin:"0 0 16px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Récapitulatif</h2>
-            {lines.length===0 ? <div style={{ color:"var(--t-text-30)", fontSize:13, textAlign:"center", padding:"20px 0" }}>Aucun produit</div> : (
-              <>
-                {lines.map(l => (
-                  <div key={l.ref} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "6px 0", borderBottom: "1px solid var(--t-border-subtle)" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.label}</div>
-                      <div style={{ fontSize: 10, color:"var(--t-text-40)" }}>{l.subFamily}</div>
-                      {session.canSeePrices && <div style={{ fontSize: 11, color:"var(--t-text-40)" }}>{fmt(l.price)} × {l.qty}</div>}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginLeft: 8 }}>
-                      <input type="number" min="1" value={l.qty} onChange={e => updateQty(l.ref, e.target.value)} style={{ width: 46, padding: "3px 5px", borderRadius: 6, border: "1.5px solid #E5E7EB", fontSize: 12, textAlign: "center" }} />
-                      {session.canSeePrices && <span style={{ fontSize: 11, fontWeight: 600, minWidth: 52, textAlign: "right" }}>{fmt(lineTotal(l))}</span>}
-                      <button onClick={() => removeLine(l.ref)} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", fontSize: 16, padding: 0 }}>×</button>
-                    </div>
-                  </div>
-                ))}
-                {session.canSeePrices && (
-                  <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 14, marginTop: 12, paddingTop: 10, borderTop: "2px solid #0F172A" }}>
-                    <span>Total HT</span><span style={{ color: "#059669" }}>{fmt(total)}</span>
-                  </div>
-                )}
-              </>
-            )}
-            <button onClick={submit} disabled={!canSubmit} style={{ ...S.btnPrimary, width: "100%", marginTop: 16, padding: 12, opacity: canSubmit ? 1 : 0.45 }}>Valider la commande</button>
-            {supp && lines.length>0 && (
-              <button onClick={saveDraft} style={{ ...S.btnSecondary, width:"100%", marginTop:8, padding:10 }}>💾 Enregistrer en brouillon</button>
-            )}
-            {!canSubmit && <div style={{ fontSize:11, color:"var(--t-text-30)", textAlign:"center", marginTop:6 }}>Fournisseur, produit(s) et livraison requis</div>}
-          </div>
+          ))}
         </div>
       </div>
+
+      {supp && (
+        <>
+          {/* ② Catalogue + Panier côte à côte sur desktop, empilés sur mobile */}
+          <div className="order-layout" style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:16, alignItems:"start", marginBottom:16 }}>
+
+            {/* Colonne gauche : catalogue défilant */}
+            <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+              {/* Header catalogue */}
+              <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid var(--t-border-subtle)", position:"sticky", top:0, background:"var(--t-card-bg)", zIndex:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                  <h2 style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>② Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
+                  <button onClick={() => setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"4px 8px", color:"#818cf8" }}>+ Nouveau produit</button>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", borderRadius:20, padding:"7px 12px" }}>
+                  <Search size={14} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
+                  <input value={catalogSearch} onChange={e=>setCatalogSearch(e.target.value)} placeholder="Rechercher…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
+                  {catalogSearch && <button onClick={()=>setCatalogSearch("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", padding:0 }}><X size={14} /></button>}
+                </div>
+              </div>
+
+              {/* Formulaire nouveau produit */}
+              {showAddProduct && (
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--t-border-subtle)", background:"rgba(99,102,241,0.05)" }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-55)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit</div>
+                  <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                    <div>
+                      <label style={S.label}>Référence *</label>
+                      <input value={newProd.ref} onChange={e=>setNewProd(p=>({...p,ref:e.target.value}))} style={S.input} placeholder="Ex: TAB906" />
+                      {newProd.ref && supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()) && (
+                        <div style={{ fontSize:10, color:"#f59e0b", marginTop:3 }}>⚠️ Référence existante — sera ajoutée directement</div>
+                      )}
+                    </div>
+                    <div><label style={S.label}>Code EAN</label><input value={newProd.ean} onChange={e=>setNewProd(p=>({...p,ean:e.target.value}))} style={S.input} placeholder="Code-barres" /></div>
+                  </div>
+                  <div style={{ marginBottom:8 }}><label style={S.label}>Désignation *</label><input value={newProd.label} onChange={e=>setNewProd(p=>({...p,label:e.target.value}))} style={S.input} placeholder="Nom du produit" /></div>
+                  <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                    <div><label style={S.label}>Famille</label><input value={newProd.family} onChange={e=>setNewProd(p=>({...p,family:e.target.value}))} style={S.input} placeholder="Ex: Electroménager" /></div>
+                    <div><label style={S.label}>Sous-famille</label><input value={newProd.subFamily} onChange={e=>setNewProd(p=>({...p,subFamily:e.target.value}))} style={S.input} placeholder="Ex: E31MO" /></div>
+                  </div>
+                  <div style={{ marginBottom:10 }}><label style={S.label}>Prix HT</label><input type="number" value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))} style={S.input} placeholder="0.00" /></div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button onClick={saveNewProduct} disabled={!newProd.ref||(!newProd.label&&!supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()))} style={{ ...S.btnPrimary, flex:1, fontSize:12, opacity:(newProd.ref&&(newProd.label||supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase())))?1:0.45 }}>
+                      {supp?.products.find(p=>p.ref.toLowerCase()===newProd.ref.trim().toLowerCase()) ? "✓ Ajouter à la commande" : "✓ Ajouter au catalogue"}
+                    </button>
+                    <button onClick={()=>{setShowAddProduct(false);setNewProd({ref:"",ean:"",label:"",family:"",subFamily:"",price:""}); }} style={S.btnGhost}>Annuler</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Liste produits défilante */}
+              <div style={{ maxHeight:"60vh", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+                {(() => {
+                  const q = catalogSearch.toLowerCase().trim();
+                  const groups = {};
+                  supp.products.filter(p => !q || p.ref.toLowerCase().includes(q) || p.label.toLowerCase().includes(q) || (p.subFamily||"").toLowerCase().includes(q)).forEach(p => {
+                    const g = p.subFamily || p.family || "Autres";
+                    if (!groups[g]) groups[g] = [];
+                    groups[g].push(p);
+                  });
+                  const entries = Object.entries(groups);
+                  if (!entries.length) return <div style={{ padding:"24px 16px", textAlign:"center", color:"var(--t-text-40)", fontSize:13 }}>Aucun produit trouvé</div>;
+                  return entries.map(([grp, prods]) => (
+                    <div key={grp}>
+                      <div style={{ padding:"8px 16px 4px", fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", background:"var(--t-surface)", borderBottom:"1px solid var(--t-border-subtle)" }}>{grp} — {prods.length} produit(s)</div>
+                      {prods.map(p => {
+                        const inCart = lines.find(l=>l.ref===p.ref);
+                        const isExpanded = expandedRef === p.ref;
+                        return (
+                          <div key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
+                            {/* Ligne produit */}
+                            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(99,102,241,0.06)":"transparent", transition:"background 0.15s" }}>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:13, fontWeight:inCart?700:500, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                                <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
+                                  <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 5px", borderRadius:5 }}>{p.ref}</span>
+                                  {session.canSeePrices && p.price>0 && <span style={{ fontSize:11, color:"#34d399", fontWeight:600 }}>{fmt(p.price)}</span>}
+                                  {p.dispo!=null && <span style={{ fontSize:10, fontWeight:600, color:p.dispo===0?"#ef4444":p.dispo<=(p.stockMin||0)?"#f59e0b":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 5px", borderRadius:4 }}>Dispo:{p.dispo}</span>}
+                                </div>
+                              </div>
+                              {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
+                              <button onClick={() => handleAddOrExpand(p)} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:inCart?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.7)", color:"white", transition:"all 0.15s" }}>
+                                {isExpanded ? "✕" : inCart ? "Modifier" : "+ Ajouter"}
+                              </button>
+                            </div>
+                            {/* Zone de saisie inline */}
+                            {isExpanded && (
+                              <div style={{ padding:"10px 16px 12px", background:"rgba(99,102,241,0.08)", borderTop:"1px solid rgba(99,102,241,0.2)" }}>
+                                <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:8, fontWeight:600 }}>Quantité pour {p.label}</div>
+                                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                                  <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)", display:"flex", alignItems:"center", justifyContent:"center" }}>−</button>
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={inputQty}
+                                    onChange={e => setInputQty(e.target.value)}
+                                    placeholder=""
+                                    autoFocus
+                                    style={{ flex:1, textAlign:"center", fontSize:28, fontWeight:800, padding:"8px 0", border:"none", borderBottom:"2px solid #818cf8", background:"transparent", outline:"none", color:"var(--t-text-90)" }}
+                                  />
+                                  <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+                                </div>
+                                <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                                  <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, flex:1, padding:"10px" }}>
+                                    {(parseInt(inputQty)||0) === 0 ? "Retirer du panier" : "Confirmer"}
+                                  </button>
+                                  <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"10px 14px" }}>Annuler</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Colonne droite : panier STICKY */}
+            <div className="order-recap" style={{ position:"sticky", top:80 }}>
+              <div style={{ ...S.card }}>
+                <h2 style={{ margin:"0 0 14px 0", fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>③ Panier</h2>
+                {lines.length === 0 ? (
+                  <div style={{ textAlign:"center", color:"var(--t-text-30)", fontSize:13, padding:"20px 0" }}>Aucun produit ajouté</div>
+                ) : (
+                  <>
+                    {lines.map(l => (
+                      <div key={l.ref} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", gap:8 }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:12, fontWeight:600, color:"var(--t-text-85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{l.label}</div>
+                          <div style={{ fontSize:11, fontFamily:"monospace", color:"var(--t-text-40)" }}>{l.ref}</div>
+                        </div>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                          <button onClick={()=>{setExpandedRef(l.ref);setInputQty(String(l.qty));}} style={{ fontSize:13, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", border:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer" }}>×{l.qty}</button>
+                          <button onClick={()=>removeLine(l.ref)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:16, padding:0, lineHeight:1 }}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                    {session.canSeePrices && (
+                      <div style={{ display:"flex", justifyContent:"space-between", marginTop:12, paddingTop:10, borderTop:"2px solid var(--t-border-subtle)", fontWeight:800, fontSize:15 }}>
+                        <span style={{ color:"var(--t-text-55)" }}>Total HT</span>
+                        <span style={{ color:"#34d399" }}>{fmt(total)}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ④ Livraison + Notes + Actions — sous le panier */}
+          <div style={{ ...S.card, marginBottom:16 }}>
+            <h2 style={{ margin:"0 0 16px 0", fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>④ Livraison & Notes</h2>
+            <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+              <Field label="Date souhaitée *">
+                <input type="date" value={deliveryDate} onChange={e=>setDeliveryDate(e.target.value)} style={{ ...S.input, textAlign:"center", WebkitAppearance:"none" }} />
+              </Field>
+              <Field label="Lieu de livraison *">
+                <select value={deliveryPlace} onChange={e=>setDeliveryPlace(e.target.value)} style={{ ...S.input, background:"var(--t-surface)" }}>
+                  <option value="">— Choisir un lieu —</option>
+                  {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                </select>
+              </Field>
+            </div>
+            <Field label="Notes">
+              <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Instructions particulières..." style={{ ...S.input, resize:"vertical", fontFamily:"inherit", minHeight:60 }} />
+            </Field>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <button onClick={submit} disabled={!canSubmit} style={{ ...S.btnPrimary, padding:14, fontSize:15, fontWeight:700, opacity:canSubmit?1:0.45 }}>
+              Générer le bon de commande
+            </button>
+            {supp && lines.length>0 && (
+              <button onClick={saveDraft} style={{ ...S.btnSecondary, padding:12 }}>💾 Enregistrer en brouillon</button>
+            )}
+            {!canSubmit && <div style={{ fontSize:11, color:"var(--t-text-30)", textAlign:"center" }}>Fournisseur, produit(s), date et lieu requis</div>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
