@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck } from "lucide-react";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck, ChevronRight } from "lucide-react";
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
@@ -812,6 +812,7 @@ export default function App() {
         @keyframes float3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,35px) scale(1.04)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
         @keyframes pulse-glow { 0%,100%{box-shadow:0 0 12px rgba(99,102,241,0.4)} 50%{box-shadow:0 0 24px rgba(99,102,241,0.7)} }
         .lg-btn-primary { transition:all 0.2s cubic-bezier(0.4,0,0.2,1) !important; }
         .lg-btn-primary:hover { opacity:0.88; transform:translateY(-1px) scale(0.99); box-shadow:0 8px 28px rgba(99,102,241,0.5) !important; }
@@ -963,6 +964,120 @@ export default function App() {
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════════
+// FICHE PRODUIT — Panneau qui glisse depuis le bas
+// ═══════════════════════════════════════════════════════════════════════════════
+function ProductSheet({ product, onClose, session }) {
+  if (!product) return null;
+  const hasPrice = session.canSeePrices;
+  const tva = 0.085;
+  const prixAchatTTC = product.price ? product.price * (1 + tva) : null;
+  const ecotaxe = product.ecotaxe || 0;
+  const prixVente = product.prixVente || null;
+
+  return (
+    <>
+      {/* Overlay */}
+      <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:490, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)" }} />
+
+      {/* Panneau bas */}
+      <div style={{
+        position:"fixed", bottom:0, left:0, right:0, zIndex:500,
+        background:"var(--t-card-bg)",
+        borderRadius:"24px 24px 0 0",
+        padding:"0 0 env(safe-area-inset-bottom)",
+        boxShadow:"0 -8px 40px rgba(0,0,0,0.4)",
+        animation:"slideUp 0.3s cubic-bezier(0.4,0,0.2,1) both",
+        maxHeight:"85vh", overflowY:"auto",
+      }}>
+        {/* Handle */}
+        <div style={{ display:"flex", justifyContent:"center", padding:"12px 0 4px" }}>
+          <div style={{ width:40, height:4, borderRadius:2, background:"var(--t-border-subtle)" }} />
+        </div>
+
+        <div style={{ padding:"8px 24px 28px" }}>
+          {/* Header */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.02em", color:"var(--t-text-90)", lineHeight:1.2, marginBottom:6 }}>{product.label}</div>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-surface)", color:"var(--t-text-55)", padding:"2px 8px", borderRadius:6, fontWeight:600 }}>{product.ref}</span>
+                {product.ean && <span style={{ fontFamily:"monospace", fontSize:11, background:"rgba(99,102,241,0.1)", color:"#818cf8", padding:"2px 8px", borderRadius:6 }}>EAN {product.ean}</span>}
+                {product.subFamily && <span style={{ fontSize:11, background:"var(--t-tag-bg)", color:"var(--t-tag-color)", padding:"2px 8px", borderRadius:6, border:"1px solid var(--t-tag-border)" }}>{product.subFamily}</span>}
+              </div>
+            </div>
+            <button onClick={onClose} style={{ width:34, height:34, borderRadius:10, border:"1px solid var(--t-border-subtle)", background:"var(--t-surface)", cursor:"pointer", color:"var(--t-text-55)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginLeft:12 }}>
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Fournisseur */}
+          <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"12px 16px", marginBottom:16, border:"1px solid var(--t-border-subtle)" }}>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Fournisseur</div>
+            <div style={{ fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>{product.supplierName || "—"}</div>
+          </div>
+
+          {/* Prix */}
+          {hasPrice && (
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+              <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"14px 16px", border:"1px solid var(--t-border-subtle)" }}>
+                <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Prix achat HT</div>
+                <div style={{ fontSize:20, fontWeight:800, color:"#34d399" }}>{product.price ? fmt(product.price) : "—"}</div>
+                {prixAchatTTC && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>soit {fmt(prixAchatTTC)} TTC</div>}
+              </div>
+              <div style={{ background: prixVente ? "rgba(99,102,241,0.08)" : "var(--t-surface)", borderRadius:14, padding:"14px 16px", border: prixVente ? "1px solid rgba(99,102,241,0.25)" : "1px solid var(--t-border-subtle)" }}>
+                <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Prix de vente TTC</div>
+                {prixVente ? (
+                  <>
+                    <div style={{ fontSize:20, fontWeight:800, color:"#818cf8" }}>{fmt(prixVente)}</div>
+                    {ecotaxe > 0 && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>dont {fmt(ecotaxe)} d'écotaxe incluse</div>}
+                  </>
+                ) : (
+                  <div style={{ fontSize:13, color:"var(--t-text-30)", fontStyle:"italic" }}>Non renseigné</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Stock */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+            <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"14px 16px", border:"1px solid var(--t-border-subtle)" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Stock dispo</div>
+              {product.dispoParDepot ? (
+                <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                  {Object.entries(product.dispoParDepot).map(([depot,d]) => (
+                    <div key={depot} style={{ display:"flex", justifyContent:"space-between" }}>
+                      <span style={{ fontSize:11, color:"var(--t-text-55)" }}>{depot}</span>
+                      <span style={{ fontSize:13, fontWeight:700, color: d.dispo===0?"#ef4444":d.dispo<=(product.stockMin||0)?"#f59e0b":"#34d399" }}>{d.dispo}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : product.dispo != null ? (
+                <div style={{ fontSize:24, fontWeight:800, color: product.dispo===0?"#ef4444": product.dispo<=(product.stockMin||0)?"#f59e0b":"#34d399" }}>{product.dispo}</div>
+              ) : (
+                <div style={{ fontSize:13, color:"var(--t-text-30)", fontStyle:"italic" }}>Aucun import</div>
+              )}
+            </div>
+            <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"14px 16px", border:"1px solid var(--t-border-subtle)" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Stock minimum</div>
+              <div style={{ fontSize:24, fontWeight:800, color:"#f59e0b" }}>{product.stockMin ?? "—"}</div>
+              {product.weeklyVolume > 0 && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{product.weeklyVolume} ventes/sem</div>}
+            </div>
+          </div>
+
+          {/* Famille */}
+          {(product.family || product.subFamily) && (
+            <div style={{ background:"var(--t-surface)", borderRadius:14, padding:"12px 16px", border:"1px solid var(--t-border-subtle)" }}>
+              <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:4 }}>Catégorie</div>
+              <div style={{ fontSize:13, color:"var(--t-text-85)" }}>{[product.family, product.subFamily].filter(Boolean).join(" › ")}</div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // SCANNER CODE-BARRES (caméra) — charge html5-qrcode depuis un CDN à la demande
 // ═══════════════════════════════════════════════════════════════════════════════
 function BarcodeScanner({ onDetected, onClose }) {
@@ -1038,6 +1153,7 @@ function BarcodeScanner({ onDetected, onClose }) {
 function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOrderFilter }) {
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
   const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
   const pending = orders.filter(o => !["brouillon","livree","reception_validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
@@ -1118,7 +1234,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
               <>
                 <div style={{ padding:"8px 16px", fontSize:11, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"1px solid var(--t-border-subtle)" }}>{searchResults.length} résultat(s)</div>
                 {searchResults.map((p, i) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"11px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none" }}>
+                  <div key={i} onClick={() => setSelectedProduct(p)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"11px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none", cursor:"pointer", transition:"background 0.15s" }} className="lg-row">
                     <div style={{ minWidth:0 }}>
                       <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
                       <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
@@ -1130,7 +1246,10 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
                         )) : p.dispo != null && <span style={{ fontSize:11, fontWeight:600, color: p.dispo===0?"#ef4444":"#34d399" }}>Dispo : {p.dispo}</span>}
                       </div>
                     </div>
-                    <div style={{ fontWeight:700, fontSize:14, color:"#059669", flexShrink:0 }}>{fmt(p.price)}</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                      {session.canSeePrices && p.price && <div style={{ fontWeight:700, fontSize:13, color:"#059669" }}>{fmt(p.price)}</div>}
+                      <ChevronRight size={14} style={{ color:"var(--t-text-30)" }} />
+                    </div>
                   </div>
                 ))}
               </>
@@ -1139,7 +1258,14 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
         )}
       </div>
 
-      {scanning && <BarcodeScanner onDetected={(code) => { setQuery(code); setScanning(false); }} onClose={() => setScanning(false)} />}
+      {scanning && <BarcodeScanner onDetected={(code) => {
+        setQuery(code);
+        setScanning(false);
+        // Auto-ouvrir la fiche si un seul produit correspond
+        const allProds = suppliers.flatMap(s => s.products.map(p=>({...p,supplierName:s.name})));
+        const match = allProds.find(p => (p.ean||"").toLowerCase() === code.toLowerCase() || (p.ref||"").toLowerCase() === code.toLowerCase());
+        if (match) setSelectedProduct(match);
+      }} onClose={() => setScanning(false)} />}
 
       {/* ── Ce matin : livraisons du jour, retards, réappro ── */}
       <div className="grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:24 }}>
@@ -1337,11 +1463,9 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
 
       </div>
     </div>
+    {selectedProduct && <ProductSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} session={session} />}
   );
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// STATS PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 function StatsPage({ orders, suppliers, session }) {
   const [period, setPeriod] = useState(30);
@@ -2309,14 +2433,14 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
             <button onClick={() => {
               // Génère et télécharge un modèle Excel avec exemples
               const data = [
-                ["Référence","Code EAN","Désignation","Famille","Sous-famille","Prix HT","Ventes/sem"],
-                ["TAB906","3700123456789","ASPIRATEUR LAVEUR 1400W","Electroménager","E41AS","149.90","2"],
-                ["REF002","3700987654321","LAVE-LINGE 7KG A+++","Electroménager","E21LL","299.00","1"],
-                ["REF003","","MICRO-ONDES 20L SOLO","Electroménager","E31MO","89.50","3"],
+                ["Référence","Code EAN","Désignation","Famille","Sous-famille","Prix HT","Prix vente TTC","Écotaxe","Ventes/sem"],
+                ["TAB906","3700123456789","ASPIRATEUR LAVEUR 1400W","Electroménager","E41AS","149.90","199.00","1.50","2"],
+                ["REF002","3700987654321","LAVE-LINGE 7KG A+++","Electroménager","E21LL","299.00","399.00","3.00","1"],
+                ["REF003","","MICRO-ONDES 20L SOLO","Electroménager","E31MO","89.50","119.00","1.00","3"],
               ];
               const ws = XLSX.utils.aoa_to_sheet(data);
               // Largeurs de colonnes
-              ws['!cols'] = [{wch:14},{wch:16},{wch:32},{wch:18},{wch:14},{wch:10},{wch:12}];
+              ws['!cols'] = [{wch:14},{wch:16},{wch:32},{wch:18},{wch:14},{wch:10},{wch:14},{wch:10},{wch:12}];
               const wb = XLSX.utils.book_new();
               XLSX.utils.book_append_sheet(wb, ws, "Catalogue");
               XLSX.writeFile(wb, "modele-catalogue-commapro.xlsx");
@@ -2335,22 +2459,24 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
           💡 Colonnes attendues : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> — télécharge le modèle pour être sûr du format.
         </div>
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
-        <div style={{ minWidth: 760 }}>
+        <div style={{ minWidth: 900 }}>
         {form.products.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 6 }}>
-            {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Ventes/sem","Stock min",""].map(h => (
+            {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 8, alignItems: "center" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px auto", gap: 6, marginBottom: 8, alignItems: "center" }}>
             <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." />
             <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" />
             <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" />
             <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" />
             <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" />
             <input type="number" value={p.price} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" />
+            <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#818cf8"}} placeholder="0.00" />
+            <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" />
             <input type="number" value={p.weeklyVolume} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" />
             <input type="number" value={p.stockMin} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" />
             <button onClick={() => removeProduct(i)} style={{ background:"none",border:"none",cursor:"pointer",color:"#DC2626",fontSize:18,padding:0 }}>×</button>
