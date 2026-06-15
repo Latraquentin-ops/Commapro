@@ -2461,7 +2461,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, stockImports, setStoc
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
         <div style={{ minWidth: 900 }}>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 90px 90px 80px auto", gap: 6, marginBottom: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px auto", gap: 6, marginBottom: 6 }}>
             {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
