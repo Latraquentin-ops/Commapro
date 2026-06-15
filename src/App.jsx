@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck } from "lucide-react";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck, BookOpen, Tag, Filter } from "lucide-react";
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 function CPLogo({ size = 36, light = false }) {
@@ -42,10 +42,11 @@ async function saveCloud(state) {
 // ─── INITIAL DATA ──────────────────────────────────────────────────────────────
 // Pages configurables (admins ont toujours tout)
 const ALL_PAGES = [
-  { key: "dashboard", label: "Accueil", icon: Home },
-  { key: "orders",    label: "Commandes", icon: ClipboardList },
-  { key: "stats",     label: "Statistiques", icon: BarChart3 },
-  { key: "suppliers", label: "Fournisseurs", icon: Factory },
+  { key: "dashboard",  label: "Accueil",      icon: Home },
+  { key: "orders",     label: "Commandes",    icon: ClipboardList },
+  { key: "catalogue",  label: "Catalogue",    icon: BookOpen },
+  { key: "suppliers",  label: "Fournisseurs", icon: Factory },
+  { key: "stats",      label: "Statistiques", icon: BarChart3 },
 ];
 
 const INIT_USERS = [
@@ -914,6 +915,7 @@ export default function App() {
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
+            {page === "catalogue" && <CataloguePage suppliers={suppliers} orders={orders} session={session} setPage={setPage} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
             </div>
@@ -2205,6 +2207,212 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
             {!canSubmit && <div style={{ fontSize:11, color:"var(--t-text-30)", textAlign:"center" }}>Fournisseur, produit(s), date et lieu requis</div>}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATALOGUE PAGE — Vue globale de tous les produits, filtrable et analysable
+// ═══════════════════════════════════════════════════════════════════════════════
+function CataloguePage({ suppliers, orders, session, setPage }) {
+  const [filterSupplier, setFilterSupplier] = useState("all");
+  const [filterFamily,   setFilterFamily]   = useState("all");
+  const [filterSubFam,   setFilterSubFam]   = useState("all");
+  const [search,         setSearch]         = useState("");
+  const [expandedGroup,  setExpandedGroup]  = useState(null);
+  const [groupBy,        setGroupBy]        = useState("subfamily"); // "subfamily" | "family" | "supplier"
+  const showPrices = session.canSeePrices;
+
+  // Aplatir tous les produits avec leur fournisseur
+  const allProducts = suppliers.flatMap(s =>
+    s.products.map(p => ({ ...p, supplierName: s.name, supplierId: s.id }))
+  );
+
+  // Listes de filtres disponibles
+  const supplierList = [...new Set(allProducts.map(p => p.supplierName))].sort();
+  const familyList   = [...new Set(allProducts.filter(p => p.family).map(p => p.family))].sort();
+  const subFamList   = [...new Set(allProducts.filter(p => p.subFamily && (filterFamily==="all" || p.family===filterFamily)).map(p => p.subFamily))].sort();
+
+  // Produits filtrés
+  const q = search.toLowerCase().trim();
+  const filtered = allProducts.filter(p =>
+    (filterSupplier==="all" || p.supplierName===filterSupplier) &&
+    (filterFamily==="all"   || p.family===filterFamily) &&
+    (filterSubFam==="all"   || p.subFamily===filterSubFam) &&
+    (!q || p.ref.toLowerCase().includes(q) || p.label.toLowerCase().includes(q) || (p.ean||"").includes(q))
+  );
+
+  // Regroupement
+  const getGroupKey = (p) => {
+    if (groupBy==="supplier")  return p.supplierName || "Sans fournisseur";
+    if (groupBy==="family")    return p.family || "Sans famille";
+    return p.subFamily || p.family || "Sans catégorie";
+  };
+  const groups = {};
+  filtered.forEach(p => {
+    const k = getGroupKey(p);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(p);
+  });
+  const groupEntries = Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
+
+  // KPIs
+  const totalRefs    = filtered.length;
+  const withPrice    = filtered.filter(p => p.price > 0).length;
+  const withDispo    = filtered.filter(p => p.dispo != null).length;
+  const alertCount   = filtered.filter(p => p.dispo != null && p.dispo <= (p.stockMin ?? calcStockMin(p.weeklyVolume)) && (p.stockMin ?? calcStockMin(p.weeklyVolume)) > 0).length;
+
+  const btnFilter = (active) => ({
+    padding:"5px 12px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12,
+    fontWeight: active ? 700 : 400,
+    background: active ? "rgba(99,102,241,0.7)" : "var(--t-surface)",
+    color: active ? "white" : "var(--t-text-55)",
+    borderColor: active ? "rgba(99,102,241,0.5)" : "var(--t-border-subtle)",
+  });
+
+  return (
+    <div>
+      {/* Titre + recherche */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+        <div>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Catalogue</h1>
+          <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{totalRefs} référence{totalRefs>1?"s":""} · {supplierList.length} fournisseur{supplierList.length>1?"s":""}</div>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"8px 14px", minWidth:240 }}>
+          <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Réf, EAN, désignation…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
+          {search && <button onClick={()=>setSearch("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", padding:0 }}><X size={14} /></button>}
+        </div>
+      </div>
+
+      {/* KPIs rapides */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:20 }}>
+        {[
+          { label:"Références", value:totalRefs, color:"#818cf8" },
+          { label:"Avec prix", value:withPrice, color:"#34d399" },
+          { label:"Avec stock", value:withDispo, color:"#0ea5e9" },
+          { label:"Alertes stock", value:alertCount, color:alertCount>0?"#ef4444":"var(--t-text-40)" },
+        ].map(k => (
+          <div key={k.label} style={{ ...S.card, padding:"14px 16px", textAlign:"center" }}>
+            <div style={{ fontSize:24, fontWeight:800, color:k.color, letterSpacing:"-0.02em" }}>{k.value}</div>
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filtres */}
+      <div style={{ ...S.card, padding:"14px 16px", marginBottom:16 }}>
+        <div style={{ display:"flex", gap:16, flexWrap:"wrap", alignItems:"flex-start" }}>
+          {/* Regrouper par */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Regrouper par</div>
+            <div style={{ display:"flex", gap:6 }}>
+              {[["subfamily","Sous-famille"],["family","Famille"],["supplier","Fournisseur"]].map(([k,lbl]) => (
+                <button key={k} onClick={()=>{setGroupBy(k);setExpandedGroup(null);}} style={btnFilter(groupBy===k)}>{lbl}</button>
+              ))}
+            </div>
+          </div>
+          {/* Filtrer fournisseur */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Fournisseur</div>
+            <select value={filterSupplier} onChange={e=>{setFilterSupplier(e.target.value);setFilterFamily("all");setFilterSubFam("all");}} style={{ ...S.input, padding:"5px 10px", fontSize:12, width:"auto" }}>
+              <option value="all">Tous</option>
+              {supplierList.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          {/* Filtrer famille */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Famille</div>
+            <select value={filterFamily} onChange={e=>{setFilterFamily(e.target.value);setFilterSubFam("all");}} style={{ ...S.input, padding:"5px 10px", fontSize:12, width:"auto" }}>
+              <option value="all">Toutes</option>
+              {familyList.map(f=><option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          {/* Filtrer sous-famille */}
+          <div>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Sous-famille</div>
+            <select value={filterSubFam} onChange={e=>setFilterSubFam(e.target.value)} style={{ ...S.input, padding:"5px 10px", fontSize:12, width:"auto" }}>
+              <option value="all">Toutes</option>
+              {subFamList.map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          {/* Reset */}
+          {(filterSupplier!=="all"||filterFamily!=="all"||filterSubFam!=="all"||search) && (
+            <div style={{ alignSelf:"flex-end" }}>
+              <button onClick={()=>{setFilterSupplier("all");setFilterFamily("all");setFilterSubFam("all");setSearch("");}} style={{ ...S.btnGhost, fontSize:12 }}>✕ Réinitialiser</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Groupes de produits */}
+      {groupEntries.length === 0 ? (
+        <div style={{ ...S.card, padding:40, textAlign:"center", color:"var(--t-text-30)" }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>📭</div>
+          <div>Aucun produit trouvé</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {groupEntries.map(([grp, prods]) => {
+            const isOpen = expandedGroup === grp;
+            const alertsInGroup = prods.filter(p => p.dispo!=null && p.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume)) && (p.stockMin??calcStockMin(p.weeklyVolume))>0).length;
+            const totalHT = prods.reduce((s,p)=>s+(p.price||0),0);
+            return (
+              <div key={grp} style={{ ...S.card, padding:0, overflow:"hidden" }}>
+                {/* En-tête du groupe — cliquable */}
+                <div onClick={()=>setExpandedGroup(isOpen?null:grp)} style={{ padding:"14px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer", transition:"background 0.15s" }} className="lg-row">
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                      <span style={{ fontWeight:700, fontSize:14, color:"var(--t-text-90)" }}>{grp}</span>
+                      <span style={{ fontSize:11, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 8px", borderRadius:10 }}>{prods.length} réf.</span>
+                      {alertsInGroup > 0 && <span style={{ fontSize:10, fontWeight:700, color:"#ef4444", background:"rgba(239,68,68,0.1)", padding:"1px 7px", borderRadius:10, border:"1px solid rgba(239,68,68,0.2)" }}>⚠ {alertsInGroup}</span>}
+                      {showPrices && <span style={{ fontSize:11, color:"#34d399", fontWeight:600 }}>Valeur : {fmt(totalHT)}</span>}
+                    </div>
+                    {/* Aperçu des fournisseurs dans ce groupe */}
+                    {groupBy!=="supplier" && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:3 }}>{[...new Set(prods.map(p=>p.supplierName))].join(" · ")}</div>}
+                  </div>
+                  <div style={{ color:"var(--t-text-40)", fontSize:14, fontWeight:700 }}>{isOpen?"▲":"▼"}</div>
+                </div>
+
+                {/* Tableau détaillé */}
+                {isOpen && (
+                  <div style={{ borderTop:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
+                    <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                      <thead>
+                        <tr style={{ background:"var(--t-thead-bg)" }}>
+                          {["Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min"].filter(Boolean).map(h => (
+                            <th key={h} style={{ padding:"8px 12px", textAlign:"left", fontSize:10, color:"var(--t-text-55)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", whiteSpace:"nowrap" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {prods.map((p,i) => {
+                          const stockMin = p.stockMin ?? calcStockMin(p.weeklyVolume);
+                          const isAlert = p.dispo!=null && p.dispo<=stockMin && stockMin>0;
+                          return (
+                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:isAlert?"rgba(239,68,68,0.04)":"transparent" }}>
+                              <td style={{ ...S.td, fontFamily:"monospace", fontWeight:600, color:"var(--t-text-85)", fontSize:11 }}>{p.ref}</td>
+                              <td style={{ ...S.td, fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)" }}>{p.ean||"—"}</td>
+                              <td style={{ ...S.td, maxWidth:200, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</td>
+                              <td style={{ ...S.td, fontSize:11 }}><span style={{ background:"var(--t-surface)", padding:"2px 7px", borderRadius:8, border:"1px solid var(--t-border-subtle)", fontSize:10, color:"var(--t-text-55)", whiteSpace:"nowrap" }}>{p.supplierName}</span></td>
+                              <td style={{ ...S.td, fontSize:11, color:"var(--t-text-55)" }}>{p.family||"—"}</td>
+                              <td style={{ ...S.td, fontSize:11 }}>{p.subFamily ? <span style={{ background:"var(--t-tag-bg)", color:"var(--t-tag-color)", padding:"1px 7px", borderRadius:8, border:"1px solid var(--t-tag-border)", fontSize:10 }}>{p.subFamily}</span> : "—"}</td>
+                              {showPrices && <td style={{ ...S.td, fontWeight:600, color:"#34d399", whiteSpace:"nowrap" }}>{p.price>0?fmt(p.price):"—"}</td>}
+                              {showPrices && <td style={{ ...S.td, fontWeight:600, color:"#818cf8", whiteSpace:"nowrap" }}>{p.prixVente?fmt(p.prixVente):"—"}</td>}
+                              <td style={{ ...S.td, fontWeight:700, color:p.dispo==null?"var(--t-text-30)":isAlert?"#ef4444":p.dispo===0?"#ef4444":"#34d399", whiteSpace:"nowrap" }}>{p.dispo!=null?p.dispo:"—"}</td>
+                              <td style={{ ...S.td, fontWeight:600, color:"#f59e0b", whiteSpace:"nowrap" }}>{stockMin>0?stockMin:"—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
