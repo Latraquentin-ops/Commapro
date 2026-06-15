@@ -1689,7 +1689,11 @@ function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilt
   const [filter, setFilter]     = useState(initialFilter || "all");
   const isAdmin = session.role === "admin";
   const visible = isAdmin ? orders : orders.filter(o => o.userId === session.id);
-  const filtered = filter === "all" ? visible : visible.filter(o => o.status === filter);
+  const filtered = (() => {
+    if (filter === "all") return visible;
+    if (filter === "commandee") return visible.filter(o => ["en_attente","confirmee","en_preparation"].includes(o.status));
+    return visible.filter(o => o.status === filter);
+  })();
 
   // Applique le filtre initial venant du dashboard, puis le réinitialise
   useEffect(() => {
@@ -1712,9 +1716,23 @@ function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilt
         <button onClick={() => setPage("new")} style={S.btnPrimary}>+ Nouvelle commande</button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {[["all","Toutes"], ...Object.entries(STATUS).map(([k,v]) => [k, v.label])].map(([k, lbl]) => (
-          <button key={k} onClick={() => setFilter(k)} style={{ padding: "6px 14px", borderRadius: 20, border: "1.5px solid", cursor: "pointer", fontSize: 12, fontWeight: filter===k ? 700 : 400, background:filter===k?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filter===k?"white":"var(--t-text-55)", borderColor:filter===k?"rgba(99,102,241,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:filter===k?"0 0 16px rgba(99,102,241,0.35)":"none" }}>{lbl}</button>
-        ))}
+        {[
+          ["all","Toutes"],
+          ["brouillon","Brouillon"],
+          ["commandee","Commandée"],
+          ["en_livraison","En livraison"],
+          ["reception_validee","Réception validée"],
+        ].map(([k, lbl]) => {
+          const count = k === "all" ? visible.length
+            : k === "commandee" ? visible.filter(o=>["en_attente","confirmee","en_preparation"].includes(o.status)).length
+            : visible.filter(o=>o.status===k).length;
+          return (
+            <button key={k} onClick={() => setFilter(k)} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filter===k?700:400, background:filter===k?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filter===k?"white":"var(--t-text-55)", borderColor:filter===k?"rgba(99,102,241,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:filter===k?"0 0 16px rgba(99,102,241,0.35)":"none", display:"flex", alignItems:"center", gap:6 }}>
+              {lbl}
+              {count > 0 && <span style={{ fontSize:10, fontWeight:700, background:filter===k?"rgba(255,255,255,0.25)":"rgba(99,102,241,0.15)", color:filter===k?"white":"#818cf8", padding:"1px 6px", borderRadius:10 }}>{count}</span>}
+            </button>
+          );
+        })}
       </div>
       <div style={{ ...S.card, padding: 0, overflow: "hidden" }}>
         {filtered.length === 0 ? (
@@ -1733,6 +1751,22 @@ function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilt
 function OrderDetail({ order, orders, setOrders, session, onBack }) {
   const isAdmin = session.role === "admin";
   const showPrices = session.canSeePrices;
+  const [numAchat, setNumAchat] = useState(order.numAchat || "");
+  const [numBL, setNumBL] = useState(order.numBL || "");
+
+  function saveNums() {
+    setOrders(prev => prev.map(o => o.id===order.id ? {...o, numAchat: numAchat.trim(), numBL: numBL.trim()} : o));
+  }
+
+  function validerReception() {
+    const now = new Date().toISOString();
+    setOrders(prev => prev.map(o => {
+      if (o.id !== order.id) return o;
+      const history = { ...(o.statusHistory||{}), reception_validee: o.statusHistory?.reception_validee || now };
+      return { ...o, status:"reception_validee", statusHistory: history, numAchat: numAchat.trim(), numBL: numBL.trim() };
+    }));
+  }
+
   function setStatus(s) {
     const now = new Date().toISOString();
     setOrders(prev => prev.map(o => {
@@ -1791,6 +1825,36 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
             })}
           </div>
         </div>}
+
+        {/* N° Achat + N° BL + Bouton Valider réception */}
+        {order.status !== "brouillon" && order.status !== "reception_validee" && (
+          <div style={{ marginBottom:20, padding:"16px 18px", background:"var(--t-surface)", borderRadius:14, border:"1px solid var(--t-border-subtle)" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:12 }}>Réception</div>
+            <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+              <div>
+                <label style={S.label}>N° Achat interne</label>
+                <input value={numAchat} onChange={e=>{setNumAchat(e.target.value);}} onBlur={saveNums} style={S.input} placeholder="Ex: ACH-2026-0042" />
+              </div>
+              <div>
+                <label style={S.label}>N° BL fournisseur</label>
+                <input value={numBL} onChange={e=>{setNumBL(e.target.value);}} onBlur={saveNums} style={S.input} placeholder="Ex: BL-789456" />
+              </div>
+            </div>
+            {isAdmin && (
+              <button onClick={validerReception} style={{ width:"100%", padding:"12px", borderRadius:14, border:"none", cursor:"pointer", background:"linear-gradient(135deg,#059669,#34d399)", color:"white", fontWeight:700, fontSize:14, letterSpacing:"-0.01em", boxShadow:"0 4px 16px rgba(5,150,105,0.4)", transition:"all 0.18s" }}>
+                ✅ Valider la réception
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Récap N° si déjà réceptionné */}
+        {order.status === "reception_validee" && (order.numAchat || order.numBL) && (
+          <div style={{ marginBottom:20, padding:"14px 18px", background:"rgba(5,150,105,0.08)", borderRadius:14, border:"1px solid rgba(5,150,105,0.25)", display:"flex", gap:20, flexWrap:"wrap" }}>
+            {order.numAchat && <div><div style={{ fontSize:10, color:"#34d399", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>N° Achat</div><div style={{ fontFamily:"monospace", fontWeight:700, color:"var(--t-text-90)", marginTop:2 }}>{order.numAchat}</div></div>}
+            {order.numBL && <div><div style={{ fontSize:10, color:"#34d399", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>N° BL fournisseur</div><div style={{ fontFamily:"monospace", fontWeight:700, color:"var(--t-text-90)", marginTop:2 }}>{order.numBL}</div></div>}
+          </div>
+        )}
 
         {/* Bannière brouillon */}
         {order.status === "brouillon" && (
