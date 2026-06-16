@@ -53,7 +53,7 @@ const ALL_PAGES = [
 ];
 
 const INIT_USERS = [
-  { id: "u1", email: "admin@demo.com", password: "admin123", name: "Admin", role: "admin", canSeePrices: true, active: true, pages: ALL_PAGES.map(p => p.key) },
+  { id: "u1", email: "admin@demo.com", password: "admin123", name: "Admin", role: "admin", canSeePrices: true, canUseAI: true, active: true, pages: ALL_PAGES.map(p => p.key) },
   { id: "u2", email: "marie@demo.com", password: "marie123", name: "Marie Dupont", role: "user", canSeePrices: false, active: true, pages: ["dashboard","orders","new"] },
   { id: "u3", email: "paul@demo.com",  password: "paul123",  name: "Paul Martin",  role: "user", canSeePrices: true,  active: true, pages: ["dashboard","orders","new","stats"] },
 ];
@@ -2952,7 +2952,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
 function AdminPage({ users, setUsers, locations, setLocations }) {
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
-  function openNew() { setForm({ id:"u"+Date.now(), email:"", password:"", name:"", role:"user", canSeePrices:false, active:true, pages:["dashboard","orders","new"] }); setEditing("new"); }
+  function openNew() { setForm({ id:"u"+Date.now(), email:"", password:"", name:"", role:"user", canSeePrices:false, canUseAI:false, active:true, pages:["dashboard","orders","new"] }); setEditing("new"); }
   function openEdit(u) { setForm({...u}); setEditing(u.id); }
   function save() {
     if (!form.email||!form.password||!form.name) return;
@@ -2979,6 +2979,10 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
           <label style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13 }}>
             <input type="checkbox" checked={form.canSeePrices} onChange={e => setForm(f=>({...f,canSeePrices:e.target.checked}))} />
             Accès aux prix (P.U. et montants)
+          </label>
+          <label style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13 }}>
+            <input type="checkbox" checked={form.canUseAI||false} onChange={e => setForm(f=>({...f,canUseAI:e.target.checked}))} />
+            ✨ Accès aux fonctions IA (recherche intelligente, suggestions...)
           </label>
           <label style={{ display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13 }}>
             <input type="checkbox" checked={form.active} onChange={e => setForm(f=>({...f,active:e.target.checked}))} />
@@ -3042,7 +3046,7 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
       <div style={S.card}>
         <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
           <thead><tr style={{ background:"var(--t-thead-bg)" }}>
-            {["Nom","Email","Rôle","Accès prix","Onglets","Actif","Actions"].map(h => (
+            {["Nom","Email","Rôle","Accès prix","IA","Onglets","Actif","Actions"].map(h => (
               <th key={h} style={{ padding:"10px 14px",textAlign:"left",fontSize:11,fontWeight:600,color:"var(--t-text-40)",textTransform:"uppercase",letterSpacing:"0.05em",borderBottom:"1.5px solid var(--t-border-subtle)" }}>{h}</th>
             ))}
           </tr></thead>
@@ -3052,6 +3056,7 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
               <td style={{ ...S.td,color:"var(--t-text-40)" }}>{u.email}</td>
               <td style={S.td}><span style={{ padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:600,background:u.role==="admin"?"rgba(99,102,241,0.3)":"var(--t-border-subtle)",color:u.role==="admin"?"#a5b4fc":"var(--t-text-55)",border:`1px solid ${u.role==="admin"?"rgba(99,102,241,0.4)":"var(--t-border-subtle)"}` }}>{u.role==="admin"?"Admin":"Utilisateur"}</span></td>
               <td style={S.td}><button onClick={() => toggle(u.id,"canSeePrices")} style={{ padding:"3px 10px",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:600,background:u.canSeePrices?"rgba(5,150,105,0.2)":"var(--t-surface)",color:u.canSeePrices?"#34d399":"var(--t-text-55)",border:`1px solid ${u.canSeePrices?"rgba(52,211,153,0.3)":"var(--t-border-subtle)"}` }}>{u.canSeePrices?"✓ Oui":"✕ Non"}</button></td>
+              <td style={S.td}><button onClick={() => toggle(u.id,"canUseAI")} style={{ padding:"3px 10px",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:600,background:u.canUseAI?"rgba(139,92,246,0.2)":"var(--t-surface)",color:u.canUseAI?"#a78bfa":"var(--t-text-55)",border:`1px solid ${u.canUseAI?"rgba(139,92,246,0.35)":"var(--t-border-subtle)"}` }}>{u.canUseAI?"✨ Oui":"✕ Non"}</button></td>
               <td style={S.td}>
                 {u.role==="admin" ? <span style={{fontSize:11,color:"var(--t-text-40)"}}>Tout</span> :
                   <span style={{fontSize:11,color:"var(--t-text-85)"}}>{(u.pages||[]).length}/{ALL_PAGES.length} onglets</span>}
