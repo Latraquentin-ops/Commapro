@@ -328,6 +328,33 @@ function generatePDF(order, showPrices) {
 }
 
 // ─── STYLES ────────────────────────────────────────────────────────────────────
+// ─── BOUTON SUPPRIMER AVEC DOUBLE CONFIRMATION VISUELLE ────────────────────────
+function ConfirmDeleteButton({ onConfirm, label = "Supprimer", confirmLabel = "Confirmer ?", style, small }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const t = setTimeout(() => setArmed(false), 3000); // se désarme après 3s si pas confirmé
+    return () => clearTimeout(t);
+  }, [armed]);
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); if (armed) { onConfirm(); setArmed(false); } else { setArmed(true); } }}
+      style={{
+        ...(small ? { padding:"6px 12px", fontSize:11 } : { padding:"8px 16px", fontSize:13 }),
+        borderRadius:22, border:"1px solid", cursor:"pointer", fontWeight:600,
+        transition:"all 0.18s",
+        background: armed ? "#DC2626" : "rgba(239,68,68,0.12)",
+        borderColor: armed ? "#DC2626" : "rgba(239,68,68,0.35)",
+        color: armed ? "white" : "#f87171",
+        boxShadow: armed ? "0 0 14px rgba(220,38,38,0.5)" : "none",
+        ...style,
+      }}
+    >
+      {armed ? `⚠ ${confirmLabel}` : label}
+    </button>
+  );
+}
+
 const S = {
   btnPrimary:   { padding:"9px 20px", borderRadius:22, border:"none", cursor:"pointer", background:"linear-gradient(135deg,rgba(99,102,241,0.9),rgba(139,92,246,0.9))", color:"white", fontWeight:600, fontSize:13, backdropFilter:"blur(8px)", boxShadow:"0 4px 20px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2)", letterSpacing:"-0.01em", transition:"all 0.18s" },
   btnSecondary: { padding:"8px 16px", borderRadius:22, border:"1px solid rgba(255,255,255,0.14)", cursor:"pointer", background:"var(--t-border-subtle)", color:"var(--t-btn-sec-color)", fontWeight:500, fontSize:13, backdropFilter:"blur(8px)", transition:"all 0.18s" },
@@ -915,7 +942,7 @@ export default function App() {
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
-            {page === "catalogue" && <CataloguePage suppliers={suppliers} orders={orders} session={session} setPage={setPage} />}
+            {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
             </div>
@@ -1779,7 +1806,8 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
     }));
   }
   function deleteOrder() {
-    if (confirm("Supprimer définitivement cette commande ?")) { setOrders(prev => prev.filter(o => o.id !== order.id)); onBack(); }
+    setOrders(prev => prev.filter(o => o.id !== order.id));
+    onBack();
   }
   return (
     <div>
@@ -1797,7 +1825,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
               {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>}
             <button onClick={() => generatePDF(order, showPrices)} style={{...S.btnSecondary, display:"inline-flex", alignItems:"center", gap:6}}><FileText size={15} /> PDF</button>
-            {isAdmin && <button onClick={deleteOrder} style={S.btnDanger}>Supprimer</button>}
+            {isAdmin && <ConfirmDeleteButton onConfirm={deleteOrder} />}
           </div>
         </div>
 
@@ -1865,7 +1893,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
               <div style={{ fontWeight:700, fontSize:13, color:"var(--t-text-85)" }}>📝 Brouillon — commande non envoyée</div>
               <div style={{ fontSize:12, color:"var(--t-text-40)", marginTop:2 }}>Cette commande n'a pas encore été transmise au fournisseur.</div>
             </div>
-            {isAdmin && <button onClick={deleteOrder} style={{ ...S.btnDanger, flexShrink:0 }}>🗑 Supprimer ce brouillon</button>}
+            {isAdmin && <ConfirmDeleteButton onConfirm={deleteOrder} label="🗑 Supprimer ce brouillon" />}
           </div>
         )}
 
@@ -2093,8 +2121,9 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                       {prods.map(p => {
                         const inCart = lines.find(l=>l.ref===p.ref);
                         const isExpanded = expandedRef === p.ref;
+                        const isRupture = !!p.rupture;
                         return (
-                          <div key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
+                          <div key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)", opacity:isRupture?0.45:1 }}>
                             {/* Ligne produit */}
                             <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(99,102,241,0.06)":"transparent", transition:"background 0.15s" }}>
                               <div style={{ flex:1, minWidth:0 }}>
@@ -2103,11 +2132,12 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                                   <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 5px", borderRadius:5 }}>{p.ref}</span>
                                   {session.canSeePrices && p.price>0 && <span style={{ fontSize:11, color:"#34d399", fontWeight:600 }}>{fmt(p.price)}</span>}
                                   {p.dispo!=null && <span style={{ fontSize:10, fontWeight:600, color:p.dispo===0?"#ef4444":p.dispo<=(p.stockMin||0)?"#f59e0b":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 5px", borderRadius:4 }}>Dispo:{p.dispo}</span>}
+                                  {isRupture && <span style={{ fontSize:10, fontWeight:700, color:"#ef4444", background:"rgba(239,68,68,0.15)", padding:"1px 6px", borderRadius:4 }}>🔴 Rupture</span>}
                                 </div>
                               </div>
                               {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
-                              <button onClick={() => handleAddOrExpand(p)} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:inCart?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.7)", color:"white", transition:"all 0.15s" }}>
-                                {isExpanded ? "✕" : inCart ? "Modifier" : "+ Ajouter"}
+                              <button onClick={() => !isRupture && handleAddOrExpand(p)} disabled={isRupture} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:isRupture?"not-allowed":"pointer", fontSize:12, fontWeight:600, background:isRupture?"rgba(120,120,120,0.2)":inCart?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.7)", color:isRupture?"var(--t-text-30)":"white", transition:"all 0.15s" }}>
+                                {isRupture ? "Indisponible" : isExpanded ? "✕" : inCart ? "Modifier" : "+ Ajouter"}
                               </button>
                             </div>
                             {/* Zone de saisie inline */}
@@ -2215,7 +2245,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 // ═══════════════════════════════════════════════════════════════════════════════
 // CATALOGUE PAGE — Vue globale de tous les produits, filtrable et analysable
 // ═══════════════════════════════════════════════════════════════════════════════
-function CataloguePage({ suppliers, orders, session, setPage }) {
+function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
   const [filterSupplier, setFilterSupplier] = useState("all");
   const [filterFamily,   setFilterFamily]   = useState("all");
   const [filterSubFam,   setFilterSubFam]   = useState("all");
@@ -2223,6 +2253,13 @@ function CataloguePage({ suppliers, orders, session, setPage }) {
   const [expandedGroup,  setExpandedGroup]  = useState(null);
   const [groupBy,        setGroupBy]        = useState("subfamily"); // "subfamily" | "family" | "supplier"
   const showPrices = session.canSeePrices;
+  const isAdmin = session.role === "admin";
+
+  function toggleRupture(supplierId, ref) {
+    setSuppliers(prev => prev.map(s => s.id!==supplierId ? s : {
+      ...s, products: s.products.map(p => p.ref===ref ? {...p, rupture: !p.rupture} : p)
+    }));
+  }
 
   // Aplatir tous les produits avec leur fournisseur
   const allProducts = suppliers.flatMap(s =>
@@ -2381,7 +2418,7 @@ function CataloguePage({ suppliers, orders, session, setPage }) {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr style={{ background:"var(--t-thead-bg)" }}>
-                          {["Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min"].filter(Boolean).map(h => (
+                          {["Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min",isAdmin?"Statut":null].filter(Boolean).map(h => (
                             <th key={h} style={{ padding:"8px 12px", textAlign:"left", fontSize:10, color:"var(--t-text-55)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
@@ -2391,7 +2428,7 @@ function CataloguePage({ suppliers, orders, session, setPage }) {
                           const stockMin = p.stockMin ?? calcStockMin(p.weeklyVolume);
                           const isAlert = p.dispo!=null && p.dispo<=stockMin && stockMin>0;
                           return (
-                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:isAlert?"rgba(239,68,68,0.04)":"transparent" }}>
+                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:p.rupture?"rgba(120,120,120,0.06)":isAlert?"rgba(239,68,68,0.04)":"transparent", opacity:p.rupture?0.5:1 }}>
                               <td style={{ ...S.td, fontFamily:"monospace", fontWeight:600, color:"var(--t-text-85)", fontSize:11 }}>{p.ref}</td>
                               <td style={{ ...S.td, fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)" }}>{p.ean||"—"}</td>
                               <td style={{ ...S.td, maxWidth:200, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</td>
@@ -2402,6 +2439,18 @@ function CataloguePage({ suppliers, orders, session, setPage }) {
                               {showPrices && <td style={{ ...S.td, fontWeight:600, color:"#818cf8", whiteSpace:"nowrap" }}>{p.prixVente?fmt(p.prixVente):"—"}</td>}
                               <td style={{ ...S.td, fontWeight:700, color:p.dispo==null?"var(--t-text-30)":isAlert?"#ef4444":p.dispo===0?"#ef4444":"#34d399", whiteSpace:"nowrap" }}>{p.dispo!=null?p.dispo:"—"}</td>
                               <td style={{ ...S.td, fontWeight:600, color:"#f59e0b", whiteSpace:"nowrap" }}>{stockMin>0?stockMin:"—"}</td>
+                              {isAdmin && (
+                                <td style={S.td}>
+                                  <button onClick={() => toggleRupture(p.supplierId, p.ref)} style={{
+                                    padding:"4px 9px", borderRadius:12, border:"1.5px solid", cursor:"pointer", fontSize:10, fontWeight:700, whiteSpace:"nowrap",
+                                    background: p.rupture ? "rgba(239,68,68,0.15)" : "rgba(52,211,153,0.12)",
+                                    borderColor: p.rupture ? "rgba(239,68,68,0.4)" : "rgba(52,211,153,0.35)",
+                                    color: p.rupture ? "#ef4444" : "#34d399",
+                                  }}>
+                                    {p.rupture ? "🔴 Rupture" : "🟢 Actif"}
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           );
                         })}
@@ -2686,7 +2735,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
     setSuppliers(prev => { const idx = prev.findIndex(s => s.id===form.id); if (idx>=0){const n=[...prev];n[idx]=form;return n;} return [...prev,form]; });
     setEditing(null); setForm(null);
   }
-  function del(id) { if (confirm("Supprimer ce fournisseur ?")) setSuppliers(prev => prev.filter(s => s.id!==id)); }
+  function del(id) { setSuppliers(prev => prev.filter(s => s.id!==id)); }
   function addProduct() { setForm(f => ({...f, products: [...f.products, { ref:"", ean:"", label:"", price:0, family:"", subFamily:"", weeklyVolume:0, stockMin:0 }]})); }
   function updateProduct(i, field, val) {
     setForm(f => { const p=[...f.products]; p[i]={...p[i],[field]:["price","weeklyVolume","stockMin"].includes(field) ? parseFloat(val)||0 : val};
@@ -2739,32 +2788,45 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           💡 Colonnes attendues : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> — télécharge le modèle pour être sûr du format.
         </div>
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
-        <div style={{ minWidth: 900 }}>
+        <div style={{ minWidth: 980 }}>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px auto", gap: 6, marginBottom: 6 }}>
-            {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min",""].map(h => (
+          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 6 }}>
+            {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min","Statut",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px auto", gap: 6, marginBottom: 8, alignItems: "center" }}>
-            <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." />
-            <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" />
-            <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" />
-            <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" />
-            <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" />
-            <input type="number" value={p.price} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" />
-            <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#818cf8"}} placeholder="0.00" />
-            <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" />
-            <input type="number" value={p.weeklyVolume} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" />
-            <input type="number" value={p.stockMin} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" />
-            <button onClick={() => removeProduct(i)} style={{ background:"none",border:"none",cursor:"pointer",color:"#DC2626",fontSize:18,padding:0 }}>×</button>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
+            <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." disabled={p.rupture} />
+            <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" disabled={p.rupture} />
+            <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" disabled={p.rupture} />
+            <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" disabled={p.rupture} />
+            <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" disabled={p.rupture} />
+            <input type="number" value={p.price} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
+            <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#818cf8"}} placeholder="0.00" disabled={p.rupture} />
+            <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
+            <input type="number" value={p.weeklyVolume} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" disabled={p.rupture} />
+            <input type="number" value={p.stockMin} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" disabled={p.rupture} />
+            <button onClick={() => updateProduct(i,"rupture", !p.rupture)} style={{
+              padding:"5px 8px", borderRadius:14, border:"1.5px solid", cursor:"pointer", fontSize:10, fontWeight:700,
+              background: p.rupture ? "rgba(239,68,68,0.15)" : "rgba(52,211,153,0.12)",
+              borderColor: p.rupture ? "rgba(239,68,68,0.4)" : "rgba(52,211,153,0.35)",
+              color: p.rupture ? "#ef4444" : "#34d399",
+              transition:"all 0.18s", whiteSpace:"nowrap",
+            }}>
+              {p.rupture ? "🔴 Rupture" : "🟢 Actif"}
+            </button>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              if (e.currentTarget.dataset.armed === "1") { removeProduct(i); }
+              else { e.currentTarget.dataset.armed = "1"; e.currentTarget.textContent = "⚠"; e.currentTarget.style.color = "#DC2626"; e.currentTarget.style.fontWeight = "800"; setTimeout(() => { if (e.currentTarget) { e.currentTarget.dataset.armed = "0"; e.currentTarget.textContent = "×"; e.currentTarget.style.fontWeight = "400"; } }, 3000); }
+            }} style={{ background:"none",border:"none",cursor:"pointer",color:"#DC2626",fontSize:18,padding:0 }}>×</button>
           </div>
         ))}
         </div>
         </div>
-        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Le stock min est calculé automatiquement (ventes × 3 semaines) mais reste modifiable.</div>
+        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Le stock min est calculé automatiquement (ventes × 3 semaines) mais reste modifiable. Un produit en rupture est grisé et ne peut plus être ajouté aux commandes.</div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={() => { setEditing(null); setForm(null); }} style={S.btnSecondary}>Annuler</button>
           <button onClick={save} disabled={!form.name} style={{ ...S.btnPrimary, opacity: form.name?1:0.5 }}>Enregistrer</button>
@@ -2842,7 +2904,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
                 </button>
                 {isAdmin && <>
                   <button onClick={() => openEdit(s)} style={{ ...S.btnSecondary, flex:1, minWidth:80, fontSize:12 }}>Modifier</button>
-                  <button onClick={() => del(s.id)} style={{ ...S.btnDanger, flex:1, minWidth:80, fontSize:12 }}>Supprimer</button>
+                  <ConfirmDeleteButton onConfirm={() => del(s.id)} small style={{ flex:1, minWidth:80 }} />
                 </>}
                 <button onClick={() => setPage && setPage("new")} style={{ flex:2, minWidth:120, padding:"8px 14px", borderRadius:22, border:"none", cursor:"pointer", background:`linear-gradient(135deg,${color},${color}bb)`, color:"white", fontWeight:700, fontSize:12, boxShadow:`0 4px 12px ${color}44` }}>
                   + Commander
@@ -2968,7 +3030,7 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
                 style={{ ...S.input, flex:1 }}
                 placeholder="Nom du lieu de livraison…"
               />
-              <button onClick={() => { if(locations.length > 1) setLocations(prev => prev.filter(l => l.id!==loc.id)); }} style={{ ...S.btnDanger, padding:"8px 12px", flexShrink:0 }} disabled={locations.length===1}>✕</button>
+              <ConfirmDeleteButton onConfirm={() => { if(locations.length > 1) setLocations(prev => prev.filter(l => l.id!==loc.id)); }} small label="✕" confirmLabel="⚠" style={{ padding:"8px 12px", flexShrink:0, opacity: locations.length===1?0.4:1, pointerEvents: locations.length===1?"none":"auto" }} />
             </div>
           ))}
         </div>
