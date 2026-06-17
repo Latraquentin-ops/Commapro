@@ -2850,7 +2850,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
 
         // 3bis) Normalisation des références pour un matching tolérant
         //      (espaces, casse, et préfixe/suffixe différents type "TAB906-A" / "001TAB906")
-        const normRef = (r) => String(r||"").toUpperCase().replace(/[\s\-_.]/g,"").trim();
+        const normRef = (r) => String(r||"").toUpperCase().replace(/[\s\-_./\\]/g,"").trim();
         const stripLeadingZeros = (r) => r.replace(/^0+/, "");
 
         // Index par référence normalisée pour retrouver vite une correspondance
