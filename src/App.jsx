@@ -45,11 +45,12 @@ async function saveCloud(state) {
 // ─── INITIAL DATA ──────────────────────────────────────────────────────────────
 // Pages configurables (admins ont toujours tout)
 const ALL_PAGES = [
-  { key: "dashboard",  label: "Accueil",      icon: Home },
-  { key: "orders",     label: "Commandes",    icon: ClipboardList },
-  { key: "catalogue",  label: "Catalogue",    icon: BookOpen },
-  { key: "suppliers",  label: "Fournisseurs", icon: Factory },
-  { key: "stats",      label: "Statistiques", icon: BarChart3 },
+  { key: "dashboard",   label: "Accueil",       icon: Home },
+  { key: "orders",      label: "Commandes",     icon: ClipboardList },
+  { key: "catalogue",   label: "Catalogue",     icon: BookOpen },
+  { key: "proposals",   label: "Propositions",  icon: Tag },
+  { key: "suppliers",   label: "Fournisseurs",  icon: Factory },
+  { key: "stats",       label: "Statistiques",  icon: BarChart3 },
 ];
 
 const INIT_USERS = [
@@ -630,11 +631,13 @@ export default function App() {
   const [orders,    setOrders]    = useState(INIT_ORDERS);
   const [locations, setLocations] = useState(INIT_LOCATIONS);
   const [stockImports, setStockImports] = useState([]);  // historique des imports d'état de stock
+  const [proposals, setProposals] = useState([]);  // propositions commerciales fournisseurs
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [editingDraft, setEditingDraft] = useState(null);
   const [orderFilter, setOrderFilter] = useState("all");
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
@@ -648,6 +651,7 @@ export default function App() {
         if (cloud.orders)    setOrders(cloud.orders);
         if (cloud.locations) setLocations(cloud.locations);
         if (cloud.stockImports) setStockImports(cloud.stockImports);
+        if (cloud.proposals) setProposals(cloud.proposals);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
         await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
@@ -659,8 +663,8 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations, stockImports });
-  }, [users, suppliers, orders, locations, stockImports, loaded]);
+    saveCloud({ users, suppliers, orders, locations, stockImports, proposals });
+  }, [users, suppliers, orders, locations, stockImports, proposals, loaded]);
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -673,6 +677,7 @@ export default function App() {
         if (cloud.orders)    setOrders(cloud.orders);
         if (cloud.locations) setLocations(cloud.locations);
         if (cloud.stockImports) setStockImports(cloud.stockImports);
+        if (cloud.proposals) setProposals(cloud.proposals);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -942,10 +947,11 @@ export default function App() {
           <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(80px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
             {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} setSelectedProduct={setSelectedProduct} T={T} />}
-            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
-            {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} T={T} />}
+            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} setEditingDraft={setEditingDraft} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
+            {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} editingDraft={editingDraft} setEditingDraft={setEditingDraft} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
+            {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
             </div>
@@ -1716,7 +1722,7 @@ function OrderTable({ orders, session, onSelect, compact }) {
   );
 }
 
-function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilterUsed }) {
+function OrdersPage({ orders, setOrders, session, setPage, setEditingDraft, initialFilter, onFilterUsed }) {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter]     = useState(initialFilter || "all");
   const isAdmin = session.role === "admin";
@@ -1738,7 +1744,7 @@ function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilt
   if (selected) {
     const order = orders.find(o => o.id === selected);
     if (!order) { setSelected(null); return null; }
-    return <OrderDetail order={order} orders={orders} setOrders={setOrders} session={session} onBack={() => setSelected(null)} />;
+    return <OrderDetail order={order} orders={orders} setOrders={setOrders} session={session} onBack={() => setSelected(null)} setPage={setPage} setEditingDraft={setEditingDraft} />;
   }
 
   return (
@@ -1780,7 +1786,7 @@ function OrdersPage({ orders, setOrders, session, setPage, initialFilter, onFilt
 // ═══════════════════════════════════════════════════════════════════════════════
 // ORDER DETAIL
 // ═══════════════════════════════════════════════════════════════════════════════
-function OrderDetail({ order, orders, setOrders, session, onBack }) {
+function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEditingDraft }) {
   const isAdmin = session.role === "admin";
   const showPrices = session.canSeePrices;
   const [numAchat, setNumAchat] = useState(order.numAchat || "");
@@ -1896,7 +1902,12 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
               <div style={{ fontWeight:700, fontSize:13, color:"var(--t-text-85)" }}>📝 Brouillon — commande non envoyée</div>
               <div style={{ fontSize:12, color:"var(--t-text-40)", marginTop:2 }}>Cette commande n'a pas encore été transmise au fournisseur.</div>
             </div>
-            {isAdmin && <ConfirmDeleteButton onConfirm={deleteOrder} label="🗑 Supprimer ce brouillon" />}
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {isAdmin && (
+                <button onClick={() => { setEditingDraft(order); setPage("new"); }} style={{ ...S.btnSecondary, display:"inline-flex", alignItems:"center", gap:6 }}>✏️ Modifier ce brouillon</button>
+              )}
+              {isAdmin && <ConfirmDeleteButton onConfirm={deleteOrder} label="🗑 Supprimer ce brouillon" />}
+            </div>
           </div>
         )}
 
@@ -1943,18 +1954,23 @@ function OrderDetail({ order, orders, setOrders, session, onBack }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // NEW ORDER
 // ═══════════════════════════════════════════════════════════════════════════════
-function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, session, setPage }) {
-  const [suppId, setSuppId]               = useState("");
-  const [deliveryDate, setDeliveryDate]   = useState("");
-  const [deliveryPlace, setDeliveryPlace] = useState("");
-  const [notes, setNotes]                 = useState("");
-  const [lines, setLines]                 = useState([]);
+function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, session, setPage, editingDraft, setEditingDraft }) {
+  const [suppId, setSuppId]               = useState(editingDraft ? (suppliers.find(s=>s.name===editingDraft.supplierName)?.id || "") : "");
+  const [deliveryDate, setDeliveryDate]   = useState(editingDraft?.deliveryDate || "");
+  const [deliveryPlace, setDeliveryPlace] = useState(editingDraft?.deliveryPlace || "");
+  const [notes, setNotes]                 = useState(editingDraft?.notes || "");
+  const [lines, setLines]                 = useState(editingDraft?.lines || []);
   const [saved, setSaved]                 = useState(null);
   const [catalogSearch, setCatalogSearch] = useState("");
   // Ajout produit rapide
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProd, setNewProd] = useState({ ref:"", ean:"", label:"", family:"", subFamily:"", price:"" });
   const supp = suppliers.find(s => s.id === suppId);
+
+  // Quitter le mode édition si on change de page sans sauvegarder
+  useEffect(() => {
+    return () => { if (editingDraft) setEditingDraft(null); };
+  }, []);
 
   function addProduct(p) {
     setLines(prev => {
@@ -1986,16 +2002,35 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
     setShowAddProduct(false);
   }
 
-  // Enregistrer en brouillon
+  // Enregistrer en brouillon (création ou mise à jour si édition)
   function saveDraft() {
     if (!supp) return;
-    const draft = { id: genOrderId(orders), userId: session.id, supplierName: supp.name, commercial: supp.commercial, email: supp.email, date: new Date().toISOString().split("T")[0], deliveryDate: deliveryDate||"", deliveryPlace: deliveryPlace||"", notes, lines, status: "brouillon", statusHistory: { brouillon: new Date().toISOString() }, createdBy: session.name };
-    setOrders(prev => [...prev, draft]);
+    if (editingDraft) {
+      setOrders(prev => prev.map(o => o.id !== editingDraft.id ? o : {
+        ...o, supplierName: supp.name, commercial: supp.commercial, email: supp.email,
+        deliveryDate: deliveryDate||"", deliveryPlace: deliveryPlace||"", notes, lines,
+      }));
+      setEditingDraft(null);
+    } else {
+      const draft = { id: genOrderId(orders), userId: session.id, supplierName: supp.name, commercial: supp.commercial, email: supp.email, date: new Date().toISOString().split("T")[0], deliveryDate: deliveryDate||"", deliveryPlace: deliveryPlace||"", notes, lines, status: "brouillon", statusHistory: { brouillon: new Date().toISOString() }, createdBy: session.name };
+      setOrders(prev => [...prev, draft]);
+    }
     setPage("orders");
   }
 
+  // Valider et envoyer la commande (transforme un brouillon en commande envoyée, ou en crée une nouvelle)
   function submit() {
     if (!supp || lines.length===0 || !deliveryDate || !deliveryPlace) return;
+    if (editingDraft) {
+      setOrders(prev => prev.map(o => o.id !== editingDraft.id ? o : {
+        ...o, supplierName: supp.name, commercial: supp.commercial, email: supp.email,
+        deliveryDate, deliveryPlace, notes, lines, status: "en_attente",
+        statusHistory: { ...(o.statusHistory||{}), en_attente: new Date().toISOString() },
+      }));
+      setEditingDraft(null);
+      setPage("orders");
+      return;
+    }
     const newOrder = { id: genOrderId(orders), userId: session.id, supplierName: supp.name, commercial: supp.commercial, email: supp.email, date: new Date().toISOString().split("T")[0], deliveryDate, deliveryPlace, notes, lines, status: "en_attente", statusHistory: { en_attente: new Date().toISOString() }, createdBy: session.name };
     setOrders(prev => [...prev, newOrder]);
     setSaved(newOrder);
@@ -2042,7 +2077,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 
   return (
     <div>
-      <h1 style={{ margin:"0 0 20px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Nouvelle commande</h1>
+      <h1 style={{ margin:"0 0 20px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>{editingDraft ? "✏️ Modifier le brouillon" : "Nouvelle commande"}</h1>
 
       {/* ① Fournisseur */}
       <div style={{ ...S.card, marginBottom:16 }}>
@@ -2220,7 +2255,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
               <Field label="Lieu de livraison *">
                 <select value={deliveryPlace} onChange={e=>setDeliveryPlace(e.target.value)} style={{ ...S.input, background:"var(--t-surface)" }}>
                   <option value="">— Choisir un lieu —</option>
-                  {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                  {locations.map(l => <option key={l.id} value={l.label}>{l.label}</option>)}
                 </select>
               </Field>
             </div>
@@ -2235,11 +2270,147 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
               Générer le bon de commande
             </button>
             {supp && lines.length>0 && (
-              <button onClick={saveDraft} style={{ ...S.btnSecondary, padding:12 }}>💾 Enregistrer en brouillon</button>
+              <button onClick={saveDraft} style={{ ...S.btnSecondary, padding:12 }}>{editingDraft ? "💾 Mettre à jour le brouillon" : "💾 Enregistrer en brouillon"}</button>
             )}
             {!canSubmit && <div style={{ fontSize:11, color:"var(--t-text-30)", textAlign:"center" }}>Fournisseur, produit(s), date et lieu requis</div>}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROPOSITIONS — Offres commerciales fournisseurs (promos, nouveaux produits, tarifs)
+// ═══════════════════════════════════════════════════════════════════════════════
+function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ supplierName:"", description:"", price:"", validUntil:"" });
+  const [filterSupplier, setFilterSupplier] = useState("all");
+
+  const supplierList = [...new Set(suppliers.map(s=>s.name))].sort();
+  const today = new Date().toISOString().slice(0,10);
+
+  function openNew() {
+    setForm({ supplierName: suppliers[0]?.name || "", description:"", price:"", validUntil:"" });
+    setEditing("new");
+    setShowForm(true);
+  }
+  function openEdit(p) {
+    setForm({ supplierName:p.supplierName, description:p.description, price:p.price||"", validUntil:p.validUntil||"" });
+    setEditing(p.id);
+    setShowForm(true);
+  }
+  function save() {
+    if (!form.supplierName || !form.description) return;
+    if (editing === "new") {
+      setProposals(prev => [...prev, { id:"prop_"+Date.now(), ...form, price: parseFloat(form.price)||0, createdAt: new Date().toISOString() }]);
+    } else {
+      setProposals(prev => prev.map(p => p.id===editing ? { ...p, ...form, price: parseFloat(form.price)||0 } : p));
+    }
+    setShowForm(false);
+    setEditing(null);
+  }
+  function remove(id) {
+    setProposals(prev => prev.filter(p => p.id !== id));
+  }
+
+  const filtered = (filterSupplier==="all" ? proposals : proposals.filter(p=>p.supplierName===filterSupplier))
+    .slice().sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
+
+  const isExpired = (p) => p.validUntil && p.validUntil < today;
+  const isExpiringSoon = (p) => p.validUntil && !isExpired(p) && (new Date(p.validUntil) - new Date(today)) / 86400000 <= 7;
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+        <div>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Propositions</h1>
+          <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{proposals.length} offre{proposals.length>1?"s":""} fournisseur{proposals.length>1?"s":""}</div>
+        </div>
+        {isAdmin && <button onClick={openNew} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6 }}><Plus size={16}/> Nouvelle proposition</button>}
+      </div>
+
+      {/* Filtre fournisseur */}
+      {supplierList.length > 0 && (
+        <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+          <button onClick={()=>setFilterSupplier("all")} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filterSupplier==="all"?700:400, background:filterSupplier==="all"?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterSupplier==="all"?"white":"var(--t-text-55)", borderColor:filterSupplier==="all"?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>Tous</button>
+          {supplierList.map(s => (
+            <button key={s} onClick={()=>setFilterSupplier(s)} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filterSupplier===s?700:400, background:filterSupplier===s?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterSupplier===s?"white":"var(--t-text-55)", borderColor:filterSupplier===s?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>{s}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Formulaire ajout/édition */}
+      {showForm && (
+        <div style={{ ...S.card, marginBottom:16, border:"1px solid rgba(99,102,241,0.3)" }}>
+          <h2 style={{ margin:"0 0 14px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.07em" }}>{editing==="new" ? "Nouvelle proposition" : "Modifier la proposition"}</h2>
+          <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
+            <Field label="Fournisseur *">
+              <select value={form.supplierName} onChange={e=>setForm(f=>({...f,supplierName:e.target.value}))} style={{ ...S.input, background:"var(--t-surface)" }}>
+                <option value="">— Choisir —</option>
+                {supplierList.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
+            <Field label="Prix proposé HT">
+              <input type="number" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))} style={S.input} placeholder="0.00" />
+            </Field>
+          </div>
+          <div style={{ marginBottom:14 }}>
+            <Field label="Produit / Description *">
+              <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={3} placeholder="Ex: Lave-linge 8kg A+++ -20% jusqu'au stock épuisé, livraison offerte..." style={{ ...S.input, resize:"vertical", fontFamily:"inherit", minHeight:70 }} />
+            </Field>
+          </div>
+          <div style={{ marginBottom:16 }}>
+            <Field label="Date de validité">
+              <input type="date" value={form.validUntil} onChange={e=>setForm(f=>({...f,validUntil:e.target.value}))} style={{ ...S.input, textAlign:"center" }} />
+            </Field>
+          </div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={save} disabled={!form.supplierName||!form.description} style={{ ...S.btnPrimary, flex:1, opacity:(form.supplierName&&form.description)?1:0.45 }}>✓ Enregistrer</button>
+            <button onClick={()=>{setShowForm(false);setEditing(null);}} style={S.btnGhost}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* Liste des propositions */}
+      {filtered.length === 0 ? (
+        <div style={{ ...S.card, padding:40, textAlign:"center", color:"var(--t-text-30)" }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>🏷️</div>
+          <div>Aucune proposition pour l'instant</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {filtered.map(p => {
+            const expired = isExpired(p);
+            const soon = isExpiringSoon(p);
+            return (
+              <div key={p.id} style={{ ...S.card, padding:"16px 18px", opacity:expired?0.55:1, border: soon ? "1px solid rgba(245,158,11,0.35)" : undefined }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:12, flexWrap:"wrap" }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:6 }}>
+                      <span style={{ fontWeight:700, fontSize:14, color:"var(--t-text-90)" }}>{p.supplierName}</span>
+                      {expired && <span style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 8px", borderRadius:10 }}>Expirée</span>}
+                      {!expired && soon && <span style={{ fontSize:10, fontWeight:700, color:"#f59e0b", background:"rgba(245,158,11,0.12)", padding:"1px 8px", borderRadius:10 }}>⏰ Expire bientôt</span>}
+                    </div>
+                    <div style={{ fontSize:13, color:"var(--t-text-85)", lineHeight:1.5, whiteSpace:"pre-wrap" }}>{p.description}</div>
+                    <div style={{ display:"flex", gap:16, marginTop:10, flexWrap:"wrap" }}>
+                      {p.price > 0 && <div style={{ fontSize:13, fontWeight:700, color:"#34d399" }}>{fmt(p.price)} HT</div>}
+                      {p.validUntil && <div style={{ fontSize:12, color:"var(--t-text-40)" }}>Valable jusqu'au {fmtDate(p.validUntil)}</div>}
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div style={{ display:"flex", gap:8, flexShrink:0 }}>
+                      <button onClick={()=>openEdit(p)} style={{ ...S.btnSecondary, fontSize:12, padding:"6px 12px" }}>Modifier</button>
+                      <ConfirmDeleteButton onConfirm={()=>remove(p.id)} small />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
