@@ -2848,14 +2848,48 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           return;
         }
 
+        // 3bis) Normalisation des références pour un matching tolérant
+        //      (espaces, casse, et préfixe/suffixe différents type "TAB906-A" / "001TAB906")
+        const normRef = (r) => String(r||"").toUpperCase().replace(/[\s\-_.]/g,"").trim();
+        const stripLeadingZeros = (r) => r.replace(/^0+/, "");
+
+        // Index par référence normalisée pour retrouver vite une correspondance
+        const normIndex = {};        // refNormalisée exacte -> ref originale du fichier
+        const normIndexNoZero = {};  // refNormalisée sans zéros de tête -> ref originale du fichier
+        for (const fileRef of refsInFile) {
+          const n = normRef(fileRef);
+          normIndex[n] = fileRef;
+          normIndexNoZero[stripLeadingZeros(n)] = fileRef;
+        }
+
+        function findStockRef(catalogRef) {
+          // 1. Correspondance exacte (cas normal)
+          if (stockByRef[catalogRef]) return catalogRef;
+          const n = normRef(catalogRef);
+          // 2. Correspondance après normalisation (espaces, casse, tirets)
+          if (normIndex[n]) return normIndex[n];
+          const nz = stripLeadingZeros(n);
+          if (normIndexNoZero[nz]) return normIndexNoZero[nz];
+          // 3. Correspondance par préfixe/suffixe : l'une contient l'autre (≥ 5 caractères communs)
+          if (n.length >= 5) {
+            for (const fileRefNorm of Object.keys(normIndex)) {
+              if (fileRefNorm.length >= 5 && (fileRefNorm.includes(n) || n.includes(fileRefNorm))) {
+                return normIndex[fileRefNorm];
+              }
+            }
+          }
+          return null;
+        }
+
         // 4) Mettre à jour les produits : stocker dispoParDepot + dispo total
-        let updated = 0, matched = [];
+        let updated = 0, matched = [], unmatchedCount = 0;
         setSuppliers(prev => prev.map(s => ({
           ...s,
           products: s.products.map(p => {
-            const depots = stockByRef[p.ref];
-            if (!depots) return p;
-            updated++; matched.push(p.ref);
+            const foundRef = findStockRef(p.ref);
+            if (!foundRef) { unmatchedCount++; return p; }
+            const depots = stockByRef[foundRef];
+            updated++; matched.push(foundRef);
             // Calcul totaux toutes dépôts
             const allDepots = Object.values(depots);
             const totalDispo = allDepots.reduce((s,d)=>s+(d.dispo||0),0);
@@ -2866,6 +2900,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
               dispo: totalDispo,
               dispoParDepot: depots,  // { "Expo Nord": {dispo:3,...}, "Dépôt Sud": {dispo:1,...} }
               stockDate: exportDate,
+              stockRefFichier: foundRef !== p.ref ? foundRef : undefined,  // trace si le matching n'était pas exact
             };
           })
         })));
@@ -2918,7 +2953,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
 
         const ignored = refsInFile.length - updated;
         const dateFr = exportDate.split("-").reverse().join("/");
-        let msg = `✅ État de stock du ${dateFr} importé. ${updated} produit(s) mis à jour${ignored>0?`, ${ignored} référence(s) ignorée(s)`:""}.`;
+        let msg = `✅ État de stock du ${dateFr} importé. ${updated} produit(s) mis à jour${ignored>0?`, ${ignored} référence(s) du fichier non rapprochée(s)`:""}.`;
         if (prev && computed > 0) {
           const prevFr = prev.date.split("-").reverse().join("/");
           msg += ` 📊 Sorties calculées entre le ${prevFr} et le ${dateFr} : stock min ajusté pour couvrir 1 semaine sur ${computed} produit(s).`;
@@ -3185,7 +3220,10 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
                         <td style={S.td}><span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-tag-bg)", padding:"2px 8px", borderRadius:8, color:"var(--t-tag-color)", border:"1px solid var(--t-tag-border)" }}>{p.subFamily || "—"}</span></td>
                         <td style={{ ...S.td, fontWeight:600, color:"#059669" }}>{fmt(p.price)}</td>
                         <td style={{ ...S.td, color:"var(--t-text-85)" }}>{p.stock != null ? p.stock : "—"}</td>
-                        <td style={{ ...S.td, fontWeight:600, color:(p.dispo!=null&&p.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume)))?"#DC2626":"var(--t-text-90)" }}>{p.dispo!=null?p.dispo:"—"}</td>
+                        <td style={{ ...S.td, fontWeight:600, color:(p.dispo!=null&&p.dispo<=(p.stockMin??calcStockMin(p.weeklyVolume)))?"#DC2626":"var(--t-text-90)" }}>
+                          {p.dispo!=null?p.dispo:"—"}
+                          {p.stockRefFichier && <span title={`Rapproché depuis la référence "${p.stockRefFichier}" du fichier de stock`} style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#f59e0b", background:"rgba(245,158,11,0.12)", padding:"1px 5px", borderRadius:5, cursor:"help" }}>≈</span>}
+                        </td>
                         <td style={{ ...S.td, fontWeight:600, color:"#D97706" }}>{p.stockMin??calcStockMin(p.weeklyVolume)}{p.stockMinAuto&&<span style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", padding:"1px 5px", borderRadius:5 }}>auto</span>}</td>
                       </tr>
                     ))}</tbody>
