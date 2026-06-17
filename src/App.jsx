@@ -1726,7 +1726,7 @@ function OrdersPage({ orders, setOrders, session, setPage, setEditingDraft, init
   const [selected, setSelected] = useState(null);
   const [filter, setFilter]     = useState(initialFilter || "all");
   const isAdmin = session.role === "admin";
-  const visible = isAdmin ? orders : orders.filter(o => o.userId === session.id);
+  const visible = orders;
   const filtered = (() => {
     if (filter === "all") return visible;
     if (filter === "commandee") return visible.filter(o => ["en_attente","confirmee","en_preparation"].includes(o.status));
