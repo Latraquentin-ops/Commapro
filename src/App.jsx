@@ -2288,6 +2288,7 @@ function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ supplierName:"", description:"", price:"", validUntil:"" });
   const [filterSupplier, setFilterSupplier] = useState("all");
+  const [importMsg, setImportMsg] = useState("");
 
   const supplierList = [...new Set(suppliers.map(s=>s.name))].sort();
   const today = new Date().toISOString().slice(0,10);
@@ -2316,6 +2317,75 @@ function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
     setProposals(prev => prev.filter(p => p.id !== id));
   }
 
+  // Import Excel — même méthode souple que pour le catalogue produits
+  function handleExcelImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportMsg("Lecture du fichier…");
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: "binary" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        const norm = (s) => String(s).toLowerCase().replace(/[éè]/g,"e").trim();
+        const pick = (row, names) => {
+          for (const key of Object.keys(row)) {
+            if (names.includes(norm(key))) return row[key];
+          }
+          return "";
+        };
+        const toIsoDate = (v) => {
+          if (!v) return "";
+          if (v instanceof Date) return v.toISOString().slice(0,10);
+          // Excel peut donner un numéro de série de date
+          if (typeof v === "number") {
+            const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+            return isNaN(d) ? "" : d.toISOString().slice(0,10);
+          }
+          const s = String(v).trim();
+          // Format jj/mm/aaaa
+          const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+          if (m) { const yyyy = m[3].length===2 ? "20"+m[3] : m[3]; return `${yyyy}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`; }
+          return s; // déjà au format aaaa-mm-jj
+        };
+        const imported = rows.map(r => ({
+          id: "prop_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+          supplierName: String(pick(r, ["fournisseur","fournisseur*","societe","société"]) || "").trim(),
+          description:  String(pick(r, ["description","produit","designation","désignation","offre","proposition"]) || "").trim(),
+          price:        parseFloat(String(pick(r, ["prix","prix propose","prix proposé","prix ht","tarif"])).replace(",",".")) || 0,
+          validUntil:   toIsoDate(pick(r, ["validite","validité","date de validite","date de validité","valable jusqu'au","echeance","échéance"])),
+          createdAt: new Date().toISOString(),
+        })).filter(p => p.supplierName || p.description);
+
+        if (imported.length === 0) {
+          setImportMsg("⚠️ Aucune proposition trouvée. Vérifie les noms de colonnes.");
+          return;
+        }
+        setProposals(prev => [...prev, ...imported]);
+        setImportMsg(`✅ ${imported.length} proposition(s) importée(s) !`);
+      } catch (err) {
+        console.error(err);
+        setImportMsg("❌ Erreur de lecture du fichier. Vérifie que c'est bien un .xlsx.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  }
+
+  function downloadTemplate() {
+    const data = [
+      ["Fournisseur","Description","Prix proposé HT","Date de validité"],
+      ["Réunion Technologie distribution","Lave-linge 8kg A+++ -20% jusqu'au stock épuisé","249.00","31/12/2026"],
+      ["Sogerep","Lot de 10 micro-ondes solo - tarif dégressif dès 5 unités","79.90","15/08/2026"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:30},{wch:50},{wch:16},{wch:16}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Propositions");
+    XLSX.writeFile(wb, "modele-propositions-commapro.xlsx");
+  }
+
   const filtered = (filterSupplier==="all" ? proposals : proposals.filter(p=>p.supplierName===filterSupplier))
     .slice().sort((a,b) => (b.createdAt||"").localeCompare(a.createdAt||""));
 
@@ -2329,8 +2399,21 @@ function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
           <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Propositions</h1>
           <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{proposals.length} offre{proposals.length>1?"s":""} fournisseur{proposals.length>1?"s":""}</div>
         </div>
-        {isAdmin && <button onClick={openNew} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6 }}><Plus size={16}/> Nouvelle proposition</button>}
+        {isAdmin && (
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <button onClick={downloadTemplate} style={{ ...S.btnGhost, display:"inline-flex", alignItems:"center", gap:6, fontSize:12 }}>
+              ⬇ Modèle Excel
+            </button>
+            <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6, fontSize:12 }}>
+              <FileText size={15} /> Importer Excel
+              <input type="file" accept=".xlsx,.xls" onChange={handleExcelImport} style={{ display:"none" }} />
+            </label>
+            <button onClick={openNew} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6 }}><Plus size={16}/> Nouvelle proposition</button>
+          </div>
+        )}
       </div>
+
+      {importMsg && <div style={{ fontSize:12, marginBottom:16, padding:"8px 12px", borderRadius:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", color:"var(--t-text-85)" }}>{importMsg}</div>}
 
       {/* Filtre fournisseur */}
       {supplierList.length > 0 && (
