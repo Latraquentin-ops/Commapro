@@ -235,6 +235,7 @@ function generatePDF(order, showPrices) {
       body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
       .page { padding:30px; }
     }
+    @page { margin: 0.5cm; size: auto; }
   </style>
 </head>
 <body>
@@ -290,9 +291,7 @@ function generatePDF(order, showPrices) {
     ${showPrices ? `
     <div class="totals">
       <div class="totals-box">
-        <div class="totals-row"><span>Sous-total HT</span><span>${fmt(total)}</span></div>
-        <div class="totals-row"><span>TVA (8,5%)</span><span>${fmt(tva)}</span></div>
-        <div class="totals-row total"><span>Total TTC</span><span>${fmt(ttc)}</span></div>
+        <div class="totals-row total"><span>Total HT</span><span>${fmt(total)}</span></div>
       </div>
     </div>` : ""}
 
