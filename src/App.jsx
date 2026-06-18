@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
-import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck, BookOpen, Tag, Filter } from "lucide-react";
+import { Home, ClipboardList, BarChart3, Factory, Settings, Bell, PencilLine, Clock, CheckCircle2, FolderTree, Search, MapPin, FileText, Package, Sun, Moon, Wallet, X, Plus, ScanLine, Camera, Truck, BookOpen, Tag, Filter, PackageCheck } from "lucide-react";
 
 // ── Logo CommaPro (monogramme CP) ────────────────────────────────────────────
 const CP_LOGO_DATA_URI = "data:image/png;base64,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";
@@ -49,6 +49,7 @@ const ALL_PAGES = [
   { key: "orders",      label: "Commandes",     icon: ClipboardList },
   { key: "catalogue",   label: "Catalogue",     icon: BookOpen },
   { key: "proposals",   label: "Propositions",  icon: Tag },
+  { key: "remplissage", label: "Remplissage",   icon: PackageCheck },
   { key: "suppliers",   label: "Fournisseurs",  icon: Factory },
   { key: "stats",       label: "Statistiques",  icon: BarChart3 },
 ];
@@ -951,6 +952,7 @@ export default function App() {
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
+            {page === "remplissage" && <FillSheetPage suppliers={suppliers} session={session} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
             </div>
@@ -2280,6 +2282,279 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PDF — Document de remplissage de rayon (dépôt → magasin)
+// ═══════════════════════════════════════════════════════════════════════════════
+function generateFillSheetPDF(lines, dateStr, createdBy) {
+  // Groupement par type de produit pour faciliter la préparation
+  const groups = {};
+  lines.forEach(l => {
+    const g = l.productType || "Autres";
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(l);
+  });
+  const groupEntries = Object.entries(groups).sort((a,b) => a[0].localeCompare(b[0]));
+
+  const dateFr = new Date(dateStr).toLocaleDateString("fr-FR", { weekday:"long", day:"2-digit", month:"long", year:"numeric" });
+
+  const sectionsHTML = groupEntries.map(([type, items]) => `
+    <div class="type-section">
+      <div class="type-title">${type}</div>
+      <table>
+        <thead><tr>
+          <th style="width:140px">Référence</th>
+          <th>Désignation</th>
+          <th class="center" style="width:90px">Quantité</th>
+          <th class="center" style="width:70px">✓ Fait</th>
+        </tr></thead>
+        <tbody>
+          ${items.map((l,i) => `
+            <tr style="background:${i%2===0?'#ffffff':'#f9fafb'}">
+              <td style="padding:10px 14px;font-size:12px;color:#374151;font-family:monospace">${l.ref}</td>
+              <td style="padding:10px 14px;font-size:13px;color:#111827;font-weight:500">${l.label}</td>
+              <td style="padding:10px 14px;font-size:15px;color:#111827;text-align:center;font-weight:800">${l.qty}</td>
+              <td style="padding:10px 14px;text-align:center"><div class="checkbox"></div></td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`).join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Remplissage rayon ${dateStr}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; background:#fff; color:#111827; font-size:13px; }
+    .page { max-width:780px; margin:0 auto; padding:40px 44px 50px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px; padding-bottom:22px; border-bottom:2px solid #111827; }
+    .header-left .company { font-size:20px; font-weight:900; letter-spacing:-0.04em; color:#111827; }
+    .header-left .tagline { font-size:10px; color:#9ca3af; margin-top:3px; letter-spacing:0.1em; text-transform:uppercase; }
+    .header-right { text-align:right; }
+    .doc-label { font-size:10px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+    .doc-date { font-size:18px; font-weight:800; color:#4f46e5; letter-spacing:-0.01em; text-transform:capitalize; }
+    .doc-meta { font-size:11px; color:#6b7280; margin-top:4px; }
+    .type-section { margin-bottom:22px; }
+    .type-title { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:#ffffff; background:#4f46e5; padding:9px 14px; border-radius:8px 8px 0 0; }
+    .table-wrap { border-radius:0 0 10px 10px; overflow:hidden; }
+    table { width:100%; border-collapse:collapse; border:1px solid #e5e7eb; border-top:none; }
+    thead tr { background:#f3f4f6; }
+    th { padding:8px 14px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#6b7280; }
+    th.center { text-align:center; }
+    td { border-bottom:1px solid #f3f4f6; }
+    .checkbox { width:18px; height:18px; border:2px solid #9ca3af; border-radius:5px; margin:0 auto; }
+    .footer { padding-top:18px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+    .footer-left { font-size:10px; color:#9ca3af; line-height:1.8; }
+    .footer-right { font-size:10px; color:#9ca3af; text-align:right; }
+    @media print {
+      body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      .page { padding:24px; }
+      .type-section { page-break-inside: avoid; }
+    }
+    @page { margin: 0.5cm; size: auto; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-left">
+        <div class="company">CommaPro</div>
+        <div class="tagline">Remplissage rayon</div>
+      </div>
+      <div class="header-right">
+        <div class="doc-label">À préparer pour le</div>
+        <div class="doc-date">${dateFr}</div>
+        <div class="doc-meta">Préparé par ${createdBy || "—"}</div>
+      </div>
+    </div>
+    ${sectionsHTML}
+    <div class="footer">
+      <div class="footer-left">Document généré par CommaPro<br>Cockpit des achats fournisseurs</div>
+      <div class="footer-right">${lines.length} référence(s) · ${lines.reduce((s,l)=>s+l.qty,0)} article(s) au total</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 300);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REMPLISSAGE — Document de réappro rayon (dépôt → magasin) pour le manutentionnaire
+// ═══════════════════════════════════════════════════════════════════════════════
+function FillSheetPage({ suppliers, session }) {
+  const [fillDate, setFillDate]   = useState(new Date(Date.now() + 86400000).toISOString().slice(0,10)); // demain par défaut
+  const [lines, setLines]         = useState([]);
+  const [search, setSearch]       = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [expandedRef, setExpandedRef] = useState(null);
+  const [inputQty, setInputQty]   = useState("");
+
+  // Catalogue global tous fournisseurs confondus
+  const allProducts = suppliers.flatMap(s => s.products.filter(p=>!p.rupture).map(p => ({ ...p, supplierName: s.name })));
+  const typeList = [...new Set(allProducts.filter(p=>p.productType).map(p=>p.productType))].sort();
+
+  const q = search.toLowerCase().trim();
+  const filtered = allProducts.filter(p =>
+    (filterType==="all" || p.productType===filterType) &&
+    (!q || p.ref.toLowerCase().includes(q) || p.label.toLowerCase().includes(q) || (p.productType||"").toLowerCase().includes(q))
+  );
+
+  // Regroupement par type pour affichage clair dans le catalogue de sélection
+  const groups = {};
+  filtered.forEach(p => {
+    const g = p.productType || "Sans type défini";
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(p);
+  });
+  const groupEntries = Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0]));
+
+  function handleAddOrExpand(p) {
+    if (expandedRef === p.ref) { setExpandedRef(null); return; }
+    setExpandedRef(p.ref);
+    const ex = lines.find(l => l.ref === p.ref);
+    setInputQty(ex ? String(ex.qty) : "");
+  }
+  function confirmQty(p) {
+    const qty = parseInt(inputQty) || 0;
+    if (qty <= 0) { setLines(prev => prev.filter(l => l.ref !== p.ref)); }
+    else {
+      setLines(prev => {
+        const ex = prev.find(l => l.ref === p.ref);
+        if (ex) return prev.map(l => l.ref===p.ref ? {...l, qty} : l);
+        return [...prev, { ref:p.ref, label:p.label, qty, productType: p.productType || "Autres" }];
+      });
+    }
+    setExpandedRef(null);
+    setInputQty("");
+  }
+  function removeLine(ref) {
+    setLines(prev => prev.filter(l => l.ref !== ref));
+  }
+
+  function generate() {
+    if (lines.length === 0) return;
+    generateFillSheetPDF(lines, fillDate, session.name);
+  }
+
+  return (
+    <div>
+      <h1 style={{ margin:"0 0 6px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Remplissage rayon</h1>
+      <div style={{ fontSize:13, color:"var(--t-text-40)", marginBottom:20 }}>Prépare la liste de réapprovisionnement pour ton manutentionnaire</div>
+
+      {/* Date de remplissage */}
+      <div style={{ ...S.card, marginBottom:16 }}>
+        <Field label="Date de remplissage *">
+          <input type="date" value={fillDate} onChange={e=>setFillDate(e.target.value)} style={{ ...S.input, maxWidth:240, textAlign:"center" }} />
+        </Field>
+      </div>
+
+      <div className="order-layout" style={{ display:"grid", gridTemplateColumns:"1fr 300px", gap:16, alignItems:"start" }}>
+        {/* Colonne gauche : catalogue défilant avec filtres */}
+        <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
+          <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid var(--t-border-subtle)", position:"sticky", top:0, background:"var(--t-card-bg)", zIndex:10 }}>
+            <h2 style={{ margin:"0 0 10px 0", fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>Catalogue — tous fournisseurs</h2>
+            <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", borderRadius:20, padding:"7px 12px", marginBottom:10 }}>
+              <Search size={14} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un produit…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
+              {search && <button onClick={()=>setSearch("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", padding:0 }}><X size={14} /></button>}
+            </div>
+            {typeList.length > 0 && (
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                <button onClick={()=>setFilterType("all")} style={{ padding:"4px 11px", borderRadius:16, border:"1.5px solid", cursor:"pointer", fontSize:11, fontWeight:filterType==="all"?700:400, background:filterType==="all"?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterType==="all"?"white":"var(--t-text-55)", borderColor:filterType==="all"?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>Tous types</button>
+                {typeList.map(t => (
+                  <button key={t} onClick={()=>setFilterType(t)} style={{ padding:"4px 11px", borderRadius:16, border:"1.5px solid", cursor:"pointer", fontSize:11, fontWeight:filterType===t?700:400, background:filterType===t?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterType===t?"white":"var(--t-text-55)", borderColor:filterType===t?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>{t}</button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ maxHeight:"60vh", overflowY:"auto", WebkitOverflowScrolling:"touch" }}>
+            {groupEntries.length === 0 ? (
+              <div style={{ padding:"24px 16px", textAlign:"center", color:"var(--t-text-40)", fontSize:13 }}>Aucun produit trouvé</div>
+            ) : groupEntries.map(([grp, prods]) => (
+              <div key={grp}>
+                <div style={{ padding:"8px 16px 4px", fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", background:"var(--t-surface)", borderBottom:"1px solid var(--t-border-subtle)" }}>{grp} — {prods.length} produit(s)</div>
+                {prods.map(p => {
+                  const inCart = lines.find(l=>l.ref===p.ref);
+                  const isExpanded = expandedRef === p.ref;
+                  return (
+                    <div key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(99,102,241,0.06)":"transparent" }}>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:inCart?700:500, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                          <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
+                            <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-surface)", padding:"1px 5px", borderRadius:5 }}>{p.ref}</span>
+                            <span style={{ fontSize:11, color:"var(--t-text-40)" }}>· {p.supplierName}</span>
+                          </div>
+                        </div>
+                        {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
+                        <button onClick={() => handleAddOrExpand(p)} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:inCart?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.7)", color:"white" }}>
+                          {isExpanded ? "✕" : inCart ? "Modifier" : "+ Ajouter"}
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <div style={{ padding:"10px 16px 12px", background:"rgba(99,102,241,0.08)", borderTop:"1px solid rgba(99,102,241,0.2)" }}>
+                          <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:8, fontWeight:600 }}>Quantité pour {p.label}</div>
+                          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                            <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)" }}>−</button>
+                            <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} placeholder="" autoFocus style={{ flex:1, textAlign:"center", fontSize:28, fontWeight:800, padding:"8px 0", border:"none", borderBottom:"2px solid #818cf8", background:"transparent", outline:"none", color:"var(--t-text-90)" }} />
+                            <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)" }}>+</button>
+                          </div>
+                          <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                            <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, flex:1, padding:"10px" }}>{(parseInt(inputQty)||0)===0 ? "Retirer" : "Confirmer"}</button>
+                            <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"10px 14px" }}>Annuler</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Colonne droite : liste à remplir, sticky */}
+        <div style={{ position:"sticky", top:80 }}>
+          <div style={S.card}>
+            <h2 style={{ margin:"0 0 14px 0", fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Liste de remplissage</h2>
+            {lines.length === 0 ? (
+              <div style={{ textAlign:"center", color:"var(--t-text-30)", fontSize:13, padding:"20px 0" }}>Aucun produit ajouté</div>
+            ) : (
+              <>
+                {lines.map(l => (
+                  <div key={l.ref} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", gap:8 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:12, fontWeight:600, color:"var(--t-text-85)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{l.label}</div>
+                      <div style={{ fontSize:11, fontFamily:"monospace", color:"var(--t-text-40)" }}>{l.ref}</div>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+                      <button onClick={()=>{setExpandedRef(l.ref);setInputQty(String(l.qty));}} style={{ fontSize:13, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", border:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer" }}>×{l.qty}</button>
+                      <button onClick={()=>removeLine(l.ref)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:16, padding:0, lineHeight:1 }}>×</button>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ display:"flex", justifyContent:"space-between", marginTop:12, paddingTop:10, borderTop:"2px solid var(--t-border-subtle)", fontWeight:700, fontSize:13 }}>
+                  <span style={{ color:"var(--t-text-55)" }}>Total articles</span>
+                  <span style={{ color:"#818cf8" }}>{lines.reduce((s,l)=>s+l.qty,0)}</span>
+                </div>
+              </>
+            )}
+          </div>
+          <button onClick={generate} disabled={lines.length===0} style={{ ...S.btnPrimary, width:"100%", marginTop:12, padding:14, fontSize:15, fontWeight:700, opacity:lines.length===0?0.45:1, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            🖨️ Générer le document
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PROPOSITIONS — Offres commerciales fournisseurs (promos, nouveaux produits, tarifs)
 // ═══════════════════════════════════════════════════════════════════════════════
 function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
@@ -3079,19 +3354,20 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           💡 Colonnes attendues : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> — télécharge le modèle pour être sûr du format.
         </div>
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
-        <div style={{ minWidth: 980 }}>
+        <div style={{ minWidth: 1080 }}>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 6 }}>
-            {["Réf.","Code EAN","Désignation","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min","Statut",""].map(h => (
+          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 6 }}>
+            {["Réf.","Code EAN","Désignation","Type produit","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min","Statut",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
             <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." disabled={p.rupture} />
             <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" disabled={p.rupture} />
             <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" disabled={p.rupture} />
+            <input value={p.productType||""} onChange={e => updateProduct(i,"productType",e.target.value)} style={{...S.input,fontSize:11,color:"#f59e0b"}} placeholder="Ex: Aspirateur" disabled={p.rupture} />
             <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" disabled={p.rupture} />
             <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" disabled={p.rupture} />
             <input type="number" value={p.price} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
@@ -3117,7 +3393,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         ))}
         </div>
         </div>
-        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Le stock min est calculé automatiquement (ventes × 3 semaines) mais reste modifiable. Un produit en rupture est grisé et ne peut plus être ajouté aux commandes.</div>
+        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Le stock min est calculé automatiquement (ventes × 3 semaines) mais reste modifiable. Un produit en rupture est grisé et ne peut plus être ajouté aux commandes. Le "Type produit" sert au document de remplissage de rayon (ex: Aspirateur, Blender...).</div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={() => { setEditing(null); setForm(null); }} style={S.btnSecondary}>Annuler</button>
           <button onClick={save} disabled={!form.name} style={{ ...S.btnPrimary, opacity: form.name?1:0.5 }}>Enregistrer</button>
