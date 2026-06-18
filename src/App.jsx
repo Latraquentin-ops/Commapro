@@ -365,6 +365,7 @@ const S = {
   btnDanger:    { padding:"8px 16px", borderRadius:22, border:"1px solid rgba(239,68,68,0.35)", cursor:"pointer", background:"rgba(239,68,68,0.12)", color:"#f87171", fontWeight:500, fontSize:13, backdropFilter:"blur(8px)", transition:"all 0.18s" },
   btnGhost:     { padding:"6px 12px", borderRadius:16, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-btn-ghost)", fontWeight:500, fontSize:13, transition:"all 0.18s" },
   input:        { width:"100%", padding:"10px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.12)", fontSize:13, outline:"none", boxSizing:"border-box", background:"var(--t-border-subtle)", backdropFilter:"blur(8px)", color:"#f0f0f5" },
+  inputNum:     { width:"100%", padding:"7px 12px", borderRadius:18, border:"1.5px solid rgba(129,140,248,0.45)", fontSize:12, outline:"none", boxSizing:"border-box", background:"rgba(99,102,241,0.08)", backdropFilter:"blur(8px)", color:"#f0f0f5", fontWeight:600, textAlign:"center", transition:"border-color 0.15s" },
   label:        { display:"block", fontSize:11, fontWeight:600, color:"var(--t-text-55)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" },
   card:         { background:"var(--t-surface)", backdropFilter:"blur(24px) saturate(160%)", WebkitBackdropFilter:"blur(24px) saturate(160%)", borderRadius:20, padding:24, border:"1px solid rgba(255,255,255,0.13)", boxShadow:"0 4px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)" },
   td:           { padding:"11px 16px", color:"var(--t-text-90)", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.05)" },
@@ -3072,7 +3073,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                               {showPrices && (
                                 <td style={{ ...S.td, fontWeight:600, color:"#34d399", whiteSpace:"nowrap" }}>
                                   {isEditing ? (
-                                    <input type="number" value={p.price} onChange={e=>updateProductField(p.supplierId,p.ref,"price",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:80 }} />
+                                    <input type="number" value={p.price||""} onChange={e=>updateProductField(p.supplierId,p.ref,"price",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:80 }} placeholder="0.00" />
                                   ) : (p.price>0?fmt(p.price):"—")}
                                 </td>
                               )}
@@ -3526,11 +3527,11 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
             <input value={p.productType||""} onChange={e => updateProduct(i,"productType",e.target.value)} style={{...S.input,fontSize:11,color:"#f59e0b"}} placeholder="Ex: Aspirateur" disabled={p.rupture} />
             <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" disabled={p.rupture} />
             <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" disabled={p.rupture} />
-            <input type="number" value={p.price} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
+            <input type="number" value={p.price||""} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#818cf8"}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
-            <input type="number" value={p.weeklyVolume} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" disabled={p.rupture} />
-            <input type="number" value={p.stockMin} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" disabled={p.rupture} />
+            <input type="number" value={p.weeklyVolume||""} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" disabled={p.rupture} />
+            <input type="number" value={p.stockMin??""} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" disabled={p.rupture} />
             <button onClick={() => updateProduct(i,"rupture", !p.rupture)} style={{
               padding:"5px 8px", borderRadius:14, border:"1.5px solid", cursor:"pointer", fontSize:10, fontWeight:700,
               background: p.rupture ? "rgba(239,68,68,0.15)" : "rgba(52,211,153,0.12)",
