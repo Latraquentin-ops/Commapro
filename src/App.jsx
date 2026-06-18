@@ -3385,10 +3385,10 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
     setForm({ id: "s"+Date.now(), name: "", commercial: "", email: "", products: [] });
     setEditing("new");
   }
-  function openEdit(s) { setForm(JSON.parse(JSON.stringify(s))); setEditing(s.id); }
+  function openEdit(s) { setForm(JSON.parse(JSON.stringify(s))); setEditing(s.id); setSelectedRefs([]); }
   function save() {
     setSuppliers(prev => { const idx = prev.findIndex(s => s.id===form.id); if (idx>=0){const n=[...prev];n[idx]=form;return n;} return [...prev,form]; });
-    setEditing(null); setForm(null);
+    setEditing(null); setForm(null); setSelectedRefs([]);
   }
   function del(id) { setSuppliers(prev => prev.filter(s => s.id!==id)); }
   function addProduct() { setForm(f => ({...f, products: [...f.products, { ref:"", ean:"", label:"", price:0, family:"", subFamily:"", weeklyVolume:0, stockMin:0 }]})); }
@@ -3400,6 +3400,19 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
     });
   }
   function removeProduct(i) { setForm(f => ({...f, products: f.products.filter((_,j)=>j!==i)})); }
+
+  // Sélection multiple pour suppression groupée
+  const [selectedRefs, setSelectedRefs] = useState([]);
+  function toggleSelect(ref) {
+    setSelectedRefs(prev => prev.includes(ref) ? prev.filter(r=>r!==ref) : [...prev, ref]);
+  }
+  function toggleSelectAll() {
+    setSelectedRefs(prev => prev.length === form.products.length ? [] : form.products.map(p=>p.ref));
+  }
+  function removeSelected() {
+    setForm(f => ({ ...f, products: f.products.filter(p => !selectedRefs.includes(p.ref)) }));
+    setSelectedRefs([]);
+  }
 
   if (editing) return (
     <div>
@@ -3442,17 +3455,25 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:12 }}>
           💡 Colonnes attendues : <b>Référence, EAN, Désignation, Famille, Sous-famille, Prix HT, Ventes/sem</b> — télécharge le modèle pour être sûr du format.
         </div>
+        {selectedRefs.length > 0 && (
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", marginBottom:10, background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:12 }}>
+            <span style={{ fontSize:12, fontWeight:600, color:"var(--t-text-85)" }}>{selectedRefs.length} produit(s) sélectionné(s)</span>
+            <ConfirmDeleteButton onConfirm={removeSelected} label={`🗑 Supprimer la sélection (${selectedRefs.length})`} small />
+          </div>
+        )}
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
-        <div style={{ minWidth: 1080 }}>
+        <div style={{ minWidth: 1320 }}>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 280px 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 6 }}>
+            <input type="checkbox" checked={selectedRefs.length===form.products.length && form.products.length>0} onChange={toggleSelectAll} style={{ width:16, height:16, cursor:"pointer" }} />
             {["Réf.","Code EAN","Désignation","Type produit","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min","Statut",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "90px 120px 1fr 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 280px 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
+            <input type="checkbox" checked={selectedRefs.includes(p.ref)} onChange={()=>toggleSelect(p.ref)} style={{ width:16, height:16, cursor:"pointer" }} />
             <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." disabled={p.rupture} />
             <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" disabled={p.rupture} />
             <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" disabled={p.rupture} />
