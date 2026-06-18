@@ -2872,12 +2872,19 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
   const [search,         setSearch]         = useState("");
   const [expandedGroup,  setExpandedGroup]  = useState(null);
   const [groupBy,        setGroupBy]        = useState("subfamily"); // "subfamily" | "family" | "supplier"
+  const [editingRef,     setEditingRef]     = useState(null); // ref du produit en édition inline
   const showPrices = session.canSeePrices;
   const isAdmin = session.role === "admin";
 
   function toggleRupture(supplierId, ref) {
     setSuppliers(prev => prev.map(s => s.id!==supplierId ? s : {
       ...s, products: s.products.map(p => p.ref===ref ? {...p, rupture: !p.rupture} : p)
+    }));
+  }
+
+  function updateProductField(supplierId, ref, field, value) {
+    setSuppliers(prev => prev.map(s => s.id!==supplierId ? s : {
+      ...s, products: s.products.map(p => p.ref===ref ? {...p, [field]: value} : p)
     }));
   }
 
@@ -3038,8 +3045,8 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr style={{ background:"var(--t-thead-bg)" }}>
-                          {["Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min",isAdmin?"Statut":null].filter(Boolean).map(h => (
-                            <th key={h} style={{ padding:"8px 12px", textAlign:"left", fontSize:10, color:"var(--t-text-55)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", whiteSpace:"nowrap" }}>{h}</th>
+                          {["Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min","Réservé",isAdmin?"Statut":null,isAdmin?"":null].filter(x=>x!==null).map((h,i) => (
+                            <th key={h+i} style={{ padding:"8px 12px", textAlign:"left", fontSize:10, color:"var(--t-text-55)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -3047,18 +3054,46 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                         {prods.map((p,i) => {
                           const stockMin = p.stockMin ?? calcStockMin(p.weeklyVolume);
                           const isAlert = p.dispo!=null && p.dispo<=stockMin && stockMin>0;
+                          const isEditing = editingRef === p.ref+p.supplierId;
                           return (
-                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:p.rupture?"rgba(120,120,120,0.06)":isAlert?"rgba(239,68,68,0.04)":"transparent", opacity:p.rupture?0.5:1 }}>
+                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:isEditing?"rgba(99,102,241,0.06)":p.rupture?"rgba(120,120,120,0.06)":isAlert?"rgba(239,68,68,0.04)":"transparent", opacity:p.rupture&&!isEditing?0.5:1 }}>
                               <td style={{ ...S.td, fontFamily:"monospace", fontWeight:600, color:"var(--t-text-85)", fontSize:11 }}>{p.ref}</td>
                               <td style={{ ...S.td, fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)" }}>{p.ean||"—"}</td>
-                              <td style={{ ...S.td, maxWidth:200, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</td>
+                              <td style={{ ...S.td, maxWidth:200 }}>
+                                {isEditing ? (
+                                  <input value={p.label} onChange={e=>updateProductField(p.supplierId,p.ref,"label",e.target.value)} style={{ ...S.input, fontSize:11, padding:"4px 8px" }} />
+                                ) : (
+                                  <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", display:"block" }}>{p.label}</span>
+                                )}
+                              </td>
                               <td style={{ ...S.td, fontSize:11 }}><span style={{ background:"var(--t-surface)", padding:"2px 7px", borderRadius:8, border:"1px solid var(--t-border-subtle)", fontSize:10, color:"var(--t-text-55)", whiteSpace:"nowrap" }}>{p.supplierName}</span></td>
                               <td style={{ ...S.td, fontSize:11, color:"var(--t-text-55)" }}>{p.family||"—"}</td>
                               <td style={{ ...S.td, fontSize:11 }}>{p.subFamily ? <span style={{ background:"var(--t-tag-bg)", color:"var(--t-tag-color)", padding:"1px 7px", borderRadius:8, border:"1px solid var(--t-tag-border)", fontSize:10 }}>{p.subFamily}</span> : "—"}</td>
-                              {showPrices && <td style={{ ...S.td, fontWeight:600, color:"#34d399", whiteSpace:"nowrap" }}>{p.price>0?fmt(p.price):"—"}</td>}
-                              {showPrices && <td style={{ ...S.td, fontWeight:600, color:"#818cf8", whiteSpace:"nowrap" }}>{p.prixVente?fmt(p.prixVente):"—"}</td>}
+                              {showPrices && (
+                                <td style={{ ...S.td, fontWeight:600, color:"#34d399", whiteSpace:"nowrap" }}>
+                                  {isEditing ? (
+                                    <input type="number" value={p.price} onChange={e=>updateProductField(p.supplierId,p.ref,"price",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:80 }} />
+                                  ) : (p.price>0?fmt(p.price):"—")}
+                                </td>
+                              )}
+                              {showPrices && (
+                                <td style={{ ...S.td, fontWeight:600, color:"#818cf8", whiteSpace:"nowrap" }}>
+                                  {isEditing ? (
+                                    <input type="number" value={p.prixVente||""} onChange={e=>updateProductField(p.supplierId,p.ref,"prixVente",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:80 }} />
+                                  ) : (p.prixVente?fmt(p.prixVente):"—")}
+                                </td>
+                              )}
                               <td style={{ ...S.td, fontWeight:700, color:p.dispo==null?"var(--t-text-30)":isAlert?"#ef4444":p.dispo===0?"#ef4444":"#34d399", whiteSpace:"nowrap" }}>{p.dispo!=null?p.dispo:"—"}</td>
-                              <td style={{ ...S.td, fontWeight:600, color:"#f59e0b", whiteSpace:"nowrap" }}>{stockMin>0?stockMin:"—"}</td>
+                              <td style={{ ...S.td, fontWeight:600, color:"#f59e0b", whiteSpace:"nowrap" }}>
+                                {isEditing ? (
+                                  <input type="number" value={p.stockMin??""} onChange={e=>updateProductField(p.supplierId,p.ref,"stockMin",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:70 }} placeholder="Auto" />
+                                ) : (stockMin>0?stockMin:"—")}
+                              </td>
+                              <td style={{ ...S.td, fontWeight:700, color:p.reserved>0?"#f59e0b":"var(--t-text-30)", whiteSpace:"nowrap" }}>
+                                {isEditing ? (
+                                  <input type="number" value={p.reserved||""} onChange={e=>updateProductField(p.supplierId,p.ref,"reserved",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:70, color:"#f59e0b" }} placeholder="0" />
+                                ) : (p.reserved>0 ? `🔒 ${p.reserved}` : "—")}
+                              </td>
                               {isAdmin && (
                                 <td style={S.td}>
                                   <button onClick={() => toggleRupture(p.supplierId, p.ref)} style={{
@@ -3068,6 +3103,17 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                                     color: p.rupture ? "#ef4444" : "#34d399",
                                   }}>
                                     {p.rupture ? "🔴 Rupture" : "🟢 Actif"}
+                                  </button>
+                                </td>
+                              )}
+                              {isAdmin && (
+                                <td style={S.td}>
+                                  <button onClick={() => setEditingRef(isEditing ? null : p.ref+p.supplierId)} style={{
+                                    padding:"4px 10px", borderRadius:12, border:"1px solid var(--t-border-subtle)", cursor:"pointer", fontSize:10, fontWeight:600, whiteSpace:"nowrap",
+                                    background: isEditing ? "rgba(99,102,241,0.7)" : "var(--t-surface)",
+                                    color: isEditing ? "white" : "#818cf8",
+                                  }}>
+                                    {isEditing ? "✓ Terminer" : "✏️ Modifier"}
                                   </button>
                                 </td>
                               )}
