@@ -632,6 +632,7 @@ export default function App() {
   const [locations, setLocations] = useState(INIT_LOCATIONS);
   const [stockImports, setStockImports] = useState([]);  // historique des imports d'état de stock
   const [proposals, setProposals] = useState([]);  // propositions commerciales fournisseurs
+  const [replenishments, setReplenishments] = useState([]);  // archive des remplissages rayon
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
   const [dark,      setDark]      = useState(true);
@@ -652,6 +653,7 @@ export default function App() {
         if (cloud.locations) setLocations(cloud.locations);
         if (cloud.stockImports) setStockImports(cloud.stockImports);
         if (cloud.proposals) setProposals(cloud.proposals);
+        if (cloud.replenishments) setReplenishments(cloud.replenishments);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
         await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
@@ -663,8 +665,8 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations, stockImports, proposals });
-  }, [users, suppliers, orders, locations, stockImports, proposals, loaded]);
+    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments });
+  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, loaded]);
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -678,6 +680,7 @@ export default function App() {
         if (cloud.locations) setLocations(cloud.locations);
         if (cloud.stockImports) setStockImports(cloud.stockImports);
         if (cloud.proposals) setProposals(cloud.proposals);
+        if (cloud.replenishments) setReplenishments(cloud.replenishments);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -952,7 +955,7 @@ export default function App() {
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
-            {page === "remplissage" && <FillSheetPage suppliers={suppliers} session={session} />}
+            {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
             </div>
@@ -2385,13 +2388,16 @@ function generateFillSheetPDF(lines, dateStr, createdBy) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // REMPLISSAGE — Document de réappro rayon (dépôt → magasin) pour le manutentionnaire
 // ═══════════════════════════════════════════════════════════════════════════════
-function FillSheetPage({ suppliers, session }) {
+function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setReplenishments }) {
   const [fillDate, setFillDate]   = useState(new Date(Date.now() + 86400000).toISOString().slice(0,10)); // demain par défaut
   const [lines, setLines]         = useState([]);
   const [search, setSearch]       = useState("");
   const [filterType, setFilterType] = useState("all");
   const [expandedRef, setExpandedRef] = useState(null);
   const [inputQty, setInputQty]   = useState("");
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProd, setNewProd] = useState({ supplierId:"", ref:"", label:"", productType:"" });
+  const [showArchive, setShowArchive] = useState(false);
 
   // Catalogue global tous fournisseurs confondus
   const allProducts = suppliers.flatMap(s => s.products.filter(p=>!p.rupture).map(p => ({ ...p, supplierName: s.name })));
@@ -2411,6 +2417,27 @@ function FillSheetPage({ suppliers, session }) {
     groups[g].push(p);
   });
   const groupEntries = Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0]));
+
+  // Ajout rapide d'un produit absent du catalogue → enregistré chez le fournisseur choisi
+  function saveNewProduct() {
+    if (!newProd.supplierId || !newProd.ref || !newProd.label) return;
+    const ref = newProd.ref.trim();
+    const targetSupplier = suppliers.find(s => s.id === newProd.supplierId);
+    const existing = targetSupplier?.products.find(p => p.ref.toLowerCase() === ref.toLowerCase());
+    if (existing) {
+      setLines(prev => {
+        const ex = prev.find(l => l.ref === existing.ref);
+        if (ex) return prev;
+        return [...prev, { ref: existing.ref, label: existing.label, qty: 1, productType: existing.productType || "Autres" }];
+      });
+    } else {
+      const p = { ref, label: newProd.label.trim(), productType: newProd.productType.trim(), price: 0, weeklyVolume: 0 };
+      setSuppliers(prev => prev.map(s => s.id===newProd.supplierId ? { ...s, products: [...s.products, p] } : s));
+      setLines(prev => [...prev, { ref: p.ref, label: p.label, qty: 1, productType: p.productType || "Autres" }]);
+    }
+    setNewProd({ supplierId:"", ref:"", label:"", productType:"" });
+    setShowAddProduct(false);
+  }
 
   function handleAddOrExpand(p) {
     if (expandedRef === p.ref) { setExpandedRef(null); return; }
@@ -2438,12 +2465,44 @@ function FillSheetPage({ suppliers, session }) {
   function generate() {
     if (lines.length === 0) return;
     generateFillSheetPDF(lines, fillDate, session.name);
+    setReplenishments(prev => [...prev, { id:"fill_"+Date.now(), date: fillDate, lines, createdBy: session.name, createdAt: new Date().toISOString() }]);
+  }
+
+  function reprint(r) {
+    generateFillSheetPDF(r.lines, r.date, r.createdBy);
   }
 
   return (
     <div>
-      <h1 style={{ margin:"0 0 6px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Remplissage rayon</h1>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6, flexWrap:"wrap", gap:10 }}>
+        <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Remplissage rayon</h1>
+        <button onClick={()=>setShowArchive(v=>!v)} style={{ ...S.btnGhost, fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}>
+          {showArchive ? "✕ Fermer l'archive" : `🗄️ Archive (${replenishments.length})`}
+        </button>
+      </div>
       <div style={{ fontSize:13, color:"var(--t-text-40)", marginBottom:20 }}>Prépare la liste de réapprovisionnement pour ton manutentionnaire</div>
+
+      {/* Archive des remplissages précédents */}
+      {showArchive && (
+        <div style={{ ...S.card, marginBottom:16 }}>
+          <h2 style={{ margin:"0 0 14px 0", fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Historique des remplissages</h2>
+          {replenishments.length === 0 ? (
+            <div style={{ textAlign:"center", color:"var(--t-text-30)", fontSize:13, padding:"16px 0" }}>Aucun remplissage archivé pour l'instant</div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {replenishments.slice().sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).map(r => (
+                <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:"var(--t-surface)", borderRadius:12, border:"1px solid var(--t-border-subtle)", flexWrap:"wrap", gap:8 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>{fmtDate(r.date)}</div>
+                    <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{r.lines.length} référence(s) · {r.lines.reduce((s,l)=>s+l.qty,0)} article(s) · par {r.createdBy}</div>
+                  </div>
+                  <button onClick={()=>reprint(r)} style={{ ...S.btnSecondary, fontSize:12, padding:"6px 14px" }}>🖨️ Réimprimer</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Date de remplissage */}
       <div style={{ ...S.card, marginBottom:16 }}>
@@ -2456,7 +2515,37 @@ function FillSheetPage({ suppliers, session }) {
         {/* Colonne gauche : catalogue défilant avec filtres */}
         <div style={{ ...S.card, padding:0, overflow:"hidden" }}>
           <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid var(--t-border-subtle)", position:"sticky", top:0, background:"var(--t-card-bg)", zIndex:10 }}>
-            <h2 style={{ margin:"0 0 10px 0", fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>Catalogue — tous fournisseurs</h2>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+              <h2 style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>Catalogue — tous fournisseurs</h2>
+              <button onClick={()=>setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"4px 8px", color:"#818cf8" }}>+ Nouveau produit</button>
+            </div>
+
+            {/* Formulaire ajout rapide d'un produit absent du catalogue */}
+            {showAddProduct && (
+              <div style={{ padding:"12px", borderRadius:12, background:"rgba(99,102,241,0.06)", border:"1px solid rgba(99,102,241,0.2)", marginBottom:10 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-55)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit (absent du catalogue)</div>
+                <div style={{ marginBottom:8 }}>
+                  <label style={S.label}>Fournisseur *</label>
+                  <select value={newProd.supplierId} onChange={e=>setNewProd(p=>({...p,supplierId:e.target.value}))} style={{ ...S.input, background:"var(--t-surface)" }}>
+                    <option value="">— Choisir —</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+                  <div><label style={S.label}>Référence *</label><input value={newProd.ref} onChange={e=>setNewProd(p=>({...p,ref:e.target.value}))} style={S.input} placeholder="Ex: TAB906" /></div>
+                  <div><label style={S.label}>Type de produit</label><input value={newProd.productType} onChange={e=>setNewProd(p=>({...p,productType:e.target.value}))} style={S.input} placeholder="Ex: Aspirateur" /></div>
+                </div>
+                <div style={{ marginBottom:10 }}>
+                  <label style={S.label}>Désignation *</label>
+                  <input value={newProd.label} onChange={e=>setNewProd(p=>({...p,label:e.target.value}))} style={S.input} placeholder="Nom du produit" />
+                </div>
+                <div style={{ display:"flex", gap:8 }}>
+                  <button onClick={saveNewProduct} disabled={!newProd.supplierId||!newProd.ref||!newProd.label} style={{ ...S.btnPrimary, flex:1, fontSize:12, opacity:(newProd.supplierId&&newProd.ref&&newProd.label)?1:0.45 }}>✓ Ajouter à la liste</button>
+                  <button onClick={()=>{setShowAddProduct(false);setNewProd({supplierId:"",ref:"",label:"",productType:""});}} style={S.btnGhost}>Annuler</button>
+                </div>
+              </div>
+            )}
+
             <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", borderRadius:20, padding:"7px 12px", marginBottom:10 }}>
               <Search size={14} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un produit…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
