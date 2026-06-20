@@ -2294,252 +2294,150 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PDF — Fiche produit porte-étiquette format Conforama (3 par page A4 exactement)
-// Dimensions mesurées sur le modèle Canva fourni :
-//   Page A4 : 210×297mm, marges 10mm → zone utile 190×277mm
-//   3 étiquettes : chacune 190mm × 89mm, gap 4mm entre elles
-//   Partie rouge : 84.6mm (44.5%) | Partie blanche : 105.4mm (55.5%)
+// PDF — Fiche produit porte-étiquette (injection de texte dans les SVG templates)
+// Les SVG templates doivent être dans /public/ du repo GitHub :
+//   /public/template-conforama.svg  (SVG-3, format Conforama)
+//   /public/template-topconfo.svg   (SVG-2, format Top Confo)
 // ═══════════════════════════════════════════════════════════════════════════════
-function generateProductSheetPDF(products) {
-  // Icônes SVG inline — détection automatique selon le contenu
-  function getIconSVG(text) {
-    const t = (text||"").toLowerCase();
-    // Puissance / Watts
-    if (/\d+\s*w(\s|$)/.test(t) || t.includes("watt") || t.includes("puissance"))
-      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>`;
-    // Dimensions / cm / mm
-    if (/\d+\s*[×x]\s*\d+/.test(t) || t.includes(" cm") || t.includes(" mm") || t.includes("dimension"))
-      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`;
-    // Litres / Capacité
-    if (t.includes("litre") || t.includes(" l)") || t.includes("capacit") || t.includes("volume"))
-      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9H4l2 11h12L20 9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>`;
-    // Température / °C
-    if (t.includes("°") || t.includes("temp"))
-      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>`;
-    // Vitesse / RPM
-    if (t.includes("tr/min") || t.includes("rpm") || t.includes("vitesse"))
-      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13,2 13,8 16,8"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
-    // Poids / kg
-    if (t.includes(" kg") || t.includes("poids"))
-      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6.5 21h11a2 2 0 0 0 2-1.5L21 15H3l1.5 4.5A2 2 0 0 0 6.5 21z"/></svg>`;
-    // Défaut : info
-    return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+async function generateProductSheetPDF(products, templateType = "conforama") {
+  const templateUrl = templateType === "topconfo"
+    ? "/template-topconfo.svg"
+    : "/template-conforama.svg";
+
+  let svgContent;
+  try {
+    const res = await fetch(templateUrl);
+    if (!res.ok) throw new Error(`Template non trouvé : ${templateUrl}`);
+    svgContent = await res.text();
+  } catch (err) {
+    alert(`Impossible de charger le template SVG.\n\nAssurez-vous que les fichiers template sont bien uploadés dans /public/ du repo GitHub :\n- template-conforama.svg\n- template-topconfo.svg\n\nErreur : ${err.message}`);
+    return;
   }
 
-  function makeSheet(p) {
-    const specs = [p.spec1||"INFO", p.spec2||"INFO", p.spec3||"INFO"];
-    const qrData = p.ficheUrl || ("Réf: " + p.ref);
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}&color=000000&bgcolor=ffffff&margin=4`;
+  // ── Coordonnées des zones de texte (mesurées sur les SVG fournis) ──────────
+  // Chaque template a 3 affiches. On injecte les données produit pour chacune.
+  const ZONES = {
+    conforama: {
+      // 3 affiches empilées, décalage Y de ~187 entre chaque
+      yOffsets: [0, 187.2, 374.6],
+      caract:   { x: 162, baseY: 39,  w: 220, h: 32,  fontSize: 7.5 },
+      hauteur:  { x: 163, baseY: 98,  w: 130, fontSize: 7 },
+      largeur:  { x: 163, baseY: 131, w: 130, fontSize: 7 },
+      profond:  { x: 163, baseY: 164, w: 130, fontSize: 7 },
+      coloris:  { x: 163, baseY: 176, w: 130, fontSize: 7 },
+      qr:       { x: 430, baseY: 40,  size: 140 },
+    },
+    topconfo: {
+      // 2 colonnes : gauche (2 affiches, y+190) + droite (1 affiche, x+302)
+      yOffsets: [0, 190],
+      xRight: 301.5, yRight: 10.8,
+      caract:  { x: 130, baseY: 183, w: 170, h: 20,  fontSize: 6.5 },
+      hauteur: { x: 163, baseY: 222, w: 100, fontSize: 6.5 },
+      largeur: { x: 163, baseY: 246, w: 100, fontSize: 6.5 },
+      profond: { x: 163, baseY: 260, w: 100, fontSize: 6.5 },
+      coloris: { x: 163, baseY: 274, w: 100, fontSize: 6.5 },
+      qr:      { x: 248, baseY: 245, size: 54 },
+    },
+  };
+
+  const Z = ZONES[templateType] || ZONES.conforama;
+  const isTopConfo = templateType === "topconfo";
+
+  // ── Génération des éléments SVG à injecter ────────────────────────────────
+  function textEl(x, y, text, fontSize, fontWeight = "bold", fill = "#1a1a1a") {
+    if (!text) return "";
+    // Découpage du texte si trop long (wrap simple)
+    const maxChars = Math.floor(200 / fontSize);
+    const lines = [];
+    let remaining = text;
+    while (remaining.length > maxChars && lines.length < 3) {
+      const breakAt = remaining.lastIndexOf(" ", maxChars) > 0 ? remaining.lastIndexOf(" ", maxChars) : maxChars;
+      lines.push(remaining.slice(0, breakAt));
+      remaining = remaining.slice(breakAt).trim();
+    }
+    if (remaining) lines.push(remaining);
+    return lines.map((line, i) =>
+      `<text x="${x}" y="${y + i * (fontSize + 1.5)}" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}" clip-path="">${line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>`
+    ).join("\n");
+  }
+
+  function qrEl(x, y, size, data) {
+    if (!data) return "";
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=000000&bgcolor=ffffff&margin=2`;
+    return `<image x="${x}" y="${y}" width="${size}" height="${size}" href="${qrUrl}" />`;
+  }
+
+  function buildOverlay(p, xBase, yBase) {
+    const Z2 = Z;
     return `
-    <div class="label">
-      <!-- Partie gauche : rouge Conforama -->
-      <div class="left">
-        <div class="brand-bar">
-          <span class="brand-text">Conforama</span>
-        </div>
-        <div class="content-area">
-          <div class="specs">
-            ${specs.map(s => `
-              <div class="spec-pill">
-                <div class="icon-wrap">${getIconSVG(s)}</div>
-                <span class="spec-label">${s}</span>
-              </div>`).join("")}
-          </div>
-          <div class="qr-block">
-            <img class="qr-img" src="${qrUrl}" alt="QR" />
-            <div class="qr-caption"><strong>Fiche technique</strong></div>
-          </div>
-        </div>
-      </div>
-      <!-- Partie droite : blanche, référence + zone étiquette prix -->
-      <div class="right">
-        <div class="ref-zone">${p.ref}</div>
-        <div class="price-zone">
-          <span class="price-text">ÉTIQUETTE<br>PRIX</span>
-        </div>
-      </div>
-    </div>`;
+      ${textEl(xBase + Z2.caract.x - 125, yBase + Z2.caract.baseY, p.caracteristiques, Z2.caract.fontSize)}
+      ${textEl(xBase + Z2.hauteur.x - 125, yBase + Z2.hauteur.baseY, p.hauteur ? p.hauteur : "", Z2.hauteur.fontSize)}
+      ${textEl(xBase + Z2.largeur.x - 125, yBase + Z2.largeur.baseY, p.largeur ? p.largeur : "", Z2.largeur.fontSize)}
+      ${textEl(xBase + Z2.profond.x - 125, yBase + Z2.profond.baseY, p.profondeur ? p.profondeur : "", Z2.profond.fontSize)}
+      ${textEl(xBase + Z2.coloris.x - 125, yBase + Z2.coloris.baseY, p.coloris || "", Z2.coloris.fontSize)}
+      ${p.ficheUrl ? qrEl(xBase + Z2.qr.x - 125, yBase + Z2.qr.baseY, Z2.qr.size, p.ficheUrl) : ""}
+    `;
   }
 
+  // Décider comment répartir les produits sur les pages
+  // Chaque page = 1 SVG template = 3 affiches
+  const pages = [];
+  for (let i = 0; i < products.length; i += 3) {
+    pages.push(products.slice(i, i + 3));
+  }
+
+  // Créer un SVG modifié par page
+  const svgPages = pages.map(pageProducts => {
+    let overlay = "";
+    if (isTopConfo) {
+      // 2 premières affiches : colonne gauche
+      pageProducts.slice(0, 2).forEach((p, i) => {
+        overlay += buildOverlay(p, 0, Z.yOffsets[i] || 0);
+      });
+      // 3ème affiche : colonne droite
+      if (pageProducts[2]) {
+        overlay += buildOverlay(pageProducts[2], Z.xRight, Z.yRight);
+      }
+    } else {
+      // 3 affiches empilées
+      pageProducts.forEach((p, i) => {
+        overlay += buildOverlay(p, 0, Z.yOffsets[i] || 0);
+      });
+    }
+    // Injecter le overlay juste avant </svg>
+    return svgContent.replace("</svg>", `<g id="commapro-overlay">\n${overlay}\n</g>\n</svg>`);
+  });
+
+  // Ouvrir dans une fenêtre d'impression
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Fiches Conforama</title>
+<title>Fiches produit</title>
 <style>
-  /* ── Réinitialisation & page ─────────────────────────────────────────── */
-  * { box-sizing:border-box; margin:0; padding:0; }
-  html, body { width:210mm; background:#fff; font-family:'Arial',Helvetica,sans-serif; }
-
-  @page {
-    size: A4 portrait;
-    margin: 10mm;
-  }
-  @media print {
-    html, body { width:210mm; }
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* ── Conteneur de la page ────────────────────────────────────────────── */
-  .page {
-    width: 190mm;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4mm;
-  }
-
-  /* ── Étiquette complète ──────────────────────────────────────────────── */
-  .label {
-    width: 190mm;
-    height: 89mm;
-    display: flex;
-    border: 2.5pt solid #E30613;
-    border-radius: 5mm;
-    overflow: hidden;
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  /* ── Partie gauche rouge ─────────────────────────────────────────────── */
-  .left {
-    width: 84.6mm;           /* 44.5% de 190mm */
-    background: #E30613;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-  }
-
-  /* Bandeau titre Conforama */
-  .brand-bar {
-    background: #E30613;
-    padding: 4mm 5mm 2mm;
-    border-bottom: 1pt solid rgba(255,255,255,0.25);
-  }
-  .brand-text {
-    font-family: 'Arial Black','Arial Bold',Arial,sans-serif;
-    font-size: 22pt;
-    font-weight: 900;
-    font-style: italic;
-    color: white;
-    letter-spacing: -0.5pt;
-    line-height: 1;
-  }
-
-  /* Zone specs + QR */
-  .content-area {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 3mm 4mm;
-    gap: 3mm;
-  }
-  .specs {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2.5mm;
-  }
-  .spec-pill {
-    background: rgba(255,255,255,0.18);
-    border-radius: 3mm;
-    padding: 2mm 3mm;
-    display: flex;
-    align-items: center;
-    gap: 3mm;
-    min-height: 16mm;
-  }
-  .icon-wrap {
-    width: 9mm;
-    height: 9mm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .icon-wrap svg { width:9mm; height:9mm; }
-  .spec-label {
-    font-size: 10pt;
-    font-weight: 700;
-    color: white;
-    line-height: 1.2;
-  }
-
-  /* QR code */
-  .qr-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.5mm;
-    flex-shrink: 0;
-  }
-  .qr-img {
-    width: 22mm;
-    height: 22mm;
-    border: 2pt solid white;
-    border-radius: 1.5mm;
-    display: block;
-  }
-  .qr-caption {
-    font-size: 6.5pt;
-    color: white;
-    text-align: center;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-
-  /* ── Partie droite blanche ───────────────────────────────────────────── */
-  .right {
-    flex: 1;                  /* ~105.4mm */
-    border-left: 2.5pt solid #E30613;
-    padding: 5mm 6mm;
-    display: flex;
-    flex-direction: column;
-    gap: 4mm;
-  }
-  .ref-zone {
-    font-size: 14pt;
-    font-weight: 700;
-    color: #333;
-    letter-spacing: 0.5pt;
-  }
-  .price-zone {
-    flex: 1;
-    border: 2pt dashed #E30613;
-    border-radius: 3mm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .price-text {
-    font-size: 10pt;
-    font-weight: 700;
-    color: #E30613;
-    text-align: center;
-    letter-spacing: 1pt;
-    line-height: 1.8;
-  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; }
+  .svg-page { width:297mm; height:210mm; page-break-after:always; display:block; }
+  .svg-page:last-child { page-break-after:auto; }
+  .svg-page svg { width:297mm; height:210mm; }
+  @page { size:A4 landscape; margin:0; }
+  @media print { body { margin:0; } }
 </style>
 </head>
 <body>
-<div class="page">
-  ${products.map(p => makeSheet(p)).join("\n")}
-</div>
+${svgPages.map(svg => `<div class="svg-page">${svg}</div>`).join("\n")}
 <script>
-  // Attendre que les QR codes soient chargés avant d'imprimer
-  window.onload = function() {
-    const imgs = document.querySelectorAll('.qr-img');
-    let loaded = 0;
-    const total = imgs.length;
-    if (total === 0) { setTimeout(()=>window.print(), 300); return; }
+  // Attendre les QR codes puis imprimer
+  const imgs = document.querySelectorAll('image[href*="qrserver"]');
+  if (imgs.length === 0) { setTimeout(() => window.print(), 500); }
+  else {
+    let n = 0;
     imgs.forEach(img => {
-      if (img.complete) { loaded++; if(loaded===total) setTimeout(()=>window.print(),300); }
-      else {
-        img.onload = img.onerror = () => { loaded++; if(loaded===total) setTimeout(()=>window.print(),300); };
-      }
+      const i = new Image();
+      i.onload = i.onerror = () => { n++; if (n === imgs.length) setTimeout(() => window.print(), 300); };
+      i.src = img.getAttribute('href');
     });
-  };
+  }
 </script>
 </body>
 </html>`;
@@ -2548,7 +2446,6 @@ function generateProductSheetPDF(products) {
   win.document.write(html);
   win.document.close();
 }
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // PDF — Document de remplissage de rayon (dépôt → magasin)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3211,9 +3108,14 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
           {selectedForSheet.length > 0 && (
-            <button onClick={() => { generateProductSheetPDF(selectedForSheet); }} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#E30613,#ff3344)" }}>
-              🖨️ Générer {selectedForSheet.length} fiche{selectedForSheet.length>1?"s":""}
-            </button>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={() => generateProductSheetPDF(selectedForSheet, "conforama")} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#E30613,#ff3344)" }}>
+                🖨️ Conforama ({selectedForSheet.length})
+              </button>
+              <button onClick={() => generateProductSheetPDF(selectedForSheet, "topconfo")} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#1a3a6b,#2d5db5)" }}>
+                🖨️ Top Confo ({selectedForSheet.length})
+              </button>
+            </div>
           )}
           {selectedForSheet.length > 0 && (
             <button onClick={() => setSelectedForSheet([])} style={{ ...S.btnGhost, fontSize:12 }}>✕ Désélectionner</button>
@@ -3801,17 +3703,17 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           </div>
         )}
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
-        <div style={{ minWidth: 1700 }}>
+        <div style={{ minWidth: 2000 }}>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 200px 100px 100px 100px 80px 80px 70px 60px 60px 140px 110px 110px 110px 80px auto", gap: 6, marginBottom: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 200px 100px 100px 100px 80px 80px 70px 60px 60px 140px 90px 90px 90px 80px 90px 80px auto", gap: 6, marginBottom: 6 }}>
             <input type="checkbox" checked={selectedRefs.length===form.products.length && form.products.length>0} onChange={toggleSelectAll} style={{ width:16, height:16, cursor:"pointer" }} />
-            {["Réf.","Code EAN","Désignation","Type","Famille","S-famille","P.U. HT","Prix vente","Écotaxe","Ventes","Stk min","Caract. 1","Caract. 2","Caract. 3","URL fiche tech.","Statut",""].map(h => (
+            {["Réf.","Code EAN","Désignation","Type","Famille","S-famille","P.U. HT","Prix vente","Écotaxe","Ventes","Stk min","Caractéristiques","Hauteur","Largeur","Profondeur","Coloris","URL fiche tech.","Statut",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 200px 100px 100px 100px 80px 80px 70px 60px 60px 140px 110px 110px 110px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 200px 100px 100px 100px 80px 80px 70px 60px 60px 140px 90px 90px 90px 80px 90px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
             <input type="checkbox" checked={selectedRefs.includes(p.ref)} onChange={()=>toggleSelect(p.ref)} style={{ width:16, height:16, cursor:"pointer" }} />
             <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." disabled={p.rupture} />
             <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" disabled={p.rupture} />
@@ -3831,9 +3733,11 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
             <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.weeklyVolume||""} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" disabled={p.rupture} />
             <input type="number" value={p.stockMin??""} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" disabled={p.rupture} />
-            <input value={p.spec1||""} onChange={e => updateProduct(i,"spec1",e.target.value)} style={{...S.input,fontSize:10,color:"#e30613"}} placeholder="Ex: 2800 W" disabled={p.rupture} />
-            <input value={p.spec2||""} onChange={e => updateProduct(i,"spec2",e.target.value)} style={{...S.input,fontSize:10,color:"#e30613"}} placeholder="Ex: 48×75 cm" disabled={p.rupture} />
-            <input value={p.spec3||""} onChange={e => updateProduct(i,"spec3",e.target.value)} style={{...S.input,fontSize:10,color:"#e30613"}} placeholder="Ex: 100 LITRES" disabled={p.rupture} />
+            <input value={p.caracteristiques||""} onChange={e => updateProduct(i,"caracteristiques",e.target.value)} style={{...S.input,fontSize:10}} placeholder="Description libre…" disabled={p.rupture} />
+            <input value={p.hauteur||""} onChange={e => updateProduct(i,"hauteur",e.target.value)} style={{...S.input,fontSize:10}} placeholder="Ex: 45 cm" disabled={p.rupture} />
+            <input value={p.largeur||""} onChange={e => updateProduct(i,"largeur",e.target.value)} style={{...S.input,fontSize:10}} placeholder="Ex: 35 cm" disabled={p.rupture} />
+            <input value={p.profondeur||""} onChange={e => updateProduct(i,"profondeur",e.target.value)} style={{...S.input,fontSize:10}} placeholder="Ex: 30 cm" disabled={p.rupture} />
+            <input value={p.coloris||""} onChange={e => updateProduct(i,"coloris",e.target.value)} style={{...S.input,fontSize:10}} placeholder="Ex: Blanc" disabled={p.rupture} />
             <input value={p.ficheUrl||""} onChange={e => updateProduct(i,"ficheUrl",e.target.value)} style={{...S.input,fontSize:10}} placeholder="https://…" disabled={p.rupture} />
             <button onClick={() => updateProduct(i,"rupture", !p.rupture)} style={{
               padding:"5px 8px", borderRadius:14, border:"1.5px solid", cursor:"pointer", fontSize:10, fontWeight:700,
