@@ -125,6 +125,11 @@ const INIT_LOCATIONS = [
   { id: "l3", label: "Réserve annexe" },
 ];
 
+const INIT_FAMILIES = [
+  { id: "f1", label: "Electroménager", subFamilies: ["E41AS","E41SL","E31MO","E21LL","E11RF"] },
+  { id: "f2", label: "Petit électroménager", subFamilies: ["PE01","PE02"] },
+];
+
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
 const fmt = (n) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
@@ -631,6 +636,7 @@ export default function App() {
   const [suppliers, setSuppliers] = useState(INIT_SUPPLIERS);
   const [orders,    setOrders]    = useState(INIT_ORDERS);
   const [locations, setLocations] = useState(INIT_LOCATIONS);
+  const [families, setFamilies] = useState(INIT_FAMILIES);
   const [stockImports, setStockImports] = useState([]);  // historique des imports d'état de stock
   const [proposals, setProposals] = useState([]);  // propositions commerciales fournisseurs
   const [replenishments, setReplenishments] = useState([]);  // archive des remplissages rayon
@@ -655,9 +661,10 @@ export default function App() {
         if (cloud.stockImports) setStockImports(cloud.stockImports);
         if (cloud.proposals) setProposals(cloud.proposals);
         if (cloud.replenishments) setReplenishments(cloud.replenishments);
+        if (cloud.families) setFamilies(cloud.families);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
-        await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
+        await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS, families: INIT_FAMILIES });
       }
       setLoaded(true);
     })();
@@ -666,8 +673,8 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments });
-  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, loaded]);
+    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments, families });
+  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, families, loaded]);
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -682,6 +689,7 @@ export default function App() {
         if (cloud.stockImports) setStockImports(cloud.stockImports);
         if (cloud.proposals) setProposals(cloud.proposals);
         if (cloud.replenishments) setReplenishments(cloud.replenishments);
+        if (cloud.families) setFamilies(cloud.families);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -957,8 +965,8 @@ export default function App() {
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
-            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
-            {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
+            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} families={families} T={T} />}
+            {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} families={families} setFamilies={setFamilies} T={T} />}
             </div>
           </main>
         </div>
@@ -2286,6 +2294,262 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PDF — Fiche produit porte-étiquette format Conforama (3 par page A4 exactement)
+// Dimensions mesurées sur le modèle Canva fourni :
+//   Page A4 : 210×297mm, marges 10mm → zone utile 190×277mm
+//   3 étiquettes : chacune 190mm × 89mm, gap 4mm entre elles
+//   Partie rouge : 84.6mm (44.5%) | Partie blanche : 105.4mm (55.5%)
+// ═══════════════════════════════════════════════════════════════════════════════
+function generateProductSheetPDF(products) {
+  // Icônes SVG inline — détection automatique selon le contenu
+  function getIconSVG(text) {
+    const t = (text||"").toLowerCase();
+    // Puissance / Watts
+    if (/\d+\s*w(\s|$)/.test(t) || t.includes("watt") || t.includes("puissance"))
+      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>`;
+    // Dimensions / cm / mm
+    if (/\d+\s*[×x]\s*\d+/.test(t) || t.includes(" cm") || t.includes(" mm") || t.includes("dimension"))
+      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`;
+    // Litres / Capacité
+    if (t.includes("litre") || t.includes(" l)") || t.includes("capacit") || t.includes("volume"))
+      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9H4l2 11h12L20 9z"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>`;
+    // Température / °C
+    if (t.includes("°") || t.includes("temp"))
+      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>`;
+    // Vitesse / RPM
+    if (t.includes("tr/min") || t.includes("rpm") || t.includes("vitesse"))
+      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="13,2 13,8 16,8"/><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`;
+    // Poids / kg
+    if (t.includes(" kg") || t.includes("poids"))
+      return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6.5 21h11a2 2 0 0 0 2-1.5L21 15H3l1.5 4.5A2 2 0 0 0 6.5 21z"/></svg>`;
+    // Défaut : info
+    return `<svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`;
+  }
+
+  function makeSheet(p) {
+    const specs = [p.spec1||"INFO", p.spec2||"INFO", p.spec3||"INFO"];
+    const qrData = p.ficheUrl || ("Réf: " + p.ref);
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}&color=000000&bgcolor=ffffff&margin=4`;
+    return `
+    <div class="label">
+      <!-- Partie gauche : rouge Conforama -->
+      <div class="left">
+        <div class="brand-bar">
+          <span class="brand-text">Conforama</span>
+        </div>
+        <div class="content-area">
+          <div class="specs">
+            ${specs.map(s => `
+              <div class="spec-pill">
+                <div class="icon-wrap">${getIconSVG(s)}</div>
+                <span class="spec-label">${s}</span>
+              </div>`).join("")}
+          </div>
+          <div class="qr-block">
+            <img class="qr-img" src="${qrUrl}" alt="QR" />
+            <div class="qr-caption"><strong>Fiche technique</strong></div>
+          </div>
+        </div>
+      </div>
+      <!-- Partie droite : blanche, référence + zone étiquette prix -->
+      <div class="right">
+        <div class="ref-zone">${p.ref}</div>
+        <div class="price-zone">
+          <span class="price-text">ÉTIQUETTE<br>PRIX</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Fiches Conforama</title>
+<style>
+  /* ── Réinitialisation & page ─────────────────────────────────────────── */
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:210mm; background:#fff; font-family:'Arial',Helvetica,sans-serif; }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+  @media print {
+    html, body { width:210mm; }
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ── Conteneur de la page ────────────────────────────────────────────── */
+  .page {
+    width: 190mm;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4mm;
+  }
+
+  /* ── Étiquette complète ──────────────────────────────────────────────── */
+  .label {
+    width: 190mm;
+    height: 89mm;
+    display: flex;
+    border: 2.5pt solid #E30613;
+    border-radius: 5mm;
+    overflow: hidden;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ── Partie gauche rouge ─────────────────────────────────────────────── */
+  .left {
+    width: 84.6mm;           /* 44.5% de 190mm */
+    background: #E30613;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  /* Bandeau titre Conforama */
+  .brand-bar {
+    background: #E30613;
+    padding: 4mm 5mm 2mm;
+    border-bottom: 1pt solid rgba(255,255,255,0.25);
+  }
+  .brand-text {
+    font-family: 'Arial Black','Arial Bold',Arial,sans-serif;
+    font-size: 22pt;
+    font-weight: 900;
+    font-style: italic;
+    color: white;
+    letter-spacing: -0.5pt;
+    line-height: 1;
+  }
+
+  /* Zone specs + QR */
+  .content-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 3mm 4mm;
+    gap: 3mm;
+  }
+  .specs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5mm;
+  }
+  .spec-pill {
+    background: rgba(255,255,255,0.18);
+    border-radius: 3mm;
+    padding: 2mm 3mm;
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+    min-height: 16mm;
+  }
+  .icon-wrap {
+    width: 9mm;
+    height: 9mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .icon-wrap svg { width:9mm; height:9mm; }
+  .spec-label {
+    font-size: 10pt;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+  }
+
+  /* QR code */
+  .qr-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5mm;
+    flex-shrink: 0;
+  }
+  .qr-img {
+    width: 22mm;
+    height: 22mm;
+    border: 2pt solid white;
+    border-radius: 1.5mm;
+    display: block;
+  }
+  .qr-caption {
+    font-size: 6.5pt;
+    color: white;
+    text-align: center;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  /* ── Partie droite blanche ───────────────────────────────────────────── */
+  .right {
+    flex: 1;                  /* ~105.4mm */
+    border-left: 2.5pt solid #E30613;
+    padding: 5mm 6mm;
+    display: flex;
+    flex-direction: column;
+    gap: 4mm;
+  }
+  .ref-zone {
+    font-size: 14pt;
+    font-weight: 700;
+    color: #333;
+    letter-spacing: 0.5pt;
+  }
+  .price-zone {
+    flex: 1;
+    border: 2pt dashed #E30613;
+    border-radius: 3mm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .price-text {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #E30613;
+    text-align: center;
+    letter-spacing: 1pt;
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  ${products.map(p => makeSheet(p)).join("\n")}
+</div>
+<script>
+  // Attendre que les QR codes soient chargés avant d'imprimer
+  window.onload = function() {
+    const imgs = document.querySelectorAll('.qr-img');
+    let loaded = 0;
+    const total = imgs.length;
+    if (total === 0) { setTimeout(()=>window.print(), 300); return; }
+    imgs.forEach(img => {
+      if (img.complete) { loaded++; if(loaded===total) setTimeout(()=>window.print(),300); }
+      else {
+        img.onload = img.onerror = () => { loaded++; if(loaded===total) setTimeout(()=>window.print(),300); };
+      }
+    });
+  };
+</script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank");
+  win.document.write(html);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PDF — Document de remplissage de rayon (dépôt → magasin)
 // ═══════════════════════════════════════════════════════════════════════════════
 function generateFillSheetPDF(lines, dateStr, createdBy) {
@@ -2872,8 +3136,9 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
   const [filterSubFam,   setFilterSubFam]   = useState("all");
   const [search,         setSearch]         = useState("");
   const [expandedGroup,  setExpandedGroup]  = useState(null);
-  const [groupBy,        setGroupBy]        = useState("subfamily"); // "subfamily" | "family" | "supplier"
-  const [editingRef,     setEditingRef]     = useState(null); // ref du produit en édition inline
+  const [groupBy,        setGroupBy]        = useState("subfamily");
+  const [editingRef,     setEditingRef]     = useState(null);
+  const [selectedForSheet, setSelectedForSheet] = useState([]); // produits sélectionnés pour impression fiches
   const showPrices = session.canSeePrices;
   const isAdmin = session.role === "admin";
 
@@ -2939,17 +3204,33 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
   return (
     <div>
       {/* Titre + recherche */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:selectedForSheet.length>0?8:20, flexWrap:"wrap", gap:12 }}>
         <div>
           <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Catalogue</h1>
           <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{totalRefs} référence{totalRefs>1?"s":""} · {supplierList.length} fournisseur{supplierList.length>1?"s":""}</div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"8px 14px", minWidth:240 }}>
-          <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Réf, EAN, désignation…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
-          {search && <button onClick={()=>setSearch("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", padding:0 }}><X size={14} /></button>}
+        <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+          {selectedForSheet.length > 0 && (
+            <button onClick={() => { generateProductSheetPDF(selectedForSheet); }} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#E30613,#ff3344)" }}>
+              🖨️ Générer {selectedForSheet.length} fiche{selectedForSheet.length>1?"s":""}
+            </button>
+          )}
+          {selectedForSheet.length > 0 && (
+            <button onClick={() => setSelectedForSheet([])} style={{ ...S.btnGhost, fontSize:12 }}>✕ Désélectionner</button>
+          )}
+          <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"8px 14px", minWidth:220 }}>
+            <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Réf, EAN, désignation…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
+            {search && <button onClick={()=>setSearch("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", padding:0 }}><X size={14} /></button>}
+          </div>
         </div>
       </div>
+      {selectedForSheet.length > 0 && (
+        <div style={{ fontSize:12, color:"#E30613", marginBottom:16, display:"flex", alignItems:"center", gap:6 }}>
+          <span style={{ fontWeight:600 }}>🖨️ {selectedForSheet.length} produit{selectedForSheet.length>1?"s":""} sélectionné{selectedForSheet.length>1?"s":""} pour impression</span>
+          <span style={{ color:"var(--t-text-40)" }}>— coche d'autres produits puis clique "Générer"</span>
+        </div>
+      )}
 
       {/* KPIs rapides */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:20 }}>
@@ -3046,7 +3327,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                     <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                       <thead>
                         <tr style={{ background:"var(--t-thead-bg)" }}>
-                          {["Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min","Réservé",isAdmin?"Statut":null,isAdmin?"":null].filter(x=>x!==null).map((h,i) => (
+                          {["🖨️","Référence","EAN","Désignation","Fournisseur","Famille","Sous-famille",showPrices?"Prix HT":null,showPrices?"Prix vente":null,"Dispo.","Stock min","Réservé",isAdmin?"Statut":null,isAdmin?"":null].filter(x=>x!==null).map((h,i) => (
                             <th key={h+i} style={{ padding:"8px 12px", textAlign:"left", fontSize:10, color:"var(--t-text-55)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", whiteSpace:"nowrap" }}>{h}</th>
                           ))}
                         </tr>
@@ -3058,6 +3339,17 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                           const isEditing = editingRef === p.ref+p.supplierId;
                           return (
                             <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:isEditing?"rgba(99,102,241,0.06)":p.rupture?"rgba(120,120,120,0.06)":isAlert?"rgba(239,68,68,0.04)":"transparent", opacity:p.rupture&&!isEditing?0.5:1 }}>
+                              <td style={{ ...S.td, padding:"8px 10px" }}>
+                                <input type="checkbox"
+                                  checked={selectedForSheet.some(s=>s.ref===p.ref&&s.supplierId===p.supplierId)}
+                                  onChange={e => {
+                                    const key = p.ref+p.supplierId;
+                                    if (e.target.checked) setSelectedForSheet(prev=>[...prev, p]);
+                                    else setSelectedForSheet(prev=>prev.filter(s=>!(s.ref===p.ref&&s.supplierId===p.supplierId)));
+                                  }}
+                                  style={{ width:15, height:15, cursor:"pointer", accentColor:"#E30613" }}
+                                />
+                              </td>
                               <td style={{ ...S.td, fontFamily:"monospace", fontWeight:600, color:"var(--t-text-85)", fontSize:11 }}>{p.ref}</td>
                               <td style={{ ...S.td, fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)" }}>{p.ean||"—"}</td>
                               <td style={{ ...S.td, maxWidth:200 }}>
@@ -3137,7 +3429,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════════════════════════════
-function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stockImports, setStockImports }) {
+function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stockImports, setStockImports, families }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -3509,29 +3801,40 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           </div>
         )}
         <div className="product-edit-grid" style={{ overflowX:"auto", WebkitOverflowScrolling:"touch", marginBottom:16 }}>
-        <div style={{ minWidth: 1320 }}>
+        <div style={{ minWidth: 1700 }}>
         {form.products.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 280px 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 200px 100px 100px 100px 80px 80px 70px 60px 60px 140px 110px 110px 110px 80px auto", gap: 6, marginBottom: 6 }}>
             <input type="checkbox" checked={selectedRefs.length===form.products.length && form.products.length>0} onChange={toggleSelectAll} style={{ width:16, height:16, cursor:"pointer" }} />
-            {["Réf.","Code EAN","Désignation","Type produit","Famille","Sous-famille","P.U. HT","Prix vente","Écotaxe","Ventes/sem","Stock min","Statut",""].map(h => (
+            {["Réf.","Code EAN","Désignation","Type","Famille","S-famille","P.U. HT","Prix vente","Écotaxe","Ventes","Stk min","Caract. 1","Caract. 2","Caract. 3","URL fiche tech.","Statut",""].map(h => (
               <div key={h} style={{ fontSize: 10, fontWeight: 600, color:"var(--t-text-40)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
             ))}
           </div>
         )}
         {form.products.map((p, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 280px 110px 110px 110px 80px 80px 70px 70px 70px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
+          <div key={i} style={{ display: "grid", gridTemplateColumns: "30px 90px 120px 200px 100px 100px 100px 80px 80px 70px 60px 60px 140px 110px 110px 110px 80px auto", gap: 6, marginBottom: 8, alignItems: "center", opacity: p.rupture ? 0.45 : 1, transition:"opacity 0.2s" }}>
             <input type="checkbox" checked={selectedRefs.includes(p.ref)} onChange={()=>toggleSelect(p.ref)} style={{ width:16, height:16, cursor:"pointer" }} />
             <input value={p.ref} onChange={e => updateProduct(i,"ref",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Réf." disabled={p.rupture} />
             <input value={p.ean||""} onChange={e => updateProduct(i,"ean",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="EAN" disabled={p.rupture} />
             <input value={p.label} onChange={e => updateProduct(i,"label",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Désignation" disabled={p.rupture} />
-            <input value={p.productType||""} onChange={e => updateProduct(i,"productType",e.target.value)} style={{...S.input,fontSize:11,color:"#f59e0b"}} placeholder="Ex: Aspirateur" disabled={p.rupture} />
-            <input value={p.family} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Ex: Chaussures" disabled={p.rupture} />
-            <input value={p.subFamily} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="Ex: E41AS" disabled={p.rupture} />
+            <input value={p.productType||""} onChange={e => updateProduct(i,"productType",e.target.value)} style={{...S.input,fontSize:11,color:"#f59e0b"}} placeholder="Aspirateur…" disabled={p.rupture} />
+            <select value={p.family||""} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11,background:"var(--t-surface)"}} disabled={p.rupture}>
+              <option value="">— Famille —</option>
+              {(families||[]).map(f => <option key={f.id} value={f.label}>{f.label}</option>)}
+            </select>
+            <select value={p.subFamily||""} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace",background:"var(--t-surface)"}} disabled={p.rupture}>
+              <option value="">— S-famille —</option>
+              {((families||[]).find(f => f.label===p.family)?.subFamilies || []).map(sf => <option key={sf} value={sf}>{sf}</option>)}
+              {p.subFamily && !(families||[]).find(f=>f.label===p.family)?.subFamilies?.includes(p.subFamily) && <option value={p.subFamily}>{p.subFamily}</option>}
+            </select>
             <input type="number" value={p.price||""} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#818cf8"}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.weeklyVolume||""} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" disabled={p.rupture} />
             <input type="number" value={p.stockMin??""} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" disabled={p.rupture} />
+            <input value={p.spec1||""} onChange={e => updateProduct(i,"spec1",e.target.value)} style={{...S.input,fontSize:10,color:"#e30613"}} placeholder="Ex: 2800 W" disabled={p.rupture} />
+            <input value={p.spec2||""} onChange={e => updateProduct(i,"spec2",e.target.value)} style={{...S.input,fontSize:10,color:"#e30613"}} placeholder="Ex: 48×75 cm" disabled={p.rupture} />
+            <input value={p.spec3||""} onChange={e => updateProduct(i,"spec3",e.target.value)} style={{...S.input,fontSize:10,color:"#e30613"}} placeholder="Ex: 100 LITRES" disabled={p.rupture} />
+            <input value={p.ficheUrl||""} onChange={e => updateProduct(i,"ficheUrl",e.target.value)} style={{...S.input,fontSize:10}} placeholder="https://…" disabled={p.rupture} />
             <button onClick={() => updateProduct(i,"rupture", !p.rupture)} style={{
               padding:"5px 8px", borderRadius:14, border:"1.5px solid", cursor:"pointer", fontSize:10, fontWeight:700,
               background: p.rupture ? "rgba(239,68,68,0.15)" : "rgba(52,211,153,0.12)",
@@ -3550,7 +3853,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         ))}
         </div>
         </div>
-        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Le stock min est calculé automatiquement (ventes × 3 semaines) mais reste modifiable. Un produit en rupture est grisé et ne peut plus être ajouté aux commandes. Le "Type produit" sert au document de remplissage de rayon (ex: Aspirateur, Blender...).</div>
+        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4, marginBottom:16 }}>💡 Caract. 1/2/3 = les 3 lignes de la fiche porte-étiquette (ex: 2800 W, 48×75 cm, 100 LITRES). URL fiche tech. = lien PDF pour le QR code.</div>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button onClick={() => { setEditing(null); setForm(null); }} style={S.btnSecondary}>Annuler</button>
           <button onClick={save} disabled={!form.name} style={{ ...S.btnPrimary, opacity: form.name?1:0.5 }}>Enregistrer</button>
@@ -3673,7 +3976,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════════════════════════════════════════
-function AdminPage({ users, setUsers, locations, setLocations }) {
+function AdminPage({ users, setUsers, locations, setLocations, families, setFamilies }) {
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
   function openNew() { setForm({ id:"u"+Date.now(), email:"", password:"", name:"", role:"user", canSeePrices:false, canUseAI:false, active:true, pages:["dashboard","orders","new"] }); setEditing("new"); }
@@ -3764,6 +4067,54 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
               <ConfirmDeleteButton onConfirm={() => { if(locations.length > 1) setLocations(prev => prev.filter(l => l.id!==loc.id)); }} small label="✕" confirmLabel="⚠" style={{ padding:"8px 12px", flexShrink:0, opacity: locations.length===1?0.4:1, pointerEvents: locations.length===1?"none":"auto" }} />
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Familles & Sous-familles */}
+      <div style={{ ...S.card, marginBottom:20 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <h2 style={{ margin:0, fontSize:15, fontWeight:700, display:"flex", alignItems:"center", gap:8 }}><FolderTree size={17} /> Familles & Sous-familles</h2>
+          <button onClick={() => setFamilies(prev => [...prev, { id:"f"+Date.now(), label:"", subFamilies:[] }])} style={S.btnSecondary}>+ Famille</button>
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {families.map(fam => (
+            <div key={fam.id} style={{ background:"var(--t-surface)", borderRadius:12, padding:"12px 14px", border:"1px solid var(--t-border-subtle)" }}>
+              {/* Nom de la famille */}
+              <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>
+                <input
+                  value={fam.label}
+                  onChange={e => setFamilies(prev => prev.map(f => f.id===fam.id ? {...f, label:e.target.value} : f))}
+                  style={{ ...S.input, flex:1, fontWeight:700 }}
+                  placeholder="Nom de la famille (ex: Electroménager)"
+                />
+                <ConfirmDeleteButton onConfirm={() => setFamilies(prev => prev.filter(f => f.id!==fam.id))} small label="✕ Supprimer famille" />
+              </div>
+              {/* Sous-familles */}
+              <div style={{ fontSize:11, fontWeight:600, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Sous-familles</div>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:8 }}>
+                {(fam.subFamilies||[]).map((sf, si) => (
+                  <div key={si} style={{ display:"flex", alignItems:"center", gap:4, background:"var(--t-card-bg)", borderRadius:8, border:"1px solid var(--t-border-subtle)", padding:"4px 4px 4px 10px" }}>
+                    <input
+                      value={sf}
+                      onChange={e => setFamilies(prev => prev.map(f => f.id!==fam.id ? f : {
+                        ...f, subFamilies: f.subFamilies.map((s,j) => j===si ? e.target.value : s)
+                      }))}
+                      style={{ background:"transparent", border:"none", outline:"none", fontSize:12, fontWeight:600, color:"var(--t-text-85)", width:80 }}
+                    />
+                    <button onClick={() => setFamilies(prev => prev.map(f => f.id!==fam.id ? f : {
+                      ...f, subFamilies: f.subFamilies.filter((_,j) => j!==si)
+                    }))} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", fontSize:14, padding:"0 4px", lineHeight:1 }}>×</button>
+                  </div>
+                ))}
+                <button onClick={() => setFamilies(prev => prev.map(f => f.id!==fam.id ? f : {
+                  ...f, subFamilies: [...(f.subFamilies||[]), ""]
+                }))} style={{ ...S.btnGhost, fontSize:11, padding:"4px 10px", borderStyle:"dashed" }}>+ Sous-famille</button>
+              </div>
+            </div>
+          ))}
+          {families.length === 0 && (
+            <div style={{ textAlign:"center", color:"var(--t-text-30)", fontSize:13, padding:"12px 0" }}>Aucune famille définie — clique sur "+ Famille" pour commencer</div>
+          )}
         </div>
       </div>
 
