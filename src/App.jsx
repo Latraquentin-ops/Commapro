@@ -2016,6 +2016,8 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
   // Ajout produit rapide
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProd, setNewProd] = useState({ ref:"", ean:"", label:"", family:"", subFamily:"", price:"" });
+  const [expandedRef, setExpandedRef] = useState(null);
+  const [inputQty, setInputQty] = useState("");
   const supp = suppliers.find(s => s.id === suppId);
 
   // Quitter le mode édition si on change de page sans sauvegarder
@@ -2104,9 +2106,6 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 
   const total = lines.reduce((s,l) => s+lineTotal(l), 0);
   const canSubmit = supp && lines.length>0 && deliveryDate && deliveryPlace;
-  // Produit sélectionné pour saisie inline de quantité
-  const [expandedRef, setExpandedRef] = useState(null);
-  const [inputQty, setInputQty] = useState("");
 
   function handleAddOrExpand(p) {
     if (expandedRef === p.ref) { setExpandedRef(null); return; }
