@@ -1853,19 +1853,14 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
               const allEmails = [supp?.email, ...(supp?.emails||[])].filter(Boolean);
               const to = allEmails.join(",");
               const subject = encodeURIComponent(`Bon de commande ${order.id} — ${order.supplierName}`);
-              const body = encodeURIComponent(
-`Bonjour ${order.commercial || order.supplierName},
-
-Veuillez trouver ci-joint notre bon de commande ${order.id}.
-
-Date de commande : ${fmtDate(order.date)}
-Livraison souhaitée : ${fmtDate(order.deliveryDate)}
-Lieu : ${order.deliveryPlace}
-${order.notes ? `\nNotes : ${order.notes}` : ""}
-
-Cordialement,
-RIDIS`
-              );
+              const bodyText = "Bonjour " + (order.commercial || order.supplierName) + ",\n\n"
+                + "Veuillez trouver ci-joint notre bon de commande " + order.id + ".\n\n"
+                + "Date de commande : " + fmtDate(order.date) + "\n"
+                + "Livraison souhaitée : " + fmtDate(order.deliveryDate) + "\n"
+                + "Lieu : " + order.deliveryPlace
+                + (order.notes ? "\nNotes : " + order.notes : "")
+                + "\n\nCordialement,\nRIDIS";
+              const body = encodeURIComponent(bodyText);
               // Utilise navigator.share si disponible (iOS natif), sinon mailto
               if (navigator.share) {
                 try {
