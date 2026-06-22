@@ -1858,8 +1858,8 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
             <button onClick={() => generatePDF(order, showPrices)} style={{...S.btnSecondary, display:"inline-flex", alignItems:"center", gap:6}}><FileText size={15} /> PDF</button>
             <button onClick={async () => {
               // Trouver le fournisseur pour récupérer tous ses emails
-              const supp = suppliers?.find(s => s.name === order.supplierName);
-              const allEmails = [supp?.email, ...(supp?.emails||[])].filter(Boolean);
+              const supp = (suppliers||[]).find(s => s.name === order.supplierName);
+              const allEmails = [supp?.email, ...((supp?.emails)||[])].filter(Boolean);
               const to = allEmails.join(",");
               const subject = encodeURIComponent(`Bon de commande ${order.id} — ${order.supplierName}`);
               const bodyText = "Bonjour " + (order.commercial || order.supplierName) + ",\n\n"
@@ -3668,7 +3668,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
   }
 
   function openNew() {
-    setForm({ id: "s"+Date.now(), name: "", commercial: "", email: "", products: [] });
+    setForm({ id: "s"+Date.now(), name: "", commercial: "", email: "", emails: [], products: [] });
     setEditing("new");
   }
   function openEdit(s) { setForm(JSON.parse(JSON.stringify(s))); setEditing(s.id); setSelectedRefs([]); }
@@ -3720,8 +3720,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {(form.emails||[]).map((email, i) => (
               <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
-                <input value={email} onChange={e => setForm(f=>({...f, emails: f.emails.map((em,j)=>j===i?e.target.value:em)}))} style={{ ...S.input, flex:1 }} type="email" placeholder={`email${i+2}@fournisseur.com`} />
-                <button onClick={() => setForm(f=>({...f, emails: f.emails.filter((_,j)=>j!==i)}))} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:18, padding:"0 4px", lineHeight:1 }}>×</button>
+                <input value={email} onChange={e => setForm(f=>({...f, emails: (f.emails||[]).map((em,j)=>j===i?e.target.value:em)}))} style={{ ...S.input, flex:1 }} type="email" placeholder={`email${i+2}@fournisseur.com`} />
+                <button onClick={() => setForm(f=>({...f, emails: (f.emails||[]).filter((_,j)=>j!==i)}))} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:18, padding:"0 4px", lineHeight:1 }}>×</button>
               </div>
             ))}
           </div>
