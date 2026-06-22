@@ -1757,7 +1757,7 @@ function OrdersPage({ orders, setOrders, session, setPage, setEditingDraft, init
   if (selected) {
     const order = orders.find(o => o.id === selected);
     if (!order) { setSelected(null); return null; }
-    return <OrderDetail order={order} orders={orders} setOrders={setOrders} session={session} onBack={() => setSelected(null)} setPage={setPage} setEditingDraft={setEditingDraft} />;
+    return <OrderDetail order={order} orders={orders} setOrders={setOrders} session={session} onBack={() => setSelected(null)} setPage={setPage} setEditingDraft={setEditingDraft} suppliers={suppliers} />;
   }
 
   return (
@@ -1799,7 +1799,7 @@ function OrdersPage({ orders, setOrders, session, setPage, setEditingDraft, init
 // ═══════════════════════════════════════════════════════════════════════════════
 // ORDER DETAIL
 // ═══════════════════════════════════════════════════════════════════════════════
-function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEditingDraft }) {
+function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEditingDraft, suppliers }) {
   const isAdmin = session.role === "admin";
   const showPrices = session.canSeePrices;
   const [numAchat, setNumAchat] = useState(order.numAchat || "");
@@ -1847,6 +1847,40 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
               {Object.entries(STATUS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>}
             <button onClick={() => generatePDF(order, showPrices)} style={{...S.btnSecondary, display:"inline-flex", alignItems:"center", gap:6}}><FileText size={15} /> PDF</button>
+            <button onClick={async () => {
+              // Trouver le fournisseur pour récupérer tous ses emails
+              const supp = suppliers?.find(s => s.name === order.supplierName);
+              const allEmails = [supp?.email, ...(supp?.emails||[])].filter(Boolean);
+              const to = allEmails.join(",");
+              const subject = encodeURIComponent(`Bon de commande ${order.id} — ${order.supplierName}`);
+              const body = encodeURIComponent(
+`Bonjour ${order.commercial || order.supplierName},
+
+Veuillez trouver ci-joint notre bon de commande ${order.id}.
+
+Date de commande : ${fmtDate(order.date)}
+Livraison souhaitée : ${fmtDate(order.deliveryDate)}
+Lieu : ${order.deliveryPlace}
+${order.notes ? `\nNotes : ${order.notes}` : ""}
+
+Cordialement,
+RIDIS`
+              );
+              // Utilise navigator.share si disponible (iOS natif), sinon mailto
+              if (navigator.share) {
+                try {
+                  await navigator.share({
+                    title: `BC ${order.id} — ${order.supplierName}`,
+                    text: `Bon de commande ${order.id}\n${order.supplierName}\nLivraison : ${fmtDate(order.deliveryDate)}`,
+                  });
+                } catch(e) { /* annulé par l'utilisateur */ }
+              } else {
+                window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+              }
+            }} style={{...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"rgba(99,102,241,0.7)"}}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              Envoyer
+            </button>
             {isAdmin && <ConfirmDeleteButton onConfirm={deleteOrder} />}
           </div>
         </div>
@@ -3660,10 +3694,26 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
       <button onClick={() => { setEditing(null); setForm(null); }} style={{ ...S.btnGhost, marginBottom: 16 }}>← Annuler</button>
       <div style={S.card}>
         <h2 style={{ margin: "0 0 20px 0", fontSize: 16, fontWeight: 700 }}>{editing==="new" ? "Nouveau fournisseur" : "Modifier"}</h2>
-        <div className="grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
+        <div className="grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 14 }}>
           <Field label="Nom société *"><input value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} style={S.input} /></Field>
           <Field label="Commercial"><input value={form.commercial} onChange={e => setForm(f=>({...f,commercial:e.target.value}))} style={S.input} /></Field>
-          <Field label="Email"><input value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={S.input} type="email" /></Field>
+          <Field label="Email principal"><input value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={S.input} type="email" placeholder="commercial@fournisseur.com" /></Field>
+        </div>
+        {/* Emails supplémentaires */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <label style={{ ...S.label, margin:0 }}>Emails supplémentaires (CC)</label>
+            <button onClick={() => setForm(f=>({...f, emails: [...(f.emails||[]), ""]}))} style={{ ...S.btnGhost, fontSize:11, padding:"3px 10px" }}>+ Ajouter</button>
+          </div>
+          {(form.emails||[]).length === 0 && <div style={{ fontSize:12, color:"var(--t-text-30)", fontStyle:"italic" }}>Aucun email supplémentaire — le bon de commande sera envoyé uniquement à l'email principal</div>}
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {(form.emails||[]).map((email, i) => (
+              <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <input value={email} onChange={e => setForm(f=>({...f, emails: f.emails.map((em,j)=>j===i?e.target.value:em)}))} style={{ ...S.input, flex:1 }} type="email" placeholder={`email${i+2}@fournisseur.com`} />
+                <button onClick={() => setForm(f=>({...f, emails: f.emails.filter((_,j)=>j!==i)}))} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:18, padding:"0 4px", lineHeight:1 }}>×</button>
+              </div>
+            ))}
+          </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap:"wrap", gap:8 }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>Catalogue produits</h3>
