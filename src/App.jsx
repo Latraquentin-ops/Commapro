@@ -1613,53 +1613,189 @@ function StatsPage({ orders, suppliers, session }) {
 // LOGIN
 // ═══════════════════════════════════════════════════════════════════════════════
 function LoginScreen({ users, onLogin, dark, setDark }) {
-  const [email, setEmail] = useState("");
-  const [pw, setPw]       = useState("");
-  const [err, setErr]     = useState("");
-  const [focus, setFocus] = useState("");
+  const [email, setEmail]       = useState(() => { try { return localStorage.getItem("cp_email")||""; } catch{return "";} });
+  const [pw, setPw]             = useState("");
+  const [err, setErr]           = useState("");
+  const [focus, setFocus]       = useState("");
+  const [showPw, setShowPw]     = useState(false);
+  const [remember, setRemember] = useState(() => { try { return !!localStorage.getItem("cp_email"); } catch{return false;} });
+
   function submit() {
     const u = users.find(u => u.email === email.trim() && u.password === pw && u.active);
-    if (u) onLogin(u); else setErr("Email ou mot de passe incorrect.");
+    if (u) {
+      try {
+        if (remember) localStorage.setItem("cp_email", email.trim());
+        else localStorage.removeItem("cp_email");
+      } catch {}
+      onLogin(u);
+    } else {
+      setErr("Email ou mot de passe incorrect.");
+    }
   }
-  // Champ minimaliste : label + ligne soulignée (style glassmorphism)
-  const fieldWrap = { marginBottom:26 };
-  const labelStyle = { display:"block", fontSize:13, color:"rgba(255,255,255,0.55)", marginBottom:8, letterSpacing:"-0.01em" };
-  const underlineInput = (name) => ({
-    width:"100%", padding:"6px 2px 10px", border:"none", borderBottom:`1.5px solid ${focus===name?"rgba(165,180,252,0.9)":"rgba(255,255,255,0.18)"}`,
-    background:"transparent", color:"#ffffff", fontSize:16, outline:"none", boxSizing:"border-box", transition:"border-color 0.2s",
-  });
+
+  const isDark = true; // login toujours dark
+
   return (
-    <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px", background:"linear-gradient(135deg,#0a0a0f 0%,#0d1117 45%,#10081f 100%)", position:"relative", overflow:"hidden", fontFamily:"-apple-system,'SF Pro Display',BlinkMacSystemFont,sans-serif" }}>
-      <style>{`@keyframes lb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.1)}} @keyframes lb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-35px,40px) scale(1.05)}} @keyframes lb3{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,25px)}}`}</style>
-      {/* Halos colorés flous */}
-      <div style={{ position:"absolute", top:"8%", left:"5%", width:440, height:440, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.28) 0%,transparent 70%)", animation:"lb1 16s ease-in-out infinite", pointerEvents:"none" }} />
-      <div style={{ position:"absolute", bottom:"5%", right:"2%", width:380, height:380, borderRadius:"50%", background:"radial-gradient(circle,rgba(168,85,247,0.22) 0%,transparent 70%)", animation:"lb2 20s ease-in-out infinite", pointerEvents:"none" }} />
-      <div style={{ position:"absolute", top:"40%", right:"30%", width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.14) 0%,transparent 70%)", animation:"lb3 22s ease-in-out infinite", pointerEvents:"none" }} />
+    <div style={{ minHeight:"100dvh", display:"flex", alignItems:"center", justifyContent:"center", padding:"24px", background:"linear-gradient(160deg,#06040f 0%,#0d0a1f 40%,#0a0f1a 100%)", position:"relative", overflow:"hidden", fontFamily:"'Sora','-apple-system','SF Pro Display',sans-serif" }}>
 
-      {/* Carte verre dépoli */}
-      <div style={{ backdropFilter:"blur(40px) saturate(180%)", WebkitBackdropFilter:"blur(40px) saturate(180%)", background:"rgba(255,255,255,0.07)", borderRadius:32, padding:"48px 36px 40px", width:"100%", maxWidth:400, border:"1px solid rgba(255,255,255,0.12)", boxShadow:"0 32px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15)", position:"relative", zIndex:1 }}>
-        {/* Logo + sous-titre centrés */}
-        <div style={{ textAlign:"center", marginBottom:40 }}>
-          <div style={{ marginBottom:18, display:"flex", justifyContent:"center" }}>
-            <div style={{ width:76, height:76, borderRadius:20, background:"rgba(255,255,255,0.96)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 12px 32px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.6)" }}><CPLogo size={48} /></div>
+      {/* Import Sora */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
+        @keyframes lb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,-40px) scale(1.12)}}
+        @keyframes lb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-40px,50px) scale(1.08)}}
+        @keyframes lb3{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,30px) scale(1.05)}}
+        @keyframes loginFadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        .login-card { animation: loginFadeUp 0.6s cubic-bezier(0.4,0,0.2,1) both; }
+        .login-input::placeholder { color: rgba(255,255,255,0.3) !important; }
+        .login-btn:active { transform: scale(0.97) !important; }
+      `}</style>
+
+      {/* Halos ambiance */}
+      <div style={{ position:"absolute", top:"-5%",  left:"-5%",  width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.35) 0%,transparent 65%)", animation:"lb1 18s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", bottom:"-5%", right:"-5%", width:450, height:450, borderRadius:"50%", background:"radial-gradient(circle,rgba(168,85,247,0.28) 0%,transparent 65%)", animation:"lb2 22s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", top:"45%",  right:"20%",  width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.18) 0%,transparent 65%)", animation:"lb3 16s ease-in-out infinite", pointerEvents:"none" }} />
+
+      {/* Carte Liquid Glass */}
+      <div className="login-card" style={{
+        backdropFilter:"blur(48px) saturate(200%)",
+        WebkitBackdropFilter:"blur(48px) saturate(200%)",
+        background:"rgba(255,255,255,0.06)",
+        borderRadius:36,
+        padding:"52px 40px 44px",
+        width:"100%", maxWidth:420,
+        border:"1px solid rgba(255,255,255,0.14)",
+        boxShadow:"0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset, inset 0 1px 0 rgba(255,255,255,0.18)",
+        position:"relative", zIndex:1,
+      }}>
+
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:44 }}>
+          <div style={{ display:"flex", justifyContent:"center", marginBottom:20 }}>
+            <div style={{
+              width:80, height:80, borderRadius:24,
+              background:"rgba(255,255,255,0.95)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow:"0 16px 48px rgba(99,102,241,0.45), inset 0 1px 0 rgba(255,255,255,0.8)",
+            }}>
+              <CPLogo size={50} />
+            </div>
           </div>
-          <div style={{ fontSize:30, fontWeight:800, letterSpacing:"-0.04em", background:"linear-gradient(135deg,#ffffff,#c7d2fe)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", lineHeight:1 }}>CommaPro</div>
-          <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginTop:8, letterSpacing:"-0.01em" }}>Gestion des commandes fournisseurs</div>
+          <div style={{ fontSize:32, fontWeight:800, letterSpacing:"-0.05em", background:"linear-gradient(135deg,#ffffff 30%,#c7d2fe)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", lineHeight:1, fontFamily:"'Sora',sans-serif" }}>
+            CommaPro
+          </div>
+          <div style={{ fontSize:12, color:"rgba(255,255,255,0.4)", marginTop:8, fontWeight:400, letterSpacing:"0.02em" }}>
+            Gestion des achats fournisseurs
+          </div>
         </div>
 
-        {/* Champs soulignés */}
-        <div style={fieldWrap}>
-          <label style={labelStyle}>Email</label>
-          <input value={email} onChange={e => setEmail(e.target.value)} onFocus={()=>setFocus("email")} onBlur={()=>setFocus("")} style={underlineInput("email")} type="email" placeholder="votre@email.com" onKeyDown={e => e.key==="Enter" && submit()} />
-        </div>
-        <div style={fieldWrap}>
-          <label style={labelStyle}>Mot de passe</label>
-          <input value={pw} onChange={e => setPw(e.target.value)} onFocus={()=>setFocus("pw")} onBlur={()=>setFocus("")} style={underlineInput("pw")} type="password" placeholder="••••••••" onKeyDown={e => e.key==="Enter" && submit()} />
+        {/* Champ Email */}
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.5)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.08em" }}>Email</label>
+          <div style={{ position:"relative" }}>
+            <input
+              className="login-input"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setErr(""); }}
+              onFocus={()=>setFocus("email")} onBlur={()=>setFocus("")}
+              type="email"
+              placeholder="votre@email.com"
+              onKeyDown={e => e.key==="Enter" && submit()}
+              style={{
+                width:"100%", padding:"14px 18px", borderRadius:16,
+                border: `1.5px solid ${focus==="email" ? "rgba(165,180,252,0.7)" : "rgba(255,255,255,0.1)"}`,
+                background:"rgba(255,255,255,0.07)",
+                backdropFilter:"blur(8px)",
+                color:"#ffffff", fontSize:15,
+                outline:"none", boxSizing:"border-box",
+                fontFamily:"'Sora',sans-serif", fontWeight:400,
+                transition:"border-color 0.2s, box-shadow 0.2s",
+                boxShadow: focus==="email" ? "0 0 0 3px rgba(99,102,241,0.2)" : "none",
+              }}
+            />
+          </div>
         </div>
 
-        {err && <div style={{ marginBottom:16, fontSize:12, color:"#fca5a5", background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)", padding:"10px 14px", borderRadius:14, textAlign:"center" }}>{err}</div>}
+        {/* Champ Mot de passe */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:"block", fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.5)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.08em" }}>Mot de passe</label>
+          <div style={{ position:"relative" }}>
+            <input
+              className="login-input"
+              value={pw}
+              onChange={e => { setPw(e.target.value); setErr(""); }}
+              onFocus={()=>setFocus("pw")} onBlur={()=>setFocus("")}
+              type={showPw ? "text" : "password"}
+              placeholder="••••••••"
+              onKeyDown={e => e.key==="Enter" && submit()}
+              style={{
+                width:"100%", padding:"14px 50px 14px 18px", borderRadius:16,
+                border: `1.5px solid ${focus==="pw" ? "rgba(165,180,252,0.7)" : "rgba(255,255,255,0.1)"}`,
+                background:"rgba(255,255,255,0.07)",
+                backdropFilter:"blur(8px)",
+                color:"#ffffff", fontSize:15,
+                outline:"none", boxSizing:"border-box",
+                fontFamily:"'Sora',sans-serif", fontWeight:400,
+                transition:"border-color 0.2s, box-shadow 0.2s",
+                boxShadow: focus==="pw" ? "0 0 0 3px rgba(99,102,241,0.2)" : "none",
+              }}
+            />
+            {/* Toggle afficher mot de passe */}
+            <button
+              onClick={() => setShowPw(v => !v)}
+              type="button"
+              style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", color:"rgba(255,255,255,0.4)", padding:4, display:"flex", alignItems:"center", transition:"color 0.15s" }}
+              onMouseEnter={e=>e.currentTarget.style.color="rgba(255,255,255,0.8)"}
+              onMouseLeave={e=>e.currentTarget.style.color="rgba(255,255,255,0.4)"}>
+              {showPw
+                ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              }
+            </button>
+          </div>
+        </div>
 
-        <button onClick={submit} className="lg-btn-primary" style={{ width:"100%", marginTop:8, padding:"15px", fontSize:15, fontWeight:700, borderRadius:18, border:"none", cursor:"pointer", color:"white", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", boxShadow:"0 8px 28px rgba(99,102,241,0.5)", letterSpacing:"-0.01em", transition:"all 0.18s" }}>Se connecter</button>
+        {/* Se souvenir de moi */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24, cursor:"pointer" }} onClick={() => setRemember(v => !v)}>
+          <div style={{
+            width:20, height:20, borderRadius:6, flexShrink:0,
+            border: `1.5px solid ${remember ? "#818cf8" : "rgba(255,255,255,0.2)"}`,
+            background: remember ? "rgba(99,102,241,0.7)" : "rgba(255,255,255,0.05)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            transition:"all 0.18s",
+          }}>
+            {remember && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="1.5,6 4.5,9 10.5,3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+          </div>
+          <span style={{ fontSize:13, color:"rgba(255,255,255,0.55)", fontWeight:400, userSelect:"none" }}>Se souvenir de moi</span>
+        </div>
+
+        {/* Erreur */}
+        {err && (
+          <div style={{ marginBottom:16, fontSize:12, color:"#fca5a5", background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.25)", padding:"10px 16px", borderRadius:14, textAlign:"center", fontWeight:500 }}>
+            {err}
+          </div>
+        )}
+
+        {/* Bouton connexion */}
+        <button
+          onClick={submit}
+          className="login-btn"
+          style={{
+            width:"100%", padding:"16px",
+            fontSize:15, fontWeight:700,
+            borderRadius:18, border:"none", cursor:"pointer",
+            color:"white",
+            background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
+            boxShadow:"0 8px 32px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
+            letterSpacing:"-0.01em",
+            fontFamily:"'Sora',sans-serif",
+            transition:"all 0.18s",
+          }}
+          onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 12px 40px rgba(99,102,241,0.65)";}}
+          onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 8px 32px rgba(99,102,241,0.5)";}}
+        >
+          Se connecter
+        </button>
+
       </div>
     </div>
   );
