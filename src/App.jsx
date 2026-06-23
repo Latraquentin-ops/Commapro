@@ -2154,28 +2154,17 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                             </div>
                             {/* Zone de saisie inline */}
                             {isExpanded && (
-                              <div style={{ padding:"10px 16px 12px", background:"rgba(99,102,241,0.08)", borderTop:"1px solid rgba(99,102,241,0.2)" }}>
-                                <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:8, fontWeight:600 }}>Quantité pour {p.label}</div>
-                                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                                  <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)", display:"flex", alignItems:"center", justifyContent:"center" }}>−</button>
-                                  <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    value={inputQty}
-                                    onChange={e => setInputQty(e.target.value)}
-                                    placeholder=""
-                                    autoFocus
-                                    style={{ flex:1, textAlign:"center", fontSize:28, fontWeight:800, padding:"8px 0", border:"none", borderBottom:"2px solid #818cf8", background:"transparent", outline:"none", color:"var(--t-text-90)" }}
-                                  />
-                                  <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)", display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+                              <div style={{ padding:"10px 16px 14px", background:"rgba(99,102,241,0.06)", borderTop:"1px solid rgba(99,102,241,0.15)", display:"flex", alignItems:"center", gap:10 }}>
+                                {/* Stepper compact iOS */}
+                                <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
+                                <div style={{ flex:1, textAlign:"center" }}>
+                                  <span style={{ fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em" }}>{parseInt(inputQty)||0}</span>
                                 </div>
-                                <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                                  <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, flex:1, padding:"10px" }}>
-                                    {(parseInt(inputQty)||0) === 0 ? "Retirer du panier" : "Confirmer"}
-                                  </button>
-                                  <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"10px 14px" }}>Annuler</button>
-                                </div>
+                                <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
+                                <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, padding:"9px 16px", fontSize:13, flexShrink:0 }}>
+                                  {(parseInt(inputQty)||0) === 0 ? "Retirer" : "OK"}
+                                </button>
+                                <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"9px 10px", fontSize:13, flexShrink:0 }}>✕</button>
                               </div>
                             )}
                           </div>
@@ -2714,17 +2703,14 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
                         </button>
                       </div>
                       {isExpanded && (
-                        <div style={{ padding:"10px 16px 12px", background:"rgba(99,102,241,0.08)", borderTop:"1px solid rgba(99,102,241,0.2)" }}>
-                          <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:8, fontWeight:600 }}>Quantité pour {p.label}</div>
-                          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                            <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)" }}>−</button>
-                            <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} placeholder="" autoFocus style={{ flex:1, textAlign:"center", fontSize:28, fontWeight:800, padding:"8px 0", border:"none", borderBottom:"2px solid #818cf8", background:"transparent", outline:"none", color:"var(--t-text-90)" }} />
-                            <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:40, height:40, borderRadius:12, border:"1px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:20, fontWeight:700, color:"var(--t-text-90)" }}>+</button>
+                        <div style={{ padding:"8px 14px 10px", background:"rgba(99,102,241,0.06)", borderTop:"1px solid rgba(99,102,241,0.15)", display:"flex", alignItems:"center", gap:10 }}>
+                          <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
+                          <div style={{ flex:1, textAlign:"center" }}>
+                            <span style={{ fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em" }}>{parseInt(inputQty)||0}</span>
                           </div>
-                          <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                            <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, flex:1, padding:"10px" }}>{(parseInt(inputQty)||0)===0 ? "Retirer" : "Confirmer"}</button>
-                            <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"10px 14px" }}>Annuler</button>
-                          </div>
+                          <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
+                          <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, padding:"9px 16px", fontSize:13, flexShrink:0 }}>{(parseInt(inputQty)||0)===0 ? "Retirer" : "OK"}</button>
+                          <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"9px 10px", flexShrink:0 }}>✕</button>
                         </div>
                       )}
                     </div>
