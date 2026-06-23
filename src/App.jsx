@@ -2157,9 +2157,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                               <div style={{ padding:"10px 16px 14px", background:"rgba(99,102,241,0.06)", borderTop:"1px solid rgba(99,102,241,0.15)", display:"flex", alignItems:"center", gap:10 }}>
                                 {/* Stepper compact iOS */}
                                 <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
-                                <div style={{ flex:1, textAlign:"center" }}>
-                                  <span style={{ fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em" }}>{parseInt(inputQty)||0}</span>
-                                </div>
+                                <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} style={{ flex:1, textAlign:"center", fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em", border:"none", borderBottom:"2px solid rgba(99,102,241,0.4)", background:"transparent", outline:"none", width:0, minWidth:0, padding:"2px 4px" }} />
                                 <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
                                 <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, padding:"9px 16px", fontSize:13, flexShrink:0 }}>
                                   {(parseInt(inputQty)||0) === 0 ? "Retirer" : "OK"}
@@ -2705,9 +2703,7 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
                       {isExpanded && (
                         <div style={{ padding:"8px 14px 10px", background:"rgba(99,102,241,0.06)", borderTop:"1px solid rgba(99,102,241,0.15)", display:"flex", alignItems:"center", gap:10 }}>
                           <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
-                          <div style={{ flex:1, textAlign:"center" }}>
-                            <span style={{ fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em" }}>{parseInt(inputQty)||0}</span>
-                          </div>
+                          <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} style={{ flex:1, textAlign:"center", fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em", border:"none", borderBottom:"2px solid rgba(99,102,241,0.4)", background:"transparent", outline:"none", width:0, minWidth:0, padding:"2px 4px" }} />
                           <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
                           <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, padding:"9px 16px", fontSize:13, flexShrink:0 }}>{(parseInt(inputQty)||0)===0 ? "Retirer" : "OK"}</button>
                           <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"9px 10px", flexShrink:0 }}>✕</button>
