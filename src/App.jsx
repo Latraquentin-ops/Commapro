@@ -464,7 +464,7 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
         })}
       </nav>
       <div style={{ padding:"12px 10px", borderTop:"1px solid var(--t-sidebar-border)" }}>
-        <button onClick={() => setDark(d => !d)} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"9px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6, transition:"all 0.15s" }}>
+        <button onClick={() => setDark()} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"9px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6, transition:"all 0.15s" }}>
           {dark ? <Sun size={16} /> : <Moon size={16} />}
           {dark ? "Mode clair" : "Mode sombre"}
         </button>
@@ -525,7 +525,7 @@ function MobileDrawer({ open, onClose, session, page, setPage, navItems, onLogou
           })}
         </nav>
         <div style={{ padding:"12px", borderTop:"1px solid var(--t-sidebar-border)" }}>
-          <button onClick={() => setDark(d => !d)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6 }}>
+          <button onClick={() => setDark()} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6 }}>
             <span style={{ display:"flex", alignItems:"center", gap:10 }}>{dark ? <Sun size={16}/> : <Moon size={16}/>}{dark ? "Mode clair" : "Mode sombre"}</span>
             <div style={{ width:36, height:20, borderRadius:10, background:dark?"rgba(99,102,241,0.7)":"rgba(200,200,200,0.5)", position:"relative", transition:"background 0.3s", flexShrink:0 }}>
               <div style={{ position:"absolute", top:2, left:dark?16:2, width:16, height:16, borderRadius:"50%", background:"white", transition:"left 0.3s" }} />
@@ -646,7 +646,20 @@ export default function App() {
   const [replenishments, setReplenishments] = useState([]);  // archive des remplissages rayon
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
-  const [dark,      setDark]      = useState(true);
+  const getAutoDark = () => { const h = new Date().getHours(); return h >= 20 || h < 7; };
+  const [dark, setDark] = useState(getAutoDark());
+  const [darkOverride, setDarkOverride] = useState(null); // null = auto
+  const effectiveDark = darkOverride !== null ? darkOverride : dark;
+
+  // Recalcule toutes les minutes si pas d'override manuel
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (darkOverride === null) setDark(getAutoDark());
+    }, 60000);
+    return () => clearInterval(t);
+  }, [darkOverride]);
+
+  const toggleDark = () => setDarkOverride(v => v === null ? !effectiveDark : v === effectiveDark ? !v : null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingDraft, setEditingDraft] = useState(null);
@@ -697,10 +710,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [loaded]);
 
-  // Le thème reste local à chaque appareil (préférence personnelle)
-  useEffect(() => { try { localStorage.setItem("cv_dark", JSON.stringify(dark)); } catch {} }, [dark]);
-  useEffect(() => { try { const d = localStorage.getItem("cv_dark"); if (d !== null) setDark(JSON.parse(d)); } catch {} }, []);
-
   // Stock alerts
   const stockAlerts = useMemo(() => {
     const alerts = [];
@@ -736,7 +745,7 @@ export default function App() {
       </div>
     </div>
   );
-  if (!session) return <LoginScreen users={users} onLogin={setSession} dark={dark} setDark={setDark} />;
+  if (!session) return <LoginScreen users={users} onLogin={setSession} dark={effectiveDark} setDark={toggleDark} />;
   const isAdmin = session.role === "admin";
 
   const allowedPages = isAdmin ? ALL_PAGES.map(p => p.key) : (session.pages || ["dashboard","orders"]);
@@ -747,7 +756,7 @@ export default function App() {
 
   // ── Theme tokens ────────────────────────────────────────────────────────────
   // DARK = indigo/violet "Liquid Glass" night.  LIGHT = clean slate/blue daylight.
-  const themeCSS = dark ? `
+  const themeCSS = effectiveDark ? `
     :root {
       --t-text-90: rgba(255,255,255,0.95);
       --t-text-85: rgba(255,255,255,0.88);
@@ -839,7 +848,7 @@ export default function App() {
     }
   `;
 
-  const T = dark ? {
+  const T = effectiveDark ? {
     bg:       "linear-gradient(135deg,#0a0a0f 0%,#0d1117 40%,#0a0f1a 100%)",
     color:    "#ffffff",
     headerBg: "rgba(8,8,18,0.75)",
@@ -951,12 +960,12 @@ export default function App() {
 
       {/* Liquid Glass Header — mobile only (hidden on desktop via CSS) */}
       <div className="app-header">
-        <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} T={T} onMenuOpen={() => setMobileMenuOpen(true)} />
+        <AppHeader session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={effectiveDark} setDark={toggleDark} T={T} onMenuOpen={() => setMobileMenuOpen(true)} />
       </div>
 
       {/* App shell : sidebar (desktop) + contenu */}
       <div className="app-shell">
-        <Sidebar session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={dark} setDark={setDark} />
+        <Sidebar session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={effectiveDark} setDark={toggleDark} />
         <div className="app-content">
           <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(80px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
@@ -1171,308 +1180,205 @@ function BarcodeScanner({ onDetected, onClose }) {
 function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOrderFilter, setSelectedProduct }) {
   const [query, setQuery] = useState("");
   const [scanning, setScanning] = useState(false);
-  const byStatus = Object.fromEntries(Object.keys(STATUS).map(k => [k, orders.filter(o => o.status === k).length]));
-  const totalHT = orders.reduce((s, o) => s + orderTotal(o), 0);
-  const pending = orders.filter(o => !["brouillon","livree","reception_validee"].includes(o.status)).reduce((s,o) => s+orderTotal(o), 0);
   const isAdmin = session.role === "admin";
-
-  // ── Dashboard "ce matin" ────────────────────────────────────────────────
   const todayStr = new Date().toISOString().slice(0,10);
   const notReceived = (o) => !["livree","reception_validee"].includes(o.status);
 
-  // 1) Livraisons attendues aujourd'hui (date de livraison souhaitée = aujourd'hui)
+  // ── 3 chiffres clés ──────────────────────────────────────────────────────────
+  const pending = orders.filter(o => notReceived(o) && o.status !== "brouillon");
+  const lateOrders = orders.filter(o => o.deliveryDate && o.deliveryDate < todayStr && notReceived(o));
+  const totalHT = orders.filter(o => o.status !== "brouillon").reduce((s,o) => s + orderTotal(o), 0);
+
+  // ── Alertes urgentes uniquement ──────────────────────────────────────────────
+  const urgentAlerts = stockAlerts.filter(a => a.missing > 0).slice(0, 5);
   const deliveriesToday = orders.filter(o => o.deliveryDate === todayStr && notReceived(o));
 
-  // 2) Commandes en retard (date souhaitée dépassée ET pas encore reçue)
-  const lateOrders = orders.filter(o => o.deliveryDate && o.deliveryDate < todayStr && notReceived(o))
-    .sort((a,b) => a.deliveryDate.localeCompare(b.deliveryDate));
-
-  // 3) Réapprovisionnement conseillé (dispo importé < stock min)
-  const reapproList = [];
-  suppliers.forEach(s => s.products.forEach(p => {
-    const stockMin = p.stockMin ?? calcStockMin(p.weeklyVolume);
-    if (p.dispo != null && stockMin > 0 && p.dispo < stockMin) {
-      reapproList.push({ ref:p.ref, label:p.label, supplier:s.name, dispo:p.dispo, stockMin, missing: stockMin - p.dispo });
-    }
-  }));
-  reapproList.sort((a,b) => b.missing - a.missing);
-
-  const navCards = [
-    { page:"new",       Icon:Edit,    label:"Nouvelle commande", desc:"Passer une commande fournisseur",  gradient:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(139,92,246,0.7))", glow:"rgba(99,102,241,0.35)" },
-    { page:"orders",    Icon:List, label:"Historique",        desc:"Consulter les commandes passées",  gradient:"linear-gradient(135deg,rgba(14,165,233,0.7),rgba(6,182,212,0.6))", glow:"rgba(14,165,233,0.3)" },
-    { page:"stats",     Icon:BarChart2,     label:"Statistiques",      desc:"Analyses et parts fournisseurs",   gradient:"linear-gradient(135deg,rgba(168,85,247,0.7),rgba(217,70,239,0.6))", glow:"rgba(168,85,247,0.3)" },
-    { page:"suppliers", Icon:Factory,       label:"Fournisseurs",      desc:"Catalogues et référencements",     gradient:"linear-gradient(135deg,rgba(5,150,105,0.7),rgba(16,185,129,0.6))", glow:"rgba(5,150,105,0.3)" },
-    isAdmin && { page:"admin", Icon:Settings, label:"Administration",   desc:"Utilisateurs et paramètres",       gradient:"linear-gradient(135deg,rgba(245,158,11,0.7),rgba(234,179,8,0.6))", glow:"rgba(245,158,11,0.3)" },
-  ].filter(Boolean).filter(c => (session.pages||[]).includes(c.page) || isAdmin);
-
-  // Recherche globale produits (réf / EAN / désignation)
+  // ── Recherche globale ────────────────────────────────────────────────────────
   const q = query.trim().toLowerCase();
   const searchResults = q.length < 2 ? [] : suppliers.flatMap(s =>
-    s.products
-      .filter(p =>
-        (p.ref||"").toLowerCase().includes(q) ||
-        (p.ean||"").toLowerCase().includes(q) ||
-        (p.label||"").toLowerCase().includes(q)
-      )
-      .map(p => ({ ...p, supplierName: s.name, supplierId: s.id }))
-  ).slice(0, 30);
+    s.products.filter(p =>
+      (p.ref||"").toLowerCase().includes(q) ||
+      (p.ean||"").toLowerCase().includes(q) ||
+      (p.label||"").toLowerCase().includes(q)
+    ).map(p => ({ ...p, supplierName: s.name }))
+  ).slice(0, 20);
+
+  // ── Tuiles de navigation iOS ─────────────────────────────────────────────────
+  const tiles = [
+    { page:"new",        label:"Nouvelle
+commande", color:"#6366f1", bg:"rgba(99,102,241,0.12)",  Icon:Edit },
+    { page:"orders",     label:"Commandes",          color:"#0ea5e9", bg:"rgba(14,165,233,0.12)",  Icon:List },
+    { page:"catalogue",  label:"Catalogue",          color:"#10b981", bg:"rgba(16,185,129,0.12)",  Icon:BookOpen },
+    { page:"suppliers",  label:"Fournisseurs",       color:"#f59e0b", bg:"rgba(245,158,11,0.12)",  Icon:Factory },
+    { page:"remplissage",label:"Remplissage",         color:"#8b5cf6", bg:"rgba(139,92,246,0.12)",  Icon:Package },
+    { page:"proposals",  label:"Propositions",       color:"#ec4899", bg:"rgba(236,72,153,0.12)",  Icon:Tag },
+    { page:"stats",      label:"Statistiques",       color:"#06b6d4", bg:"rgba(6,182,212,0.12)",   Icon:BarChart2 },
+    isAdmin && { page:"admin", label:"Admin",        color:"#ef4444", bg:"rgba(239,68,68,0.12)",   Icon:Settings },
+  ].filter(Boolean).filter(t => isAdmin || (session.pages||[]).includes(t.page));
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
 
   return (
-    <div>
-      {/* Greeting */}
-      <div style={{ marginBottom:18 }}>
-        <h1 style={{ margin:"0 0 4px", fontSize:26, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>
-          Bonjour, {session.name.split(" ")[0]} 👋
+    <div style={{ maxWidth: 600, margin: "0 auto" }}>
+
+      {/* ── Greeting ── */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 13, color:"var(--t-text-40)", marginBottom: 2 }}>
+          {new Date().toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long" })}
+        </div>
+        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-0.04em", color:"var(--t-text-90)", lineHeight: 1.1 }}>
+          {greeting},<br/>{session.name.split(" ")[0]} 👋
         </h1>
-        <div style={{ fontSize:13, color:"var(--t-text-55)" }}>Voici un aperçu de votre activité.</div>
       </div>
 
-      {/* Recherche globale produits */}
-      <div style={{ marginBottom:24, position:"relative" }}>
-        <div className="lg-search-bar" style={{ display:"flex", alignItems:"center", gap:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"12px 16px" }}>
-          <Search size={18} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
+      {/* ── Recherche ── */}
+      <div style={{ position:"relative", marginBottom: 24 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius: 16, padding:"13px 16px" }}>
+          <Search size={17} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
           <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Référence, EAN ou nom de produit…"
-            style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, color:"var(--t-input-color)" }}
+            value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Référence, EAN ou produit…"
+            style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:15, color:"var(--t-input-color)" }}
           />
-          {query && <button onClick={() => setQuery("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", display:"flex", padding:0 }}><X size={18} /></button>}
-          <button onClick={() => setScanning(true)} title="Scanner un code-barres" style={{ background:"rgba(99,102,241,0.15)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:10, padding:"6px 10px", cursor:"pointer", color:"#818cf8", display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-            <Camera size={17} />
-          </button>
+          {query
+            ? <button onClick={() => setQuery("")} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", padding:0 }}><X size={16}/></button>
+            : <button onClick={() => setScanning(true)} style={{ background:"var(--t-border-subtle)", border:"none", borderRadius:10, padding:"6px 10px", cursor:"pointer", color:"var(--t-text-55)", display:"flex" }}><Camera size={16}/></button>
+          }
         </div>
-
         {q.length >= 2 && (
-          <div style={{ marginTop:10, background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:16, overflow:"hidden", boxShadow:"var(--t-card-shadow)" }}>
-            {searchResults.length === 0 ? (
-              <div style={{ padding:"20px", textAlign:"center", color:"var(--t-text-40)", fontSize:13 }}>Aucun produit trouvé pour « {query} »</div>
-            ) : (
-              <>
-                <div style={{ padding:"8px 16px", fontSize:11, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.05em", borderBottom:"1px solid var(--t-border-subtle)" }}>{searchResults.length} résultat(s)</div>
-                {searchResults.map((p, i) => (
-                  <div key={i} onClick={() => setSelectedProduct(p)} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, padding:"11px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none", cursor:"pointer" }}>
-                    <div style={{ minWidth:0 }}>
-                      <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
-                      <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
-                        <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", background:"var(--t-mono-bg)", padding:"1px 6px", borderRadius:5 }}>{p.ref}</span>
-                        {p.ean && <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-mono-color)", background:"var(--t-mono-bg)", padding:"1px 6px", borderRadius:5 }}>EAN {p.ean}</span>}
-                        <span style={{ fontSize:11, color:"var(--t-text-40)" }}>· {p.supplierName}</span>
-                        {p.dispoParDepot ? Object.entries(p.dispoParDepot).map(([depot, d]) => (
-                          <span key={depot} style={{ fontSize:10, fontWeight:600, color: d.dispo===0?"#ef4444":"#34d399", background:"rgba(0,0,0,0.15)", padding:"1px 6px", borderRadius:5 }}>{depot} : {d.dispo}</span>
-                        )) : p.dispo != null && <span style={{ fontSize:11, fontWeight:600, color: p.dispo===0?"#ef4444":"#34d399" }}>Dispo : {p.dispo}</span>}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight:700, fontSize:14, color:"#059669", flexShrink:0 }}>{fmt(p.price)}</div>
+          <div style={{ position:"absolute", top:"calc(100% + 8px)", left:0, right:0, background:"var(--t-drop-bg)", border:"1px solid var(--t-border-subtle)", borderRadius:16, overflow:"hidden", boxShadow:"0 8px 32px rgba(0,0,0,0.2)", zIndex:50 }}>
+            {searchResults.length === 0
+              ? <div style={{ padding:20, textAlign:"center", color:"var(--t-text-40)", fontSize:13 }}>Aucun résultat</div>
+              : searchResults.map((p,i) => (
+                <div key={i} onClick={() => { setSelectedProduct(p); setQuery(""); }} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 16px", borderBottom:i<searchResults.length-1?"1px solid var(--t-border-subtle)":"none", cursor:"pointer" }}>
+                  <div>
+                    <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)" }}>{p.label}</div>
+                    <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{p.ref} · {p.supplierName}</div>
                   </div>
-                ))}
-              </>
-            )}
+                  {p.price > 0 && <div style={{ fontWeight:700, color:"#10b981", fontSize:13 }}>{fmt(p.price)}</div>}
+                </div>
+              ))
+            }
           </div>
         )}
       </div>
 
-      {scanning && <BarcodeScanner onDetected={(code) => {
+      {scanning && <BarcodeScanner onDetected={code => {
         setQuery(code); setScanning(false);
-        const match = suppliers.flatMap(s=>s.products.map(p=>({...p,supplierName:s.name}))).find(p=>(p.ean||"").toLowerCase()===code.toLowerCase()||(p.ref||"").toLowerCase()===code.toLowerCase());
-        if (match) setSelectedProduct(match);
+        const m = suppliers.flatMap(s=>s.products.map(p=>({...p,supplierName:s.name}))).find(p=>(p.ean||"").toLowerCase()===code.toLowerCase()||(p.ref||"").toLowerCase()===code.toLowerCase());
+        if (m) setSelectedProduct(m);
       }} onClose={() => setScanning(false)} />}
 
-      {/* ── Ce matin : livraisons du jour, retards, réappro ── */}
-      <div className="grid-3" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:14, marginBottom:24 }}>
-          {/* Livraisons aujourd'hui */}
-          <div style={{ ...S.card, padding:16 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}><Truck size={16} style={{ color:"#0ea5e9" }} /> Livraisons aujourd'hui</div>
-              <span style={{ fontSize:12, fontWeight:700, color:"#0ea5e9", background:"rgba(14,165,233,0.12)", padding:"1px 8px", borderRadius:8 }}>{deliveriesToday.length}</span>
-            </div>
-            {deliveriesToday.length === 0 ? (
-              <div style={{ fontSize:12, color:"var(--t-text-40)", padding:"6px 0" }}>Aucune livraison prévue aujourd'hui.</div>
-            ) : deliveriesToday.slice(0,5).map(o => (
-              <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", cursor:"pointer" }}>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
-                  <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{o.deliveryPlace || "—"}</div>
-                </div>
-                <StatusBadge status={o.status} />
-              </div>
-            ))}
-          </div>
-
-          {/* Commandes en retard */}
-          <div style={{ ...S.card, padding:16 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}><Clock size={16} style={{ color:"#f87171" }} /> Commandes en retard</div>
-              <span style={{ fontSize:12, fontWeight:700, color:"#f87171", background:"rgba(239,68,68,0.12)", padding:"1px 8px", borderRadius:8 }}>{lateOrders.length}</span>
-            </div>
-            {lateOrders.length === 0 ? (
-              <div style={{ fontSize:12, color:"var(--t-text-40)", padding:"6px 0" }}>Aucun retard. 👍</div>
-            ) : lateOrders.slice(0,5).map(o => {
-              const daysLate = Math.round((new Date(todayStr) - new Date(o.deliveryDate)) / 86400000);
-              return (
-                <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", cursor:"pointer" }}>
-                  <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:12, fontFamily:"monospace", fontWeight:700, color:"var(--t-text-90)" }}>{o.id}</div>
-                    <div style={{ fontSize:11, color:"var(--t-text-40)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:600, color:"#f87171", flexShrink:0 }}>retard {daysLate}j</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Réapprovisionnement conseillé */}
-          <div style={{ ...S.card, padding:16 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}><Package size={16} style={{ color:"#f59e0b" }} /> Réappro conseillé</div>
-              <span style={{ fontSize:12, fontWeight:700, color:"#f59e0b", background:"rgba(245,158,11,0.12)", padding:"1px 8px", borderRadius:8 }}>{reapproList.length}</span>
-            </div>
-            {reapproList.length === 0 ? (
-              <div style={{ fontSize:12, color:"var(--t-text-40)", padding:"6px 0" }}>Rien à commander pour l'instant.</div>
-            ) : reapproList.slice(0,5).map((r,i) => (
-              <div key={i} onClick={() => setPage("suppliers")} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom:"1px solid var(--t-border-subtle)", cursor:"pointer" }}>
-                <div style={{ minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.label}</div>
-                  <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{r.supplier}</div>
-                </div>
-                <div style={{ textAlign:"right", flexShrink:0 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b" }}>{r.dispo} / {r.stockMin}</div>
-                  <div style={{ fontSize:10, color:"var(--t-text-40)" }}>dispo / min</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      {/* KPIs */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:12, marginBottom:24 }}>
+      {/* ── 3 KPIs ── */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:28 }}>
         {[
-          { Icon:List, label:"Total commandes", value:orders.length, sub:"toutes périodes" },
-          { Icon:Clock, label:"En cours HT", value:fmt(pending), sub:"en attente + validées", color:"#60a5fa" },
-          { Icon:DollarSign, label:"Volume HT", value:fmt(totalHT), sub:"toutes commandes", color:"#34d399" },
-          { Icon:CheckCircle, label:"Réceptions validées", value:byStatus.reception_validee||0, sub:"clôturées", color:"#a78bfa" },
+          { value: pending.length, label:"En cours",   color:"#6366f1", onClick: () => { setOrderFilter("commandee"); setPage("orders"); } },
+          { value: lateOrders.length, label:"En retard", color: lateOrders.length>0?"#ef4444":"#10b981", onClick: () => setPage("orders") },
+          { value: deliveriesToday.length, label:"Aujourd'hui", color:"#0ea5e9", onClick: () => setPage("orders") },
         ].map((k,i) => (
-          <div key={i} className="stat-card" style={{ ...S.card, padding:16 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-              <div>
-                <div style={{ fontSize:10, color:"var(--t-text-55)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" }}>{k.label}</div>
-                <div style={{ fontSize:20, fontWeight:700, color:k.color||"rgba(255,255,255,0.9)", letterSpacing:"-0.02em" }}>{k.value}</div>
-                <div style={{ fontSize:10, color:"var(--t-text-30)", marginTop:3 }}>{k.sub}</div>
-              </div>
-              {k.Icon && <k.Icon size={20} color={k.color||"var(--t-text-55)"} />}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Quick Nav Cards */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:14, marginBottom:24 }}>
-        {navCards.map((c,i) => (
-          <button key={i} onClick={() => setPage(c.page)} style={{ ...S.card, padding:20, border:"none", cursor:"pointer", textAlign:"left", background:c.gradient, boxShadow:`0 8px 28px ${c.glow}, inset 0 1px 0 rgba(255,255,255,0.15)`, position:"relative", overflow:"hidden" }} className="lg-card">
-            <div style={{ marginBottom:10 }}>{c.Icon && <c.Icon size={26} color="white" strokeWidth={2} />}</div>
-            <div style={{ fontWeight:700, fontSize:14, color:"white", marginBottom:4, letterSpacing:"-0.02em" }}>{c.label}</div>
-            <div style={{ fontSize:11, color:"var(--t-text-55)", lineHeight:1.4 }}>{c.desc}</div>
-            <div style={{ position:"absolute", bottom:14, right:14, fontSize:16, color:"var(--t-text-55)" }}>→</div>
+          <button key={i} onClick={k.onClick} style={{ background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:20, padding:"18px 12px", cursor:"pointer", textAlign:"center", transition:"transform 0.15s" }}
+            onMouseEnter={e=>e.currentTarget.style.transform="scale(0.97)"}
+            onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+            <div style={{ fontSize:34, fontWeight:800, color:k.color, lineHeight:1, letterSpacing:"-0.03em" }}>{k.value}</div>
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:6, fontWeight:500 }}>{k.label}</div>
           </button>
         ))}
       </div>
 
-      {/* Stock Alerts */}
-      {stockAlerts.length > 0 && (
-        <div style={{ background:"var(--t-notif-bg)", border:"1px solid var(--t-notif-border)", borderRadius:20, padding:20, marginBottom:20, backdropFilter:"blur(12px)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <Bell size={18} color="#f87171" />
-            <span style={{ fontWeight: 700, fontSize: 15, color:"#f87171" }}>Alertes stock minimum ({stockAlerts.length})</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {stockAlerts.map((a, i) => (
-              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", background:"var(--t-surface)", borderRadius:14, padding:"10px 14px", flexWrap:"wrap", gap:8, border:"1px solid rgba(255,255,255,0.08)" }}>
-                <div>
-                  <span style={{ fontFamily: "monospace", fontSize: 11, color:"var(--t-text-40)", marginRight: 8 }}>{a.ref}</span>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{a.label}</span>
-                  <span style={{ marginLeft: 8, fontSize: 11, background: "var(--t-surface)", padding: "2px 7px", borderRadius: 10, color:"var(--t-text-40)" }}>{a.subFamily}</span>
+      {/* ── Alertes urgentes ── */}
+      {(urgentAlerts.length > 0 || lateOrders.length > 0) && (
+        <div style={{ marginBottom:28 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:10 }}>⚠ Urgent</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {lateOrders.slice(0,3).map(o => {
+              const days = Math.round((new Date(todayStr)-new Date(o.deliveryDate))/86400000);
+              return (
+                <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", alignItems:"center", gap:12, background:"rgba(239,68,68,0.06)", border:"1px solid rgba(239,68,68,0.2)", borderRadius:16, padding:"12px 16px", cursor:"pointer" }}>
+                  <div style={{ width:36, height:36, borderRadius:12, background:"rgba(239,68,68,0.15)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <Clock size={18} color="#ef4444"/>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
+                    <div style={{ fontSize:11, color:"#f87171" }}>Retard de {days} jour{days>1?"s":""}</div>
+                  </div>
+                  <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)" }}>{o.id}</span>
                 </div>
-                <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color:"var(--t-text-40)" }}>Commandé</div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#059669" }}>{a.ordered}</div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color:"var(--t-text-40)" }}>Stock min</div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#D97706" }}>{a.stockMin}</div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 10, color:"var(--t-text-40)" }}>Manque</div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#DC2626" }}>-{a.missing}</div>
-                  </div>
-                  <button onClick={() => setPage("new")} style={{ ...S.btnPrimary, padding: "5px 12px", fontSize: 11 }}>Commander</button>
+              );
+            })}
+            {urgentAlerts.slice(0,3).map((a,i) => (
+              <div key={i} onClick={() => setPage("new")} style={{ display:"flex", alignItems:"center", gap:12, background:"rgba(245,158,11,0.06)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:16, padding:"12px 16px", cursor:"pointer" }}>
+                <div style={{ width:36, height:36, borderRadius:12, background:"rgba(245,158,11,0.15)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <Package size={18} color="#f59e0b"/>
                 </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontWeight:600, fontSize:13, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{a.label}</div>
+                  <div style={{ fontSize:11, color:"#fbbf24" }}>Stock {a.ordered} / min {a.stockMin}</div>
+                </div>
+                <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b", background:"rgba(245,158,11,0.15)", padding:"2px 10px", borderRadius:10, flexShrink:0 }}>Commander</div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── Activité récente ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr", gap:14, marginBottom:8 }}>
-
-        {/* Compteurs par statut — cliquables */}
-        <div style={{ ...S.card, padding:18 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-            <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>État des commandes</h2>
-            <button onClick={() => setPage("orders")} style={S.btnGhost}>Voir tout →</button>
-          </div>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
-            {STATUS_ORDER.map(k => {
-              const s = STATUS[k];
-              const count = byStatus[k] || 0;
-              return (
-                <button key={k} onClick={() => { if(setOrderFilter) setOrderFilter(k); setPage("orders"); }} style={{ background:"var(--t-surface)", border:`1px solid ${count>0?s.color+"44":"var(--t-border-subtle)"}`, borderRadius:12, padding:"10px 8px", cursor:"pointer", textAlign:"center", transition:"all 0.15s" }}>
-                  <div style={{ fontSize:20, fontWeight:800, color: count>0 ? s.color : "var(--t-text-40)", lineHeight:1 }}>{count}</div>
-                  <div style={{ fontSize:10, color:"var(--t-text-40)", marginTop:4, lineHeight:1.3 }}>{s.label}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 5 dernières commandes */}
-        <div style={{ ...S.card, padding:18 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-            <h2 style={{ margin:0, fontSize:14, fontWeight:700, color:"var(--t-text-90)" }}>Activité récente</h2>
-          </div>
-          {orders.length === 0 ? (
-            <div style={{ textAlign:"center", color:"var(--t-text-40)", fontSize:13, padding:"20px 0" }}>Aucune commande pour l'instant.</div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-              {[...orders].reverse().slice(0,5).map((o,i) => {
-                const total = o.lines.reduce((s,l)=>s+(l.qty*(l.price||0)),0);
-                const showPrice = session.canSeePrices;
-                const d = o.date ? new Date(o.date).toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit"}) : "—";
-                return (
-                  <div key={o.id} onClick={() => setPage("orders")} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 12px", borderRadius:12, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", cursor:"pointer", transition:"all 0.15s" }} className="lg-row">
-                    <div style={{ width:36, height:36, borderRadius:10, background:"linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.15))", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, border:"1px solid rgba(99,102,241,0.2)" }}>
-                      <List size={16} color="#818cf8" />
-                    </div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
-                        <span style={{ fontFamily:"monospace", fontSize:11, color:"var(--t-text-55)", fontWeight:600 }}>{o.id}</span>
-                        <StatusBadge status={o.status} />
-                      </div>
-                      <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
-                    </div>
-                    <div style={{ textAlign:"right", flexShrink:0 }}>
-                      {showPrice && <div style={{ fontSize:13, fontWeight:700, color:"#34d399" }}>{fmt(total)}</div>}
-                      <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{d}</div>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* ── Grille navigation iOS ── */}
+      <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Navigation</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:12, marginBottom:32 }}>
+        {tiles.map((t,i) => (
+          <button key={i} onClick={() => setPage(t.page)} style={{
+            background: t.bg,
+            border: "1px solid " + t.color + "30",
+            borderRadius: 22,
+            padding: "18px 8px 14px",
+            cursor: "pointer",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+            transition: "transform 0.15s, box-shadow 0.15s",
+            boxShadow: "0 2px 12px " + t.color + "20",
+          }}
+            onMouseEnter={e=>{e.currentTarget.style.transform="scale(0.94)";e.currentTarget.style.boxShadow="0 6px 20px "+t.color+"35";}}
+            onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="0 2px 12px "+t.color+"20";}}>
+            <div style={{ width:44, height:44, borderRadius:14, background:t.color, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px "+t.color+"50" }}>
+              <t.Icon size={22} color="white" strokeWidth={2}/>
             </div>
-          )}
-        </div>
-
+            <div style={{ fontSize:11, fontWeight:600, color:"var(--t-text-85)", lineHeight:1.3, whiteSpace:"pre-wrap" }}>{t.label}</div>
+          </button>
+        ))}
       </div>
+
+      {/* ── Activité récente (compact) ── */}
+      {orders.length > 0 && (
+        <div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Récent</div>
+            <button onClick={() => setPage("orders")} style={{ ...S.btnGhost, fontSize:12, padding:"2px 8px" }}>Tout voir →</button>
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {[...orders].reverse().slice(0,4).map((o,i) => (
+              <div key={i} onClick={() => setPage("orders")} style={{ display:"flex", alignItems:"center", gap:12, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"12px 16px", cursor:"pointer", transition:"transform 0.12s" }}
+                onMouseEnter={e=>e.currentTarget.style.transform="translateX(2px)"}
+                onMouseLeave={e=>e.currentTarget.style.transform="translateX(0)"}>
+                <div style={{ width:36, height:36, borderRadius:12, background:"rgba(99,102,241,0.12)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <List size={16} color="#818cf8"/>
+                </div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
+                    <span style={{ fontFamily:"monospace", fontSize:10, color:"var(--t-text-40)", fontWeight:600 }}>{o.id}</span>
+                    <StatusBadge status={o.status}/>
+                  </div>
+                  <div style={{ fontSize:13, fontWeight:600, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{o.supplierName}</div>
+                </div>
+                {session.canSeePrices && <div style={{ fontSize:13, fontWeight:700, color:"#10b981", flexShrink:0 }}>{fmt(orderTotal(o))}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
