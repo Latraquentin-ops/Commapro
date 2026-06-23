@@ -1205,8 +1205,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
 
   // ── Tuiles de navigation iOS ─────────────────────────────────────────────────
   const tiles = [
-    { page:"new",        label:"Nouvelle
-commande", color:"#6366f1", bg:"rgba(99,102,241,0.12)",  Icon:Edit },
+    { page:"new",        label:"Nouvelle commande", color:"#6366f1", bg:"rgba(99,102,241,0.12)",  Icon:Edit },
     { page:"orders",     label:"Commandes",          color:"#0ea5e9", bg:"rgba(14,165,233,0.12)",  Icon:List },
     { page:"catalogue",  label:"Catalogue",          color:"#10b981", bg:"rgba(16,185,129,0.12)",  Icon:BookOpen },
     { page:"suppliers",  label:"Fournisseurs",       color:"#f59e0b", bg:"rgba(245,158,11,0.12)",  Icon:Factory },
