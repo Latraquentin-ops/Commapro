@@ -4020,53 +4020,6 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
         </div>
       </div>
 
-      {/* Familles & Sous-familles */}
-      <div style={{ ...S.card, marginBottom:20 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-          <h2 style={{ margin:0, fontSize:15, fontWeight:700, display:"flex", alignItems:"center", gap:8 }}><Folder size={17} /> Familles & Sous-familles</h2>
-          <button onClick={() => setFamilies(prev => [...prev, { id:"f"+Date.now(), label:"", subFamilies:[] }])} style={S.btnSecondary}>+ Famille</button>
-        </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-          {families.map(fam => (
-            <div key={fam.id} style={{ background:"var(--t-surface)", borderRadius:12, padding:"12px 14px", border:"1px solid var(--t-border-subtle)" }}>
-              {/* Nom de la famille */}
-              <div style={{ display:"flex", gap:10, alignItems:"center", marginBottom:10 }}>
-                <input
-                  value={fam.label}
-                  onChange={e => setFamilies(prev => prev.map(f => f.id===fam.id ? {...f, label:e.target.value} : f))}
-                  style={{ ...S.input, flex:1, fontWeight:700 }}
-                  placeholder="Nom de la famille (ex: Electroménager)"
-                />
-                <ConfirmDeleteButton onConfirm={() => setFamilies(prev => prev.filter(f => f.id!==fam.id))} small label="✕ Supprimer famille" />
-              </div>
-              {/* Sous-familles */}
-              <div style={{ fontSize:11, fontWeight:600, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Sous-familles</div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:8 }}>
-                {(fam.subFamilies||[]).map((sf, si) => (
-                  <div key={si} style={{ display:"flex", alignItems:"center", gap:4, background:"var(--t-card-bg)", borderRadius:8, border:"1px solid var(--t-border-subtle)", padding:"4px 4px 4px 10px" }}>
-                    <input
-                      value={sf}
-                      onChange={e => setFamilies(prev => prev.map(f => f.id!==fam.id ? f : {
-                        ...f, subFamilies: f.subFamilies.map((s,j) => j===si ? e.target.value : s)
-                      }))}
-                      style={{ background:"transparent", border:"none", outline:"none", fontSize:12, fontWeight:600, color:"var(--t-text-85)", width:80 }}
-                    />
-                    <button onClick={() => setFamilies(prev => prev.map(f => f.id!==fam.id ? f : {
-                      ...f, subFamilies: f.subFamilies.filter((_,j) => j!==si)
-                    }))} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)", fontSize:14, padding:"0 4px", lineHeight:1 }}>×</button>
-                  </div>
-                ))}
-                <button onClick={() => setFamilies(prev => prev.map(f => f.id!==fam.id ? f : {
-                  ...f, subFamilies: [...(f.subFamilies||[]), ""]
-                }))} style={{ ...S.btnGhost, fontSize:11, padding:"4px 10px", borderStyle:"dashed" }}>+ Sous-famille</button>
-              </div>
-            </div>
-          ))}
-          {families.length === 0 && (
-            <div style={{ textAlign:"center", color:"var(--t-text-30)", fontSize:13, padding:"12px 0" }}>Aucune famille définie — clique sur "+ Famille" pour commencer</div>
-          )}
-        </div>
-      </div>
 
       <div style={S.card}>
         <table style={{ width:"100%",borderCollapse:"collapse",fontSize:13 }}>
