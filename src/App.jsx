@@ -947,6 +947,9 @@ export default function App() {
           .app-shell { display:block; }
           .fab-label { display:none !important; }
           .fab-new { padding:16px !important; border-radius:50% !important; width:52px; height:52px; justify-content:center; }
+        /* Tab bar — visible mobile, caché desktop */
+        .tab-bar { display:flex !important; }
+        @media (min-width: 1024px) { .tab-bar { display:none !important; } }
         }
 
       `}</style>
@@ -967,7 +970,7 @@ export default function App() {
       <div className="app-shell">
         <Sidebar session={session} page={page} setPage={setPage} navItems={navItems} stockAlerts={stockAlerts} onLogout={() => setSession(null)} dark={effectiveDark} setDark={toggleDark} />
         <div className="app-content">
-          <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(80px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
+          <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(90px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
             {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} setSelectedProduct={setSelectedProduct} T={T} />}
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} setEditingDraft={setEditingDraft} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
@@ -998,28 +1001,65 @@ export default function App() {
         setDark={setDark}
       />
 
-      {/* Bouton flottant « + Nouvelle commande » — visible partout sauf pendant la création */}
-      {page !== "new" && (isAdmin || allowedPages.includes("orders")) && (
-        <button
-          onClick={() => setPage("new")}
-          aria-label="Nouvelle commande"
-          className="fab-new"
-          style={{
-            position:"fixed", right:"max(20px, env(safe-area-inset-right))",
-            bottom:"calc(24px + env(safe-area-inset-bottom))", zIndex:300,
-            display:"flex", alignItems:"center", gap:10, padding:"15px 22px",
-            borderRadius:30, border:"none", cursor:"pointer", color:"white",
-            background:"linear-gradient(135deg,#6366f1,#8b5cf6)", fontWeight:700, fontSize:15,
-            boxShadow:"0 10px 32px rgba(99,102,241,0.55), inset 0 1px 0 rgba(255,255,255,0.25)",
-            letterSpacing:"-0.01em", transition:"transform 0.18s, box-shadow 0.18s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 14px 40px rgba(99,102,241,0.65)"; }}
-          onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 10px 32px rgba(99,102,241,0.55), inset 0 1px 0 rgba(255,255,255,0.25)"; }}
-        >
-          <Plus size={20} strokeWidth={2.5} />
-          <span className="fab-label">Nouvelle commande</span>
+      {/* ── Tab bar iOS fixe en bas (mobile uniquement) ── */}
+      <div className="tab-bar" style={{
+        position:"fixed", bottom:0, left:0, right:0, zIndex:300,
+        paddingBottom:"env(safe-area-inset-bottom)",
+        backdropFilter:"blur(24px) saturate(180%)",
+        WebkitBackdropFilter:"blur(24px) saturate(180%)",
+        background: effectiveDark ? "rgba(10,10,18,0.85)" : "rgba(255,255,255,0.85)",
+        borderTop: effectiveDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
+        display:"flex", alignItems:"stretch",
+      }}>
+        {/* Remplissage */}
+        <button onClick={() => setPage("remplissage")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"10px 0 8px", border:"none", background:"transparent", cursor:"pointer", transition:"opacity 0.15s" }}>
+          <div style={{ width:28, height:28, borderRadius:8, background: page==="remplissage" ? "#8b5cf6" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.2s" }}>
+            <Package size={18} color={page==="remplissage" ? "white" : "var(--t-text-40)"} strokeWidth={page==="remplissage"?2.5:1.8}/>
+          </div>
+          <span style={{ fontSize:10, fontWeight: page==="remplissage"?700:500, color: page==="remplissage"?"#8b5cf6":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Rayon</span>
         </button>
-      )}
+
+        {/* Commandes */}
+        <button onClick={() => setPage("orders")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"10px 0 8px", border:"none", background:"transparent", cursor:"pointer", transition:"opacity 0.15s" }}>
+          <div style={{ position:"relative" }}>
+            <div style={{ width:28, height:28, borderRadius:8, background: page==="orders" ? "#0ea5e9" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.2s" }}>
+              <List size={18} color={page==="orders" ? "white" : "var(--t-text-40)"} strokeWidth={page==="orders"?2.5:1.8}/>
+            </div>
+            {orders.filter(o=>!["livree","reception_validee","brouillon"].includes(o.status)).length > 0 && (
+              <div style={{ position:"absolute", top:-3, right:-3, width:14, height:14, borderRadius:"50%", background:"#ef4444", fontSize:8, fontWeight:800, color:"white", display:"flex", alignItems:"center", justifyContent:"center", border: effectiveDark?"2px solid #0a0a18":"2px solid white" }}>
+                {orders.filter(o=>!["livree","reception_validee","brouillon"].includes(o.status)).length}
+              </div>
+            )}
+          </div>
+          <span style={{ fontSize:10, fontWeight: page==="orders"?700:500, color: page==="orders"?"#0ea5e9":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Commandes</span>
+        </button>
+
+        {/* Bouton + central */}
+        <button onClick={() => setPage("new")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"6px 0 8px", border:"none", background:"transparent", cursor:"pointer" }}>
+          <div style={{ width:44, height:44, borderRadius:14, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(99,102,241,0.5)", marginTop:-8, transition:"transform 0.15s" }}
+            onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"}
+            onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+            <Plus size={22} color="white" strokeWidth={2.5}/>
+          </div>
+          <span style={{ fontSize:10, fontWeight:600, color:"#818cf8", letterSpacing:"-0.01em" }}>Commander</span>
+        </button>
+
+        {/* Catalogue */}
+        <button onClick={() => setPage("catalogue")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"10px 0 8px", border:"none", background:"transparent", cursor:"pointer" }}>
+          <div style={{ width:28, height:28, borderRadius:8, background: page==="catalogue" ? "#10b981" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.2s" }}>
+            <BookOpen size={18} color={page==="catalogue" ? "white" : "var(--t-text-40)"} strokeWidth={page==="catalogue"?2.5:1.8}/>
+          </div>
+          <span style={{ fontSize:10, fontWeight: page==="catalogue"?700:500, color: page==="catalogue"?"#10b981":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Catalogue</span>
+        </button>
+
+        {/* Plus (accueil/menu) */}
+        <button onClick={() => setPage("dashboard")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"10px 0 8px", border:"none", background:"transparent", cursor:"pointer" }}>
+          <div style={{ width:28, height:28, borderRadius:8, background: page==="dashboard" ? "#f59e0b" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.2s" }}>
+            <Home size={18} color={page==="dashboard" ? "white" : "var(--t-text-40)"} strokeWidth={page==="dashboard"?2.5:1.8}/>
+          </div>
+          <span style={{ fontSize:10, fontWeight: page==="dashboard"?700:500, color: page==="dashboard"?"#f59e0b":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Accueil</span>
+        </button>
+      </div>
     </div>
   );
 }
