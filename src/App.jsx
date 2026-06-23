@@ -965,7 +965,7 @@ export default function App() {
           <main style={{ maxWidth:1200, margin:"0 auto", padding:"28px 24px", paddingLeft:"max(24px, env(safe-area-inset-left))", paddingRight:"max(24px, env(safe-area-inset-right))", paddingBottom:"calc(120px + env(safe-area-inset-bottom))", position:"relative", zIndex:1 }}>
             <div key={page} style={{ animation:"fadeUp 0.25s cubic-bezier(0.4,0,0.2,1) both" }}>
             {page === "dashboard" && <DashboardPage orders={orders} suppliers={suppliers} stockAlerts={stockAlerts} session={session} setPage={setPage} setOrderFilter={setOrderFilter} setSelectedProduct={setSelectedProduct} T={T} />}
-            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} session={session} setPage={setPage} setEditingDraft={setEditingDraft} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
+            {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} suppliers={suppliers} session={session} setPage={setPage} setEditingDraft={setEditingDraft} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} editingDraft={editingDraft} setEditingDraft={setEditingDraft} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
@@ -1834,7 +1834,7 @@ function OrderTable({ orders, session, onSelect, compact }) {
   );
 }
 
-function OrdersPage({ orders, setOrders, session, setPage, setEditingDraft, initialFilter, onFilterUsed }) {
+function OrdersPage({ orders, setOrders, suppliers, session, setPage, setEditingDraft, initialFilter, onFilterUsed }) {
   const [selected, setSelected] = useState(null);
   const [filter, setFilter]     = useState(initialFilter || "all");
   const isAdmin = session.role === "admin";
