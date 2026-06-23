@@ -464,22 +464,20 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
         })}
       </nav>
       <div style={{ padding:"12px 10px", borderTop:"1px solid var(--t-sidebar-border)" }}>
-        <button onClick={() => setDark()} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"9px 12px", borderRadius:10, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6, transition:"all 0.15s" }}>
-          {dark ? <Sun size={16} /> : <Moon size={16} />}
-          {dark ? "Mode clair" : "Mode sombre"}
-        </button>
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:10, background:"var(--t-sidebar-active)" }}>
-          <div style={{ width:30, height:30, borderRadius:"50%", background:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(168,85,247,0.8))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:"white", flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"var(--t-sidebar-active)", marginBottom:8 }}>
+          <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(168,85,247,0.8))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>
             {session.name.charAt(0).toUpperCase()}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:12, fontWeight:700, color:"var(--t-sidebar-text-active)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{session.name}</div>
             <div style={{ fontSize:10, color:"var(--t-sidebar-text)", marginTop:1 }}>{session.role === "admin" ? "Administrateur" : "Utilisateur"}</div>
           </div>
-          <button onClick={onLogout} title="Déconnexion" style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-sidebar-text)", padding:4, borderRadius:6, display:"flex", transition:"color 0.15s" }}>
-            <X size={15} />
-          </button>
         </div>
+        <button onClick={onLogout} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"10px 12px", borderRadius:12, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.1)", color:"#ef4444", fontSize:13, fontWeight:600, transition:"all 0.15s" }}
+          onMouseEnter={e=>e.currentTarget.style.background="rgba(239,68,68,0.2)"}
+          onMouseLeave={e=>e.currentTarget.style.background="rgba(239,68,68,0.1)"}>
+          <X size={15}/> Se déconnecter
+        </button>
       </div>
     </aside>
   );
@@ -525,14 +523,8 @@ function MobileDrawer({ open, onClose, session, page, setPage, navItems, onLogou
           })}
         </nav>
         <div style={{ padding:"12px", borderTop:"1px solid var(--t-sidebar-border)" }}>
-          <button onClick={() => setDark()} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-sidebar-text)", fontSize:13, marginBottom:6 }}>
-            <span style={{ display:"flex", alignItems:"center", gap:10 }}>{dark ? <Sun size={16}/> : <Moon size={16}/>}{dark ? "Mode clair" : "Mode sombre"}</span>
-            <div style={{ width:36, height:20, borderRadius:10, background:dark?"rgba(99,102,241,0.7)":"rgba(200,200,200,0.5)", position:"relative", transition:"background 0.3s", flexShrink:0 }}>
-              <div style={{ position:"absolute", top:2, left:dark?16:2, width:16, height:16, borderRadius:"50%", background:"white", transition:"left 0.3s" }} />
-            </div>
-          </button>
-          <button onClick={() => { onLogout(); onClose(); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 14px", borderRadius:12, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.08)", color:"#ef4444", fontSize:13, fontWeight:600 }}>
-            <X size={16}/> Se déconnecter
+          <button onClick={() => { onLogout(); onClose(); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, width:"100%", padding:"12px 14px", borderRadius:14, border:"none", cursor:"pointer", background:"rgba(239,68,68,0.1)", color:"#ef4444", fontSize:14, fontWeight:700 }}>
+            <X size={17}/> Se déconnecter
           </button>
         </div>
       </div>
