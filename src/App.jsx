@@ -370,12 +370,12 @@ function ConfirmDeleteButton({ onConfirm, label = "Supprimer", confirmLabel = "C
 }
 
 const S = {
-  btnPrimary:   { padding:"9px 20px", borderRadius:22, border:"none", cursor:"pointer", background:"linear-gradient(135deg,rgba(99,102,241,0.9),rgba(139,92,246,0.9))", color:"white", fontWeight:600, fontSize:13, backdropFilter:"blur(8px)", boxShadow:"0 4px 20px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.2)", letterSpacing:"-0.01em", transition:"all 0.18s" },
+  btnPrimary:   { padding:"9px 20px", borderRadius:22, border:"none", cursor:"pointer", background:"linear-gradient(135deg,rgba(249,115,22,0.92),rgba(234,88,12,0.9))", color:"white", fontWeight:600, fontSize:13, backdropFilter:"blur(8px)", boxShadow:"0 4px 20px rgba(249,115,22,0.4), inset 0 1px 0 rgba(255,255,255,0.2)", letterSpacing:"-0.01em", transition:"all 0.18s" },
   btnSecondary: { padding:"8px 16px", borderRadius:22, border:"1px solid rgba(255,255,255,0.14)", cursor:"pointer", background:"var(--t-border-subtle)", color:"var(--t-btn-sec-color)", fontWeight:500, fontSize:13, backdropFilter:"blur(8px)", transition:"all 0.18s" },
   btnDanger:    { padding:"8px 16px", borderRadius:22, border:"1px solid rgba(239,68,68,0.35)", cursor:"pointer", background:"rgba(239,68,68,0.12)", color:"#f87171", fontWeight:500, fontSize:13, backdropFilter:"blur(8px)", transition:"all 0.18s" },
   btnGhost:     { padding:"6px 12px", borderRadius:16, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-btn-ghost)", fontWeight:500, fontSize:13, transition:"all 0.18s" },
   input:        { width:"100%", padding:"10px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.12)", fontSize:13, outline:"none", boxSizing:"border-box", background:"var(--t-border-subtle)", backdropFilter:"blur(8px)", color:"#f0f0f5" },
-  inputNum:     { width:"100%", padding:"7px 12px", borderRadius:18, border:"1.5px solid rgba(129,140,248,0.45)", fontSize:12, outline:"none", boxSizing:"border-box", background:"rgba(99,102,241,0.08)", backdropFilter:"blur(8px)", color:"#f0f0f5", fontWeight:600, textAlign:"center", transition:"border-color 0.15s" },
+  inputNum:     { width:"100%", padding:"7px 12px", borderRadius:18, border:"1.5px solid rgba(129,140,248,0.45)", fontSize:12, outline:"none", boxSizing:"border-box", background:"rgba(249,115,22,0.08)", backdropFilter:"blur(8px)", color:"#f0f0f5", fontWeight:600, textAlign:"center", transition:"border-color 0.15s" },
   label:        { display:"block", fontSize:11, fontWeight:600, color:"var(--t-text-55)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" },
   card:         { background:"rgba(255,255,255,0.08)", backdropFilter:"blur(24px) saturate(180%)", WebkitBackdropFilter:"blur(24px) saturate(180%)", borderRadius:20, padding:24, border:"1px solid rgba(255,255,255,0.18)", boxShadow:"0 4px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.25)" },
   td:           { padding:"11px 16px", color:"var(--t-text-90)", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.05)" },
@@ -442,7 +442,7 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
     <aside className="app-sidebar">
       <div style={{ padding:"24px 20px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
         <button onClick={() => setPage("dashboard")} style={{ display:"flex", alignItems:"center", gap:12, background:"none", border:"none", cursor:"pointer", padding:0 }}>
-          <div style={{ width:40, height:40, borderRadius:11, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 4px 14px rgba(99,102,241,0.3)" }}>
+          <div style={{ width:40, height:40, borderRadius:11, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow:"0 4px 14px rgba(249,115,22,0.3)" }}>
             <CPLogo size={25} />
           </div>
           <div>
@@ -456,7 +456,7 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
           const isActive = page === v;
           return (
             <button key={v} onClick={() => setPage(v)} style={{ width:"100%", display:"flex", alignItems:"center", gap:11, padding:"10px 12px", borderRadius:10, border:"none", cursor:"pointer", marginBottom:2, background: isActive ? "var(--t-sidebar-active)" : "transparent", color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)", fontWeight: isActive ? 700 : 500, fontSize:13.5, textAlign:"left", transition:"all 0.15s", position:"relative" }}>
-              {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
+              {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#f97316" }} />}
               <Icon size={17} strokeWidth={isActive?2.2:1.8} />
               {lbl}
             </button>
@@ -465,7 +465,7 @@ function Sidebar({ session, page, setPage, navItems, stockAlerts, onLogout, dark
       </nav>
       <div style={{ padding:"12px 10px", borderTop:"1px solid var(--t-sidebar-border)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"var(--t-sidebar-active)", marginBottom:8 }}>
-          <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,rgba(99,102,241,0.8),rgba(168,85,247,0.8))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>
+          <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,rgba(249,115,22,0.85),rgba(234,88,12,0.8))", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>
             {session.name.charAt(0).toUpperCase()}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
@@ -503,7 +503,7 @@ function MobileDrawer({ open, onClose, session, page, setPage, navItems, onLogou
         </div>
         <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--t-sidebar-border)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", borderRadius:12, background:"var(--t-sidebar-active)" }}>
-            <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>{session.name.charAt(0).toUpperCase()}</div>
+            <div style={{ width:32, height:32, borderRadius:"50%", background:"linear-gradient(135deg,#f97316,#ea580c)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"white", flexShrink:0 }}>{session.name.charAt(0).toUpperCase()}</div>
             <div style={{ minWidth:0 }}>
               <div style={{ fontSize:13, fontWeight:700, color:"var(--t-sidebar-text-active)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{session.name}</div>
               <div style={{ fontSize:11, color:"var(--t-sidebar-text)" }}>{session.email}</div>
@@ -515,7 +515,7 @@ function MobileDrawer({ open, onClose, session, page, setPage, navItems, onLogou
             const isActive = page === v;
             return (
               <button key={v} onClick={() => { setPage(v); onClose(); }} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"12px 14px", borderRadius:12, border:"none", cursor:"pointer", marginBottom:4, background: isActive ? "var(--t-sidebar-active)" : "transparent", color: isActive ? "var(--t-sidebar-text-active)" : "var(--t-sidebar-text)", fontWeight: isActive ? 700 : 500, fontSize:15, textAlign:"left", transition:"all 0.15s", position:"relative" }}>
-                {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#818cf8" }} />}
+                {isActive && <div style={{ position:"absolute", left:0, top:"20%", bottom:"20%", width:3, borderRadius:"0 3px 3px 0", background:"#f97316" }} />}
                 {Icon && <Icon size={18} strokeWidth={isActive?2.2:1.8} />}
                 {lbl}
               </button>
@@ -722,16 +722,16 @@ export default function App() {
   }, [suppliers, orders]);
 
   if (!loaded) return (
-    <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#0a0a0f 0%,#0d1117 50%,#0a0f1a 100%)", color:"white", fontFamily:"-apple-system,'SF Pro Display',sans-serif", gap:22, position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(160deg,#0f0a00 0%,#1a1000 50%,#0d0800 100%)", color:"white", fontFamily:"-apple-system,'SF Pro Display',sans-serif", gap:22, position:"relative", overflow:"hidden" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}} @keyframes glow{0%,100%{opacity:0.4}50%{opacity:0.7}}`}</style>
-      <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.2) 0%,transparent 70%)", animation:"glow 3s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,rgba(249,115,22,0.2) 0%,transparent 70%)", animation:"glow 3s ease-in-out infinite", pointerEvents:"none" }} />
       <div style={{ position:"relative", zIndex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:22 }}>
-        <div style={{ width:96, height:96, borderRadius:26, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 16px 48px rgba(99,102,241,0.4)", animation:"pulse 2s ease-in-out infinite" }}>
+        <div style={{ width:96, height:96, borderRadius:26, background:"rgba(255,255,255,0.95)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 16px 48px rgba(249,115,22,0.4)", animation:"pulse 2s ease-in-out infinite" }}>
           <CPLogo size={60} />
         </div>
-        <div style={{ fontSize:24, fontWeight:800, letterSpacing:"-0.03em", background:"linear-gradient(135deg,#e0e7ff,#a5b4fc)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CommaPro</div>
+        <div style={{ fontSize:24, fontWeight:800, letterSpacing:"-0.03em", background:"linear-gradient(135deg,#fed7aa,#fb923c)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>CommaPro</div>
         <div style={{ display:"flex", alignItems:"center", gap:10, color:"rgba(255,255,255,0.5)", fontSize:13 }}>
-          <div style={{ width:18, height:18, border:"2px solid rgba(255,255,255,0.15)", borderTopColor:"#818cf8", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+          <div style={{ width:18, height:18, border:"2px solid rgba(255,255,255,0.15)", borderTopColor:"#f97316", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
           Chargement…
         </div>
       </div>
@@ -750,140 +750,144 @@ export default function App() {
   // DARK = indigo/violet "Liquid Glass" night.  LIGHT = clean slate/blue daylight.
   const themeCSS = effectiveDark ? `
     :root {
-      --t-text-90: rgba(255,255,255,0.95);
-      --t-text-85: rgba(255,255,255,0.88);
-      --t-text-70: rgba(255,255,255,0.74);
-      --t-text-55: rgba(255,255,255,0.58);
-      --t-text-40: rgba(255,255,255,0.42);
-      --t-text-30: rgba(255,255,255,0.32);
-      --t-input-color: #ffffff;
-      --t-input-bg: rgba(255,255,255,0.07);
-      --t-input-border: rgba(255,255,255,0.14);
-      --t-placeholder: rgba(255,255,255,0.4);
-      --t-option-bg: #1c1c2e;
-      --t-scroll: rgba(255,255,255,0.14);
-      --t-row-hover: rgba(99,102,241,0.1);
-      --t-drop-bg: rgba(14,14,26,0.96);
-      --t-nav-hover: rgba(255,255,255,0.1);
-      --t-sidebar-bg: rgba(10,10,18,0.96);
-      --t-sidebar-border: rgba(255,255,255,0.07);
-      --t-sidebar-active: rgba(99,102,241,0.15);
-      --t-sidebar-text: rgba(255,255,255,0.55);
-      --t-sidebar-text-active: rgba(255,255,255,0.95);
-      --t-card-bg: rgba(255,255,255,0.07);
-      --t-card-border: rgba(255,255,255,0.13);
-      --t-card-shadow: 0 4px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
-      --t-td-border: rgba(255,255,255,0.08);
-      --t-thead-bg: rgba(255,255,255,0.05);
-      --t-thead-color: rgba(255,255,255,0.6);
-      --t-border-subtle: rgba(255,255,255,0.08);
-      --t-surface: rgba(255,255,255,0.06);
-      --t-surface-hover: rgba(255,255,255,0.09);
+      /* ── DARK FORGE — ambre/noir brûlé ── */
+      --t-text-90: rgba(255,248,235,0.97);
+      --t-text-85: rgba(255,243,220,0.88);
+      --t-text-70: rgba(255,235,195,0.74);
+      --t-text-55: rgba(255,220,170,0.58);
+      --t-text-40: rgba(255,200,140,0.42);
+      --t-text-30: rgba(255,185,110,0.32);
+      --t-input-color: #fff8eb;
+      --t-input-bg: rgba(249,115,22,0.07);
+      --t-input-border: rgba(249,115,22,0.18);
+      --t-placeholder: rgba(255,200,140,0.38);
+      --t-option-bg: #1a1200;
+      --t-scroll: rgba(249,115,22,0.2);
+      --t-row-hover: rgba(249,115,22,0.08);
+      --t-drop-bg: rgba(18,11,0,0.97);
+      --t-nav-hover: rgba(249,115,22,0.1);
+      --t-sidebar-bg: rgba(12,7,0,0.97);
+      --t-sidebar-border: rgba(249,115,22,0.1);
+      --t-sidebar-active: rgba(249,115,22,0.12);
+      --t-sidebar-text: rgba(255,220,170,0.5);
+      --t-sidebar-text-active: rgba(255,248,235,0.97);
+      --t-card-bg: rgba(249,115,22,0.06);
+      --t-card-border: rgba(249,115,22,0.14);
+      --t-card-shadow: 0 4px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,200,100,0.08);
+      --t-td-border: rgba(249,115,22,0.08);
+      --t-thead-bg: rgba(249,115,22,0.06);
+      --t-thead-color: rgba(251,146,60,0.85);
+      --t-border-subtle: rgba(249,115,22,0.1);
+      --t-surface: rgba(249,115,22,0.05);
+      --t-surface-hover: rgba(249,115,22,0.09);
       --t-notif-bg: rgba(239,68,68,0.1);
       --t-notif-border: rgba(239,68,68,0.28);
-      --t-badge-bg: rgba(255,255,255,0.06);
-      --t-btn-sec-color: rgba(255,255,255,0.85);
-      --t-btn-ghost: #a5b4fc;
-      --t-mono-bg: rgba(255,255,255,0.07);
-      --t-mono-color: rgba(165,180,252,0.85);
-      --t-tag-bg: rgba(129,140,248,0.14);
-      --t-tag-color: #c7d2fe;
-      --t-tag-border: rgba(129,140,248,0.25);
-      --t-separator: rgba(255,255,255,0.08);
-      --t-infoblock: rgba(255,255,255,0.05);
-      --t-infoblock-border: rgba(255,255,255,0.08);
+      --t-badge-bg: rgba(249,115,22,0.08);
+      --t-btn-sec-color: rgba(255,237,210,0.88);
+      --t-btn-ghost: #fb923c;
+      --t-mono-bg: rgba(249,115,22,0.08);
+      --t-mono-color: rgba(251,146,60,0.9);
+      --t-tag-bg: rgba(249,115,22,0.12);
+      --t-tag-color: #fb923c;
+      --t-tag-border: rgba(249,115,22,0.25);
+      --t-separator: rgba(249,115,22,0.08);
+      --t-infoblock: rgba(249,115,22,0.04);
+      --t-infoblock-border: rgba(249,115,22,0.1);
     }
   ` : `
     :root {
-      --t-text-90: #0f172a;
-      --t-text-85: #1e293b;
-      --t-text-70: #334155;
-      --t-text-55: #475569;
-      --t-text-40: #64748b;
-      --t-text-30: #94a3b8;
-      --t-input-color: #0f172a;
+      /* ── LIGHT FORGE — crème chaud ── */
+      --t-text-90: #1c0f00;
+      --t-text-85: #2d1a00;
+      --t-text-70: #4a2e00;
+      --t-text-55: #6b4200;
+      --t-text-40: #92600a;
+      --t-text-30: #b8832e;
+      --t-input-color: #1c0f00;
       --t-input-bg: #ffffff;
-      --t-input-border: #cbd5e1;
-      --t-placeholder: #94a3b8;
-      --t-option-bg: #ffffff;
-      --t-scroll: #cbd5e1;
-      --t-row-hover: rgba(20,184,166,0.08);
-      --t-drop-bg: rgba(255,255,255,0.99);
-      --t-nav-hover: rgba(20,184,166,0.1);
-      --t-sidebar-bg: rgba(248,248,252,0.98);
-      --t-sidebar-border: rgba(0,0,0,0.07);
-      --t-sidebar-active: rgba(99,102,241,0.10);
-      --t-sidebar-text: rgba(30,30,60,0.60);
-      --t-sidebar-text-active: rgba(20,20,50,0.95);
-      --t-card-bg: rgba(255,255,255,0.96);
-      --t-card-border: rgba(15,23,42,0.08);
-      --t-card-shadow: 0 4px 20px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
-      --t-td-border: rgba(15,23,42,0.07);
-      --t-thead-bg: rgba(20,184,166,0.08);
-      --t-thead-color: #0f766e;
-      --t-border-subtle: rgba(15,23,42,0.1);
-      --t-surface: rgba(248,250,252,1);
-      --t-surface-hover: rgba(241,245,249,1);
+      --t-input-border: #e8c99a;
+      --t-placeholder: #c4975a;
+      --t-option-bg: #fffbf5;
+      --t-scroll: #e8c99a;
+      --t-row-hover: rgba(249,115,22,0.06);
+      --t-drop-bg: rgba(255,253,247,0.99);
+      --t-nav-hover: rgba(249,115,22,0.08);
+      --t-sidebar-bg: rgba(255,252,245,0.98);
+      --t-sidebar-border: rgba(120,53,15,0.08);
+      --t-sidebar-active: rgba(249,115,22,0.1);
+      --t-sidebar-text: rgba(92,45,0,0.55);
+      --t-sidebar-text-active: #1c0f00;
+      --t-card-bg: rgba(255,253,247,0.97);
+      --t-card-border: rgba(120,53,15,0.1);
+      --t-card-shadow: 0 4px 20px rgba(120,53,15,0.08), 0 1px 2px rgba(120,53,15,0.05);
+      --t-td-border: rgba(120,53,15,0.07);
+      --t-thead-bg: rgba(249,115,22,0.07);
+      --t-thead-color: #c2410c;
+      --t-border-subtle: rgba(120,53,15,0.1);
+      --t-surface: rgba(255,249,235,1);
+      --t-surface-hover: rgba(255,237,210,1);
       --t-notif-bg: #fef2f2;
       --t-notif-border: rgba(248,113,113,0.5);
-      --t-badge-bg: rgba(20,184,166,0.08);
-      --t-btn-sec-color: #334155;
-      --t-btn-ghost: #0d9488;
-      --t-mono-bg: rgba(20,184,166,0.1);
-      --t-mono-color: #0f766e;
-      --t-tag-bg: rgba(13,148,136,0.1);
-      --t-tag-color: #0f766e;
-      --t-tag-border: rgba(13,148,136,0.25);
-      --t-separator: rgba(15,23,42,0.1);
-      --t-infoblock: rgba(248,250,252,1);
-      --t-infoblock-border: rgba(15,23,42,0.08);
+      --t-badge-bg: rgba(249,115,22,0.08);
+      --t-btn-sec-color: #4a2e00;
+      --t-btn-ghost: #c2410c;
+      --t-mono-bg: rgba(249,115,22,0.09);
+      --t-mono-color: #c2410c;
+      --t-tag-bg: rgba(249,115,22,0.1);
+      --t-tag-color: #c2410c;
+      --t-tag-border: rgba(249,115,22,0.25);
+      --t-separator: rgba(120,53,15,0.1);
+      --t-infoblock: rgba(255,249,235,1);
+      --t-infoblock-border: rgba(120,53,15,0.09);
     }
   `;
 
   const T = effectiveDark ? {
-    bg:       "linear-gradient(135deg,#0a0a0f 0%,#0d1117 40%,#0a0f1a 100%)",
-    color:    "#ffffff",
-    headerBg: "rgba(8,8,18,0.75)",
-    headerBorder: "rgba(255,255,255,0.08)",
-    blob1: "rgba(99,102,241,0.18)", blob2: "rgba(14,165,233,0.14)", blob3: "rgba(168,85,247,0.12)",
-    accent: "linear-gradient(135deg,#e0e7ff,#a5b4fc)",
+    bg:       "linear-gradient(160deg,#0f0a00 0%,#1a1000 45%,#0d0800 100%)",
+    color:    "#fff8eb",
+    headerBg: "rgba(12,7,0,0.82)",
+    headerBorder: "rgba(249,115,22,0.12)",
+    blob1: "rgba(249,115,22,0.18)", blob2: "rgba(234,88,12,0.12)", blob3: "rgba(251,146,60,0.1)",
+    accent: "linear-gradient(135deg,#fed7aa,#fb923c)",
   } : {
-    bg:       "linear-gradient(135deg,#f0fdfa 0%,#f8fafc 45%,#eff6ff 100%)",
-    color:    "#0f172a",
-    headerBg: "rgba(255,255,255,0.9)",
-    headerBorder: "rgba(15,23,42,0.08)",
-    blob1: "rgba(20,184,166,0.12)", blob2: "rgba(59,130,246,0.1)", blob3: "rgba(13,148,136,0.08)",
-    accent: "linear-gradient(135deg,#0d9488,#0891b2)",
+    bg:       "linear-gradient(160deg,#fffbf5 0%,#fff7ed 50%,#fef3e2 100%)",
+    color:    "#1c0f00",
+    headerBg: "rgba(255,253,247,0.92)",
+    headerBorder: "rgba(120,53,15,0.1)",
+    blob1: "rgba(249,115,22,0.1)", blob2: "rgba(234,88,12,0.08)", blob3: "rgba(251,146,60,0.07)",
+    accent: "linear-gradient(135deg,#c2410c,#ea580c)",
   };
 
+
   return (
-    <div style={{ fontFamily:"-apple-system,'SF Pro Display','SF Pro Text',BlinkMacSystemFont,sans-serif", minHeight:"100dvh", background:T.bg, color:T.color, position:"relative", overflowX:"hidden", transition:"background 0.4s, color 0.3s" }}>
+    <div style={{ fontFamily:"'Sora','-apple-system','SF Pro Display',BlinkMacSystemFont,sans-serif", minHeight:"100dvh", background:T.bg, color:T.color, position:"relative", overflowX:"hidden", transition:"background 0.4s, color 0.3s" }}>
       <style>{themeCSS + `
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
         @keyframes float1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-30px) scale(1.05)} 66%{transform:translate(-20px,20px) scale(0.97)} }
         @keyframes float2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-50px,25px) scale(1.03)} 66%{transform:translate(30px,-40px) scale(0.98)} }
         @keyframes float3 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(25px,35px) scale(1.04)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         @keyframes overlayIn { from{opacity:0} to{opacity:1} }
-        @keyframes pulse-glow { 0%,100%{box-shadow:0 0 12px rgba(99,102,241,0.4)} 50%{box-shadow:0 0 24px rgba(99,102,241,0.7)} }
+        @keyframes pulse-glow { 0%,100%{box-shadow:0 0 12px rgba(249,115,22,0.4)} 50%{box-shadow:0 0 24px rgba(249,115,22,0.7)} }
         .lg-btn-primary { transition:all 0.2s cubic-bezier(0.4,0,0.2,1) !important; }
-        .lg-btn-primary:hover { opacity:0.88; transform:translateY(-1px) scale(0.99); box-shadow:0 8px 28px rgba(99,102,241,0.5) !important; }
+        .lg-btn-primary:hover { opacity:0.88; transform:translateY(-1px) scale(0.99); box-shadow:0 8px 28px rgba(249,115,22,0.45) !important; }
         .lg-btn-primary:active { transform:scale(0.96) !important; }
         .lg-btn-secondary:hover { background:var(--t-nav-hover) !important; transform:translateY(-1px); }
         .lg-nav-btn { transition:all 0.18s cubic-bezier(0.4,0,0.2,1) !important; }
         .lg-nav-btn:hover { background:var(--t-nav-hover) !important; }
         .lg-card { animation:fadeUp 0.35s cubic-bezier(0.4,0,0.2,1) both; transition:box-shadow 0.2s,transform 0.2s !important; }
-        .lg-card:hover { box-shadow:0 12px 40px rgba(99,102,241,0.15), inset 0 1px 0 rgba(255,255,255,0.2) !important; transform:translateY(-1px); }
+        .lg-card:hover { box-shadow:0 12px 40px rgba(249,115,22,0.15), inset 0 1px 0 rgba(255,255,255,0.2) !important; transform:translateY(-1px); }
         .lg-row { transition:background 0.12s !important; cursor:pointer; }
         .lg-row:hover { background:var(--t-row-hover) !important; }
         .lg-supplier-card { transition:all 0.2s cubic-bezier(0.4,0,0.2,1) !important; }
-        .lg-supplier-card:hover { border-color:rgba(99,102,241,0.35) !important; transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,0.15) !important; }
+        .lg-supplier-card:hover { border-color:rgba(249,115,22,0.35) !important; transform:translateY(-2px); box-shadow:0 8px 24px rgba(249,115,22,0.15) !important; }
         .lg-product-row { transition:all 0.15s cubic-bezier(0.4,0,0.2,1) !important; }
-        .lg-product-row:hover { background:rgba(99,102,241,0.08) !important; border-color:rgba(99,102,241,0.3) !important; transform:translateX(2px); }
+        .lg-product-row:hover { background:rgba(249,115,22,0.08) !important; border-color:rgba(249,115,22,0.3) !important; transform:translateX(2px); }
         .nav-active-indicator { animation:pulse-glow 2.5s ease-in-out infinite; }
         .lg-search-bar { transition:all 0.2s !important; }
-        .lg-search-bar:focus-within { box-shadow:0 0 0 2px rgba(99,102,241,0.3) !important; border-color:rgba(99,102,241,0.4) !important; }
+        .lg-search-bar:focus-within { box-shadow:0 0 0 2px rgba(249,115,22,0.3) !important; border-color:rgba(249,115,22,0.4) !important; }
         .stat-card { transition:all 0.22s cubic-bezier(0.4,0,0.2,1) !important; }
-        .stat-card:hover { transform:translateY(-3px) !important; box-shadow:0 16px 40px rgba(99,102,241,0.15) !important; }
+        .stat-card:hover { transform:translateY(-3px) !important; box-shadow:0 16px 40px rgba(249,115,22,0.15) !important; }
         * { box-sizing:border-box; }
         html, body { max-width:100%; overflow-x:hidden; }
         /* Tables : scroll horizontal au lieu de casser la page sur mobile */
@@ -893,7 +897,7 @@ export default function App() {
           .product-edit-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         }
         input, select, textarea { color:var(--t-input-color) !important; background:var(--t-input-bg) !important; transition:all 0.18s !important; font-weight:500; }
-        input:focus, select:focus, textarea:focus { outline:none !important; border-color:rgba(99,102,241,0.5) !important; box-shadow:0 0 0 3px rgba(99,102,241,0.12) !important; }
+        input:focus, select:focus, textarea:focus { outline:none !important; border-color:rgba(249,115,22,0.5) !important; box-shadow:0 0 0 3px rgba(249,115,22,0.12) !important; }
         input::placeholder, textarea::placeholder { color:var(--t-placeholder) !important; }
         option { background:var(--t-option-bg); color:var(--t-input-color); }
         ::-webkit-scrollbar { width:5px; height:5px; }
@@ -1005,10 +1009,10 @@ export default function App() {
       }}>
         {/* Remplissage */}
         <button onClick={() => setPage("remplissage")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"10px 0 8px", border:"none", background:"transparent", cursor:"pointer", transition:"opacity 0.15s" }}>
-          <div style={{ width:28, height:28, borderRadius:8, background: page==="remplissage" ? "#8b5cf6" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.2s" }}>
+          <div style={{ width:28, height:28, borderRadius:8, background: page==="remplissage" ? "#ea580c" : "transparent", display:"flex", alignItems:"center", justifyContent:"center", transition:"background 0.2s" }}>
             <Package size={18} color={page==="remplissage" ? "white" : "var(--t-text-40)"} strokeWidth={page==="remplissage"?2.5:1.8}/>
           </div>
-          <span style={{ fontSize:10, fontWeight: page==="remplissage"?700:500, color: page==="remplissage"?"#8b5cf6":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Rayon</span>
+          <span style={{ fontSize:10, fontWeight: page==="remplissage"?700:500, color: page==="remplissage"?"#ea580c":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Rayon</span>
         </button>
 
         {/* Commandes */}
@@ -1028,12 +1032,12 @@ export default function App() {
 
         {/* Bouton + central */}
         <button onClick={() => setPage("new")} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"6px 0 8px", border:"none", background:"transparent", cursor:"pointer" }}>
-          <div style={{ width:44, height:44, borderRadius:14, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(99,102,241,0.5)", marginTop:-8, transition:"transform 0.15s" }}
+          <div style={{ width:44, height:44, borderRadius:14, background:"linear-gradient(135deg,#f97316,#ea580c)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(249,115,22,0.5)", marginTop:-8, transition:"transform 0.15s" }}
             onTouchStart={e=>e.currentTarget.style.transform="scale(0.9)"}
             onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
             <Plus size={22} color="white" strokeWidth={2.5}/>
           </div>
-          <span style={{ fontSize:10, fontWeight:600, color:"#818cf8", letterSpacing:"-0.01em" }}>Commander</span>
+          <span style={{ fontSize:10, fontWeight:600, color:"#f97316", letterSpacing:"-0.01em" }}>Commander</span>
         </button>
 
         {/* Catalogue */}
@@ -1081,7 +1085,7 @@ function ProductSheet({ product, onClose, session }) {
               <div style={{ fontSize:18, fontWeight:800, letterSpacing:"-0.02em", color:"var(--t-text-90)", lineHeight:1.2, marginBottom:8 }}>{product.label}</div>
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                 <span style={{ fontFamily:"monospace", fontSize:11, background:"var(--t-surface)", color:"var(--t-text-55)", padding:"2px 8px", borderRadius:6, fontWeight:600 }}>{product.ref}</span>
-                {product.ean && <span style={{ fontFamily:"monospace", fontSize:11, background:"rgba(99,102,241,0.1)", color:"#818cf8", padding:"2px 8px", borderRadius:6 }}>EAN {product.ean}</span>}
+                {product.ean && <span style={{ fontFamily:"monospace", fontSize:11, background:"rgba(249,115,22,0.1)", color:"#f97316", padding:"2px 8px", borderRadius:6 }}>EAN {product.ean}</span>}
                 {product.subFamily && <span style={{ fontSize:11, background:"var(--t-tag-bg)", color:"var(--t-tag-color)", padding:"2px 8px", borderRadius:6, border:"1px solid var(--t-tag-border)" }}>{product.subFamily}</span>}
               </div>
             </div>
@@ -1097,11 +1101,11 @@ function ProductSheet({ product, onClose, session }) {
                 <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Prix achat HT</div>
                 <div style={{ fontSize:22, fontWeight:800, color:"#34d399" }}>{product.price ? fmt(product.price) : "—"}</div>
               </div>
-              <div style={{ background: prixVente ? "rgba(99,102,241,0.08)" : "var(--t-surface)", borderRadius:14, padding:"14px 16px", border: prixVente ? "1px solid rgba(99,102,241,0.25)" : "1px solid var(--t-border-subtle)" }}>
+              <div style={{ background: prixVente ? "rgba(249,115,22,0.08)" : "var(--t-surface)", borderRadius:14, padding:"14px 16px", border: prixVente ? "1px solid rgba(99,102,241,0.25)" : "1px solid var(--t-border-subtle)" }}>
                 <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>Prix de vente TTC</div>
                 {prixVente ? (
                   <>
-                    <div style={{ fontSize:22, fontWeight:800, color:"#818cf8" }}>{fmt(prixVente)}</div>
+                    <div style={{ fontSize:22, fontWeight:800, color:"#f97316" }}>{fmt(prixVente)}</div>
                     {ecotaxe > 0 && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>dont {fmt(ecotaxe)} d'écotaxe incluse</div>}
                   </>
                 ) : <div style={{ fontSize:12, color:"var(--t-text-30)", fontStyle:"italic" }}>Non renseigné</div>}
@@ -1237,11 +1241,11 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
 
   // ── Tuiles de navigation iOS ─────────────────────────────────────────────────
   const tiles = [
-    { page:"new",        label:"Nouvelle commande", color:"#6366f1", bg:"rgba(99,102,241,0.12)",  Icon:Edit },
+    { page:"new",        label:"Nouvelle commande", color:"#f97316", bg:"rgba(249,115,22,0.12)",  Icon:Edit },
     { page:"orders",     label:"Commandes",          color:"#0ea5e9", bg:"rgba(14,165,233,0.12)",  Icon:List },
     { page:"catalogue",  label:"Catalogue",          color:"#10b981", bg:"rgba(16,185,129,0.12)",  Icon:BookOpen },
     { page:"suppliers",  label:"Fournisseurs",       color:"#f59e0b", bg:"rgba(245,158,11,0.12)",  Icon:Factory },
-    { page:"remplissage",label:"Remplissage",         color:"#8b5cf6", bg:"rgba(139,92,246,0.12)",  Icon:Package },
+    { page:"remplissage",label:"Remplissage",         color:"#ea580c", bg:"rgba(139,92,246,0.12)",  Icon:Package },
     { page:"proposals",  label:"Propositions",       color:"#ec4899", bg:"rgba(236,72,153,0.12)",  Icon:Tag },
     { page:"stats",      label:"Statistiques",       color:"#06b6d4", bg:"rgba(6,182,212,0.12)",   Icon:BarChart2 },
     isAdmin && { page:"admin", label:"Admin",        color:"#ef4444", bg:"rgba(239,68,68,0.12)",   Icon:Settings },
@@ -1304,7 +1308,7 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
       {/* ── 3 KPIs ── */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:28 }}>
         {[
-          { value: pending.length, label:"En cours",   color:"#6366f1", onClick: () => { setOrderFilter("commandee"); setPage("orders"); } },
+          { value: pending.length, label:"En cours",   color:"#f97316", onClick: () => { setOrderFilter("commandee"); setPage("orders"); } },
           { value: lateOrders.length, label:"En retard", color: lateOrders.length>0?"#ef4444":"#10b981", onClick: () => setPage("orders") },
           { value: deliveriesToday.length, label:"Aujourd'hui", color:"#0ea5e9", onClick: () => setPage("orders") },
         ].map((k,i) => (
@@ -1417,8 +1421,8 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
               <div key={i} onClick={() => setPage("orders")} style={{ display:"flex", alignItems:"center", gap:12, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"12px 16px", cursor:"pointer", transition:"transform 0.12s" }}
                 onMouseEnter={e=>e.currentTarget.style.transform="translateX(2px)"}
                 onMouseLeave={e=>e.currentTarget.style.transform="translateX(0)"}>
-                <div style={{ width:36, height:36, borderRadius:12, background:"rgba(99,102,241,0.12)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  <List size={16} color="#818cf8"/>
+                <div style={{ width:36, height:36, borderRadius:12, background:"rgba(249,115,22,0.12)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  <List size={16} color="#f97316"/>
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
@@ -1508,7 +1512,7 @@ function StatsPage({ orders, suppliers, session }) {
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Statistiques</h1>
         <div style={{ display: "flex", gap: 6 }}>
           {[7,30,90,365].map(d => (
-            <button key={d} onClick={() => setPeriod(d)} style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid", fontSize: 12, cursor: "pointer", fontWeight: period===d ? 700 : 400, background:period===d?"rgba(99,102,241,0.7)":"var(--t-surface)", color:period===d?"white":"var(--t-text-55)", borderColor:period===d?"rgba(99,102,241,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:period===d?"0 0 16px rgba(99,102,241,0.35)":"none" }}>
+            <button key={d} onClick={() => setPeriod(d)} style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid", fontSize: 12, cursor: "pointer", fontWeight: period===d ? 700 : 400, background:period===d?"rgba(99,102,241,0.7)":"var(--t-surface)", color:period===d?"white":"var(--t-text-55)", borderColor:period===d?"rgba(249,115,22,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:period===d?"0 0 16px rgba(249,115,22,0.35)":"none" }}>
               {d === 365 ? "1 an" : `${d}j`}
             </button>
           ))}
@@ -1651,7 +1655,7 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
       `}</style>
 
       {/* Halos ambiance */}
-      <div style={{ position:"absolute", top:"-5%",  left:"-5%",  width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(99,102,241,0.35) 0%,transparent 65%)", animation:"lb1 18s ease-in-out infinite", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", top:"-5%",  left:"-5%",  width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,rgba(249,115,22,0.35) 0%,transparent 65%)", animation:"lb1 18s ease-in-out infinite", pointerEvents:"none" }} />
       <div style={{ position:"absolute", bottom:"-5%", right:"-5%", width:450, height:450, borderRadius:"50%", background:"radial-gradient(circle,rgba(168,85,247,0.28) 0%,transparent 65%)", animation:"lb2 22s ease-in-out infinite", pointerEvents:"none" }} />
       <div style={{ position:"absolute", top:"45%",  right:"20%",  width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle,rgba(14,165,233,0.18) 0%,transparent 65%)", animation:"lb3 16s ease-in-out infinite", pointerEvents:"none" }} />
 
@@ -1702,14 +1706,14 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
               onKeyDown={e => e.key==="Enter" && submit()}
               style={{
                 width:"100%", padding:"14px 18px", borderRadius:16,
-                border: `1.5px solid ${focus==="email" ? "rgba(165,180,252,0.7)" : "rgba(255,255,255,0.1)"}`,
+                border: `1.5px solid ${focus==="email" ? "rgba(251,146,60,0.8)" : "rgba(255,255,255,0.1)"}`,
                 background:"rgba(255,255,255,0.07)",
                 backdropFilter:"blur(8px)",
                 color:"#ffffff", fontSize:15,
                 outline:"none", boxSizing:"border-box",
                 fontFamily:"'Sora',sans-serif", fontWeight:400,
                 transition:"border-color 0.2s, box-shadow 0.2s",
-                boxShadow: focus==="email" ? "0 0 0 3px rgba(99,102,241,0.2)" : "none",
+                boxShadow: focus==="email" ? "0 0 0 3px rgba(249,115,22,0.2)" : "none",
               }}
             />
           </div>
@@ -1729,14 +1733,14 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
               onKeyDown={e => e.key==="Enter" && submit()}
               style={{
                 width:"100%", padding:"14px 50px 14px 18px", borderRadius:16,
-                border: `1.5px solid ${focus==="pw" ? "rgba(165,180,252,0.7)" : "rgba(255,255,255,0.1)"}`,
+                border: `1.5px solid ${focus==="pw" ? "rgba(251,146,60,0.8)" : "rgba(255,255,255,0.1)"}`,
                 background:"rgba(255,255,255,0.07)",
                 backdropFilter:"blur(8px)",
                 color:"#ffffff", fontSize:15,
                 outline:"none", boxSizing:"border-box",
                 fontFamily:"'Sora',sans-serif", fontWeight:400,
                 transition:"border-color 0.2s, box-shadow 0.2s",
-                boxShadow: focus==="pw" ? "0 0 0 3px rgba(99,102,241,0.2)" : "none",
+                boxShadow: focus==="pw" ? "0 0 0 3px rgba(249,115,22,0.2)" : "none",
               }}
             />
             {/* Toggle afficher mot de passe */}
@@ -1758,7 +1762,7 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24, cursor:"pointer" }} onClick={() => setRemember(v => !v)}>
           <div style={{
             width:20, height:20, borderRadius:6, flexShrink:0,
-            border: `1.5px solid ${remember ? "#818cf8" : "rgba(255,255,255,0.2)"}`,
+            border: `1.5px solid ${remember ? "#f97316" : "rgba(255,255,255,0.2)"}`,
             background: remember ? "rgba(99,102,241,0.7)" : "rgba(255,255,255,0.05)",
             display:"flex", alignItems:"center", justifyContent:"center",
             transition:"all 0.18s",
@@ -1784,14 +1788,14 @@ function LoginScreen({ users, onLogin, dark, setDark }) {
             fontSize:15, fontWeight:700,
             borderRadius:18, border:"none", cursor:"pointer",
             color:"white",
-            background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
-            boxShadow:"0 8px 32px rgba(99,102,241,0.5), inset 0 1px 0 rgba(255,255,255,0.2)",
+            background:"linear-gradient(135deg,#f97316,#ea580c)",
+            boxShadow:"0 8px 32px rgba(249,115,22,0.45), inset 0 1px 0 rgba(255,255,255,0.2)",
             letterSpacing:"-0.01em",
             fontFamily:"'Sora',sans-serif",
             transition:"all 0.18s",
           }}
-          onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 12px 40px rgba(99,102,241,0.65)";}}
-          onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 8px 32px rgba(99,102,241,0.5)";}}
+          onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 12px 40px rgba(249,115,22,0.55)";}}
+          onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="0 8px 32px rgba(249,115,22,0.5)";}}
         >
           Se connecter
         </button>
@@ -1877,9 +1881,9 @@ function OrdersPage({ orders, setOrders, suppliers, session, setPage, setEditing
             : k === "commandee" ? visible.filter(o=>["en_attente","confirmee","en_preparation"].includes(o.status)).length
             : visible.filter(o=>o.status===k).length;
           return (
-            <button key={k} onClick={() => setFilter(k)} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filter===k?700:400, background:filter===k?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filter===k?"white":"var(--t-text-55)", borderColor:filter===k?"rgba(99,102,241,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:filter===k?"0 0 16px rgba(99,102,241,0.35)":"none", display:"flex", alignItems:"center", gap:6 }}>
+            <button key={k} onClick={() => setFilter(k)} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filter===k?700:400, background:filter===k?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filter===k?"white":"var(--t-text-55)", borderColor:filter===k?"rgba(249,115,22,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:filter===k?"0 0 16px rgba(249,115,22,0.35)":"none", display:"flex", alignItems:"center", gap:6 }}>
               {lbl}
-              {count > 0 && <span style={{ fontSize:10, fontWeight:700, background:filter===k?"rgba(255,255,255,0.25)":"rgba(99,102,241,0.15)", color:filter===k?"white":"#818cf8", padding:"1px 6px", borderRadius:10 }}>{count}</span>}
+              {count > 0 && <span style={{ fontSize:10, fontWeight:700, background:filter===k?"rgba(255,255,255,0.25)":"rgba(249,115,22,0.15)", color:filter===k?"white":"#f97316", padding:"1px 6px", borderRadius:10 }}>{count}</span>}
             </button>
           );
         })}
@@ -2226,7 +2230,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
         <h2 style={{ margin:"0 0 14px 0", fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>① Fournisseur</h2>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
           {suppliers.map(s => (
-            <div key={s.id} onClick={() => { setSuppId(s.id); setLines([]); setCatalogSearch(''); setExpandedRef(null); }} style={{ padding:14, borderRadius:14, border:`2px solid ${suppId===s.id?'rgba(99,102,241,0.8)':'rgba(255,255,255,0.08)'}`, cursor:'pointer', background:suppId===s.id?'rgba(99,102,241,0.2)':'rgba(255,255,255,0.04)', backdropFilter:'blur(8px)', boxShadow:suppId===s.id?'0 0 20px rgba(99,102,241,0.35)':'none', transition:"all 0.15s" }}>
+            <div key={s.id} onClick={() => { setSuppId(s.id); setLines([]); setCatalogSearch(''); setExpandedRef(null); }} style={{ padding:14, borderRadius:14, border:`2px solid ${suppId===s.id?'rgba(99,102,241,0.8)':'rgba(255,255,255,0.08)'}`, cursor:'pointer', background:suppId===s.id?'rgba(249,115,22,0.2)':'rgba(255,255,255,0.04)', backdropFilter:'blur(8px)', boxShadow:suppId===s.id?'0 0 20px rgba(249,115,22,0.35)':'none', transition:"all 0.15s" }}>
               <div style={{ fontWeight:700, fontSize:13, color:"var(--t-text-90)" }}>{s.name}</div>
               <div style={{ fontSize:11, color:"var(--t-text-55)", marginTop:3 }}>{s.commercial}</div>
             </div>
@@ -2244,8 +2248,8 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
               {/* Header catalogue */}
               <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid var(--t-border-subtle)", position:"sticky", top:0, background:"var(--t-card-bg)", zIndex:10 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                  <h2 style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>② Catalogue — <span style={{ color:"#a5b4fc" }}>{supp.name}</span></h2>
-                  <button onClick={() => setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"4px 8px", color:"#818cf8" }}>+ Nouveau produit</button>
+                  <h2 style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>② Catalogue — <span style={{ color:"#fb923c" }}>{supp.name}</span></h2>
+                  <button onClick={() => setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"4px 8px", color:"#f97316" }}>+ Nouveau produit</button>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", borderRadius:20, padding:"7px 12px" }}>
                   <Search size={14} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
@@ -2256,7 +2260,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 
               {/* Formulaire nouveau produit */}
               {showAddProduct && (
-                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--t-border-subtle)", background:"rgba(99,102,241,0.05)" }}>
+                <div style={{ padding:"12px 16px", borderBottom:"1px solid var(--t-border-subtle)", background:"rgba(249,115,22,0.05)" }}>
                   <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-55)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit</div>
                   <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
                     <div>
@@ -2305,7 +2309,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                         return (
                           <div key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)", opacity:isRupture?0.45:1 }}>
                             {/* Ligne produit */}
-                            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(99,102,241,0.06)":"transparent", transition:"background 0.15s" }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(249,115,22,0.06)":"transparent", transition:"background 0.15s" }}>
                               <div style={{ flex:1, minWidth:0 }}>
                                 <div style={{ fontSize:13, fontWeight:inCart?700:500, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
                                 <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
@@ -2315,18 +2319,18 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                                   {isRupture && <span style={{ fontSize:10, fontWeight:700, color:"#ef4444", background:"rgba(239,68,68,0.15)", padding:"1px 6px", borderRadius:4 }}>🔴 Rupture</span>}
                                 </div>
                               </div>
-                              {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
-                              <button onClick={() => !isRupture && handleAddOrExpand(p)} disabled={isRupture} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:isRupture?"not-allowed":"pointer", fontSize:12, fontWeight:600, background:isRupture?"rgba(120,120,120,0.2)":inCart?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.7)", color:isRupture?"var(--t-text-30)":"white", transition:"all 0.15s" }}>
+                              {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#f97316", background:"rgba(249,115,22,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
+                              <button onClick={() => !isRupture && handleAddOrExpand(p)} disabled={isRupture} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:isRupture?"not-allowed":"pointer", fontSize:12, fontWeight:600, background:isRupture?"rgba(120,120,120,0.2)":inCart?"rgba(249,115,22,0.2)":"rgba(99,102,241,0.7)", color:isRupture?"var(--t-text-30)":"white", transition:"all 0.15s" }}>
                                 {isRupture ? "Indisponible" : isExpanded ? "✕" : inCart ? "Modifier" : "+ Ajouter"}
                               </button>
                             </div>
                             {/* Zone de saisie inline */}
                             {isExpanded && (
-                              <div style={{ padding:"10px 16px 14px", background:"rgba(99,102,241,0.06)", borderTop:"1px solid rgba(99,102,241,0.15)", display:"flex", alignItems:"center", gap:10 }}>
+                              <div style={{ padding:"10px 16px 14px", background:"rgba(249,115,22,0.06)", borderTop:"1px solid rgba(249,115,22,0.15)", display:"flex", alignItems:"center", gap:10 }}>
                                 {/* Stepper compact iOS */}
-                                <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
-                                <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} style={{ flex:1, textAlign:"center", fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em", border:"none", borderBottom:"2px solid rgba(99,102,241,0.4)", background:"transparent", outline:"none", width:0, minWidth:0, padding:"2px 4px" }} />
-                                <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
+                                <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(249,115,22,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#f97316", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
+                                <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} style={{ flex:1, textAlign:"center", fontSize:26, fontWeight:800, color:"#f97316", letterSpacing:"-0.02em", border:"none", borderBottom:"2px solid rgba(249,115,22,0.4)", background:"transparent", outline:"none", width:0, minWidth:0, padding:"2px 4px" }} />
+                                <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(249,115,22,0.3)", background:"rgba(249,115,22,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#f97316", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
                                 <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, padding:"9px 16px", fontSize:13, flexShrink:0 }}>
                                   {(parseInt(inputQty)||0) === 0 ? "Retirer" : "OK"}
                                 </button>
@@ -2357,7 +2361,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                           <div style={{ fontSize:11, fontFamily:"monospace", color:"var(--t-text-40)" }}>{l.ref}</div>
                         </div>
                         <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-                          <button onClick={()=>{setExpandedRef(l.ref);setInputQty(String(l.qty));}} style={{ fontSize:13, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", border:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer" }}>×{l.qty}</button>
+                          <button onClick={()=>{setExpandedRef(l.ref);setInputQty(String(l.qty));}} style={{ fontSize:13, fontWeight:700, color:"#f97316", background:"rgba(249,115,22,0.12)", border:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer" }}>×{l.qty}</button>
                           <button onClick={()=>removeLine(l.ref)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:16, padding:0, lineHeight:1 }}>×</button>
                         </div>
                       </div>
@@ -2410,161 +2414,198 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PDF — Fiche produit porte-étiquette (injection de texte dans les SVG templates)
-// Les SVG templates doivent être dans /public/ du repo GitHub :
-//   /public/template-conforama.svg  (SVG-3, format Conforama)
-//   /public/template-topconfo.svg   (SVG-2, format Top Confo)
+// PDF — Fiche produit porte-étiquette Conforama (généré en HTML pur, sans SVG)
+// Format A4 paysage, 3 fiches par page
 // ═══════════════════════════════════════════════════════════════════════════════
 async function generateProductSheetPDF(products, templateType = "conforama") {
-  const templateUrl = templateType === "topconfo"
-    ? "/template-topconfo.svg"
-    : "/template-conforama.svg";
-
-  let svgContent;
-  try {
-    const res = await fetch(templateUrl);
-    if (!res.ok) throw new Error(`Template non trouvé : ${templateUrl}`);
-    svgContent = await res.text();
-  } catch (err) {
-    alert(`Impossible de charger le template SVG.\n\nAssurez-vous que les fichiers template sont bien uploadés dans /public/ du repo GitHub :\n- template-conforama.svg\n- template-topconfo.svg\n\nErreur : ${err.message}`);
-    return;
-  }
-
-  // ── Coordonnées des zones de texte (mesurées sur les SVG fournis) ──────────
-  // Chaque template a 3 affiches. On injecte les données produit pour chacune.
-  const ZONES = {
-    conforama: {
-      // 3 affiches empilées, décalage Y de ~187 entre chaque
-      yOffsets: [0, 187.2, 374.6],
-      caract:   { x: 162, baseY: 39,  w: 220, h: 32,  fontSize: 7.5 },
-      hauteur:  { x: 163, baseY: 98,  w: 130, fontSize: 7 },
-      largeur:  { x: 163, baseY: 131, w: 130, fontSize: 7 },
-      profond:  { x: 163, baseY: 164, w: 130, fontSize: 7 },
-      coloris:  { x: 163, baseY: 176, w: 130, fontSize: 7 },
-      qr:       { x: 430, baseY: 40,  size: 140 },
-    },
-    topconfo: {
-      // 2 colonnes : gauche (2 affiches, y+190) + droite (1 affiche, x+302)
-      yOffsets: [0, 190],
-      xRight: 301.5, yRight: 10.8,
-      caract:  { x: 130, baseY: 183, w: 170, h: 20,  fontSize: 6.5 },
-      hauteur: { x: 163, baseY: 222, w: 100, fontSize: 6.5 },
-      largeur: { x: 163, baseY: 246, w: 100, fontSize: 6.5 },
-      profond: { x: 163, baseY: 260, w: 100, fontSize: 6.5 },
-      coloris: { x: 163, baseY: 274, w: 100, fontSize: 6.5 },
-      qr:      { x: 248, baseY: 245, size: 54 },
-    },
-  };
-
-  const Z = ZONES[templateType] || ZONES.conforama;
   const isTopConfo = templateType === "topconfo";
 
-  // ── Génération des éléments SVG à injecter ────────────────────────────────
-  function textEl(x, y, text, fontSize, fontWeight = "bold", fill = "#1a1a1a") {
-    if (!text) return "";
-    // Découpage du texte si trop long (wrap simple)
-    const maxChars = Math.floor(200 / fontSize);
-    const lines = [];
-    let remaining = text;
-    while (remaining.length > maxChars && lines.length < 3) {
-      const breakAt = remaining.lastIndexOf(" ", maxChars) > 0 ? remaining.lastIndexOf(" ", maxChars) : maxChars;
-      lines.push(remaining.slice(0, breakAt));
-      remaining = remaining.slice(breakAt).trim();
-    }
-    if (remaining) lines.push(remaining);
-    return lines.map((line, i) =>
-      `<text x="${x}" y="${y + i * (fontSize + 1.5)}" font-family="Arial,Helvetica,sans-serif" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fill}" clip-path="">${line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>`
-    ).join("\n");
-  }
+  function makeSheet(p) {
+    const qrUrl = p.ficheUrl
+      ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(p.ficheUrl)}&color=000000&bgcolor=ffffff&margin=2`
+      : null;
 
-  function qrEl(x, y, size, data) {
-    if (!data) return "";
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}&color=000000&bgcolor=ffffff&margin=2`;
-    return `<image x="${x}" y="${y}" width="${size}" height="${size}" href="${qrUrl}" />`;
-  }
-
-  function buildOverlay(p, xBase, yBase) {
-    const Z2 = Z;
-    return `
-      ${textEl(xBase + Z2.caract.x - 125, yBase + Z2.caract.baseY, p.caracteristiques, Z2.caract.fontSize)}
-      ${textEl(xBase + Z2.hauteur.x - 125, yBase + Z2.hauteur.baseY, p.hauteur ? p.hauteur : "", Z2.hauteur.fontSize)}
-      ${textEl(xBase + Z2.largeur.x - 125, yBase + Z2.largeur.baseY, p.largeur ? p.largeur : "", Z2.largeur.fontSize)}
-      ${textEl(xBase + Z2.profond.x - 125, yBase + Z2.profond.baseY, p.profondeur ? p.profondeur : "", Z2.profond.fontSize)}
-      ${textEl(xBase + Z2.coloris.x - 125, yBase + Z2.coloris.baseY, p.coloris || "", Z2.coloris.fontSize)}
-      ${p.ficheUrl ? qrEl(xBase + Z2.qr.x - 125, yBase + Z2.qr.baseY, Z2.qr.size, p.ficheUrl) : ""}
-    `;
-  }
-
-  // Décider comment répartir les produits sur les pages
-  // Chaque page = 1 SVG template = 3 affiches
-  const pages = [];
-  for (let i = 0; i < products.length; i += 3) {
-    pages.push(products.slice(i, i + 3));
-  }
-
-  // Créer un SVG modifié par page
-  const svgPages = pages.map(pageProducts => {
-    let overlay = "";
     if (isTopConfo) {
-      // 2 premières affiches : colonne gauche
-      pageProducts.slice(0, 2).forEach((p, i) => {
-        overlay += buildOverlay(p, 0, Z.yOffsets[i] || 0);
-      });
-      // 3ème affiche : colonne droite
-      if (pageProducts[2]) {
-        overlay += buildOverlay(pageProducts[2], Z.xRight, Z.yRight);
-      }
-    } else {
-      // 3 affiches empilées
-      pageProducts.forEach((p, i) => {
-        overlay += buildOverlay(p, 0, Z.yOffsets[i] || 0);
-      });
+      // Format Top Confo : logo TOP CONFO! en haut, caractéristiques en bas
+      return `
+      <div class="sheet topconfo">
+        <div class="tc-header">
+          <div class="tc-logo-box">
+            <div class="tc-top">TOP!</div>
+            <div class="tc-confo">CONFO</div>
+          </div>
+          <div class="tc-tagline"><span class="tc-mq">MEILLEUR RAPPORT,</span><span class="tc-qp">QUALITÉ<br>PRIX</span></div>
+        </div>
+        <div class="tc-body">
+          <div class="tc-img-zone"></div>
+          <div class="tc-info">
+            <div class="tc-caract-title">CARACTÉRISTIQUES</div>
+            <div class="tc-caract-box">${p.caracteristiques||""}</div>
+            <div class="tc-dims-row">
+              <div class="tc-dims-col">
+                <div class="tc-dims-title">DIMENSIONS</div>
+                <div class="tc-dim-line">Hauteur : <b>${p.hauteur||""}</b></div>
+                <div class="tc-dim-line">Largeur : <b>${p.largeur||""}</b></div>
+                <div class="tc-dim-line">Profondeur : <b>${p.profondeur||""}</b></div>
+                <div class="tc-dims-title" style="margin-top:6px">COLORIS</div>
+                <div class="tc-dim-line"><b>${p.coloris||""}</b></div>
+              </div>
+              <div class="tc-qr-col">
+                ${qrUrl ? `<img src="${qrUrl}" class="tc-qr" alt="QR"/>` : '<div class="tc-qr-empty"></div>'}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tc-footer">Conforama</div>
+      </div>`;
     }
-    // Injecter le overlay juste avant </svg>
-    return svgContent.replace("</svg>", `<g id="commapro-overlay">\n${overlay}\n</g>\n</svg>`);
-  });
 
-  // Ouvrir dans une fenêtre d'impression
+    // Format Conforama standard
+    return `
+    <div class="sheet conforama">
+      <div class="cf-left">
+        <div class="cf-brand">Conforama</div>
+        <div class="cf-content">
+          <div class="cf-specs">
+            <div class="cf-caract-title">CARACTÉRISTIQUES</div>
+            <div class="cf-caract">${p.caracteristiques||""}</div>
+            <div class="cf-dim-block">
+              <div class="cf-dims-title">DIMENSIONS</div>
+              <div class="cf-dim">Hauteur : <b>${p.hauteur||""}</b></div>
+              <div class="cf-dim">Largeur : <b>${p.largeur||""}</b></div>
+              <div class="cf-dim">Profondeur : <b>${p.profondeur||""}</b></div>
+            </div>
+            <div class="cf-coloris-block">
+              <div class="cf-dims-title">COLORIS</div>
+              <div class="cf-dim"><b>${p.coloris||""}</b></div>
+            </div>
+          </div>
+          <div class="cf-qr-block">
+            ${qrUrl ? `<img src="${qrUrl}" class="cf-qr" alt="QR"/><div class="cf-qr-label">Fiche technique</div>` : ""}
+          </div>
+        </div>
+      </div>
+      <div class="cf-right">
+        <div class="cf-ref">${p.ref}</div>
+        <div class="cf-price-zone">ÉTIQUETTE<br>PRIX</div>
+      </div>
+    </div>`;
+  }
+
+  const sheetsHTML = products.map(p => makeSheet(p)).join("\n");
+
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <title>Fiches produit</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#fff; }
-  .svg-page { width:297mm; height:210mm; page-break-after:always; display:block; }
-  .svg-page:last-child { page-break-after:auto; }
-  .svg-page svg { width:297mm; height:210mm; }
-  @page { size:A4 landscape; margin:0; }
-  @media print { body { margin:0; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:297mm; background:#fff; font-family:Arial,Helvetica,sans-serif; }
+  @page { size:A4 landscape; margin:6mm; }
+  @media print { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+  /* ── 3 fiches par page ── */
+  .page { width:285mm; display:flex; flex-direction:column; gap:3mm; }
+
+  /* ════ FORMAT CONFORAMA STANDARD ════ */
+  .sheet.conforama {
+    width:285mm; height:90mm;
+    display:flex; border:2.5pt solid #E30613; border-radius:5mm;
+    overflow:hidden; page-break-inside:avoid;
+  }
+  .cf-left {
+    width:130mm; background:#E30613;
+    display:flex; flex-direction:column; flex-shrink:0;
+  }
+  .cf-brand {
+    padding:5mm 6mm 3mm;
+    font-size:26pt; font-weight:900; font-style:italic;
+    color:white; letter-spacing:-0.5pt; line-height:1;
+    border-bottom:1pt solid rgba(255,255,255,0.2);
+    font-family:'Arial Black',Arial,sans-serif;
+  }
+  .cf-content { flex:1; display:flex; align-items:center; padding:3mm 4mm; gap:3mm; }
+  .cf-specs { flex:1; display:flex; flex-direction:column; gap:2mm; }
+  .cf-caract-title { font-size:7pt; font-weight:800; color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:1mm; }
+  .cf-caract { font-size:9pt; font-weight:600; color:white; background:rgba(255,255,255,0.15); border-radius:2mm; padding:2mm 3mm; min-height:8mm; }
+  .cf-dim-block,.cf-coloris-block { margin-top:2mm; }
+  .cf-dims-title { font-size:6.5pt; font-weight:800; color:rgba(255,255,255,0.65); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:1mm; }
+  .cf-dim { font-size:8pt; color:white; line-height:1.5; }
+  .cf-qr-block { display:flex; flex-direction:column; align-items:center; gap:2mm; flex-shrink:0; width:28mm; }
+  .cf-qr { width:24mm; height:24mm; border:2pt solid white; border-radius:1.5mm; }
+  .cf-qr-label { font-size:6.5pt; font-weight:700; color:white; text-align:center; }
+  .cf-right {
+    flex:1; border-left:2.5pt solid #E30613;
+    padding:5mm 6mm; display:flex; flex-direction:column;
+  }
+  .cf-ref { font-size:14pt; font-weight:700; color:#1a1a2e; letter-spacing:0.3pt; margin-bottom:4mm; }
+  .cf-price-zone {
+    flex:1; border:2pt dashed #E30613; border-radius:3mm;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10pt; font-weight:700; color:#E30613;
+    text-align:center; letter-spacing:1pt; line-height:1.8;
+  }
+
+  /* ════ FORMAT TOP CONFO ════ */
+  .sheet.topconfo {
+    width:285mm; height:90mm;
+    display:flex; flex-direction:column;
+    border:2.5pt solid #E30613; border-radius:5mm;
+    overflow:hidden; page-break-inside:avoid; background:#fff;
+    position:relative;
+  }
+  .tc-header {
+    background:#E30613; padding:4mm 6mm; display:flex; align-items:center; gap:4mm;
+    border-bottom:2pt solid rgba(255,255,255,0.3);
+  }
+  .tc-logo-box { background:white; border:2pt solid white; padding:2mm 3mm; border-radius:1.5mm; display:flex; flex-direction:column; align-items:center; }
+  .tc-top { font-size:16pt; font-weight:900; color:#E30613; font-family:'Arial Black',Arial; letter-spacing:-1pt; line-height:1; }
+  .tc-confo { font-size:11pt; font-weight:900; color:#E30613; font-family:'Arial Black',Arial; letter-spacing:1pt; }
+  .tc-tagline { display:flex; flex-direction:column; }
+  .tc-mq { font-size:7pt; font-weight:700; color:white; letter-spacing:0.1em; }
+  .tc-qp { font-size:18pt; font-weight:900; color:#1a2f5e; font-family:'Arial Black',Arial; line-height:1; letter-spacing:-0.5pt; }
+  .tc-body { flex:1; display:flex; padding:3mm 4mm; gap:3mm; }
+  .tc-img-zone { width:45mm; border:1.5pt solid #e5e7eb; border-radius:2mm; flex-shrink:0; }
+  .tc-info { flex:1; display:flex; flex-direction:column; gap:2mm; }
+  .tc-caract-title { font-size:7pt; font-weight:800; text-transform:uppercase; letter-spacing:0.08em; color:#333; background:#e5e7eb; padding:1.5mm 3mm; border-radius:1mm; }
+  .tc-caract-box { font-size:8.5pt; color:#1a1a2e; padding:1.5mm 2mm; border:1pt solid #e5e7eb; border-radius:1mm; min-height:8mm; }
+  .tc-dims-row { display:flex; gap:3mm; flex:1; }
+  .tc-dims-col { flex:1; display:flex; flex-direction:column; gap:1mm; }
+  .tc-dims-title { font-size:7pt; font-weight:700; color:#555; background:#e5e7eb; padding:1mm 2mm; border-radius:1mm; text-transform:uppercase; letter-spacing:0.06em; }
+  .tc-dim-line { font-size:8pt; color:#1a1a2e; padding:0.5mm 1mm; }
+  .tc-qr-col { width:26mm; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1mm; border:1.5pt solid #e5e7eb; border-radius:2mm; padding:2mm; }
+  .tc-qr { width:22mm; height:22mm; border:1pt solid #ccc; }
+  .tc-qr-empty { width:22mm; height:22mm; border:1pt dashed #ccc; border-radius:1mm; }
+  .tc-footer { background:#E30613; padding:2.5mm 6mm; font-size:16pt; font-weight:900; font-style:italic; color:white; text-align:right; font-family:'Arial Black',Arial; }
 </style>
 </head>
 <body>
-${svgPages.map(svg => "<div class=\"svg-page\">" + svg + "</div>").join("\n")}
+<div class="page">
+${sheetsHTML}
+</div>
 <script>
-  // Attendre les QR codes puis imprimer
-  const imgs = document.querySelectorAll('image[href*="qrserver"]');
-  if (imgs.length === 0) { setTimeout(() => window.print(), 500); }
+  const imgs = document.querySelectorAll('img[src*="qrserver"]');
+  if (!imgs.length) { setTimeout(() => window.print(), 400); }
   else {
-    let n = 0;
+    let n=0;
     imgs.forEach(img => {
-      const i = new Image();
-      i.onload = i.onerror = () => { n++; if (n === imgs.length) setTimeout(() => window.print(), 300); };
-      i.src = img.getAttribute('href');
+      if(img.complete){n++;if(n===imgs.length)setTimeout(()=>window.print(),300);}
+      else{img.onload=img.onerror=()=>{n++;if(n===imgs.length)setTimeout(()=>window.print(),300);};}
     });
   }
 </script>
 </body>
 </html>`;
 
-  const blob4 = new Blob([html], { type: "text/html" });
-  const url4 = URL.createObjectURL(blob4);
-  const a4 = document.createElement("a");
-  a4.href = url4; a4.target = "_blank"; a4.rel = "noopener";
-  document.body.appendChild(a4); a4.click(); document.body.removeChild(a4);
-  setTimeout(() => URL.revokeObjectURL(url4), 5000);
+  const blob = new Blob([html], { type:"text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // PDF — Document de remplissage de rayon (dépôt → magasin)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2800,12 +2841,12 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
           <div style={{ padding:"14px 16px 10px", borderBottom:"1px solid var(--t-border-subtle)", position:"sticky", top:0, background:"var(--t-card-bg)", zIndex:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
               <h2 style={{ margin:0, fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>Catalogue — tous fournisseurs</h2>
-              <button onClick={()=>setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"4px 8px", color:"#818cf8" }}>+ Nouveau produit</button>
+              <button onClick={()=>setShowAddProduct(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"4px 8px", color:"#f97316" }}>+ Nouveau produit</button>
             </div>
 
             {/* Formulaire ajout rapide d'un produit absent du catalogue */}
             {showAddProduct && (
-              <div style={{ padding:"12px", borderRadius:12, background:"rgba(99,102,241,0.06)", border:"1px solid rgba(99,102,241,0.2)", marginBottom:10 }}>
+              <div style={{ padding:"12px", borderRadius:12, background:"rgba(249,115,22,0.06)", border:"1px solid rgba(249,115,22,0.2)", marginBottom:10 }}>
                 <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-55)", marginBottom:8, textTransform:"uppercase", letterSpacing:"0.06em" }}>Nouveau produit (absent du catalogue)</div>
                 <div style={{ marginBottom:8 }}>
                   <label style={S.label}>Fournisseur *</label>
@@ -2836,9 +2877,9 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
             </div>
             {typeList.length > 0 && (
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                <button onClick={()=>setFilterType("all")} style={{ padding:"4px 11px", borderRadius:16, border:"1.5px solid", cursor:"pointer", fontSize:11, fontWeight:filterType==="all"?700:400, background:filterType==="all"?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterType==="all"?"white":"var(--t-text-55)", borderColor:filterType==="all"?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>Tous types</button>
+                <button onClick={()=>setFilterType("all")} style={{ padding:"4px 11px", borderRadius:16, border:"1.5px solid", cursor:"pointer", fontSize:11, fontWeight:filterType==="all"?700:400, background:filterType==="all"?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterType==="all"?"white":"var(--t-text-55)", borderColor:filterType==="all"?"rgba(249,115,22,0.5)":"var(--t-border-subtle)" }}>Tous types</button>
                 {typeList.map(t => (
-                  <button key={t} onClick={()=>setFilterType(t)} style={{ padding:"4px 11px", borderRadius:16, border:"1.5px solid", cursor:"pointer", fontSize:11, fontWeight:filterType===t?700:400, background:filterType===t?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterType===t?"white":"var(--t-text-55)", borderColor:filterType===t?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>{t}</button>
+                  <button key={t} onClick={()=>setFilterType(t)} style={{ padding:"4px 11px", borderRadius:16, border:"1.5px solid", cursor:"pointer", fontSize:11, fontWeight:filterType===t?700:400, background:filterType===t?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterType===t?"white":"var(--t-text-55)", borderColor:filterType===t?"rgba(249,115,22,0.5)":"var(--t-border-subtle)" }}>{t}</button>
                 ))}
               </div>
             )}
@@ -2855,7 +2896,7 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
                   const isExpanded = expandedRef === p.ref;
                   return (
                     <div key={p.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(99,102,241,0.06)":"transparent" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: inCart?"rgba(249,115,22,0.06)":"transparent" }}>
                         <div style={{ flex:1, minWidth:0 }}>
                           <div style={{ fontSize:13, fontWeight:inCart?700:500, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
                           <div style={{ display:"flex", gap:6, marginTop:3, flexWrap:"wrap", alignItems:"center" }}>
@@ -2863,16 +2904,16 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
                             <span style={{ fontSize:11, color:"var(--t-text-40)" }}>· {p.supplierName}</span>
                           </div>
                         </div>
-                        {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
-                        <button onClick={() => handleAddOrExpand(p)} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:inCart?"rgba(99,102,241,0.2)":"rgba(99,102,241,0.7)", color:"white" }}>
+                        {inCart && !isExpanded && <span style={{ fontSize:12, fontWeight:700, color:"#f97316", background:"rgba(249,115,22,0.15)", padding:"2px 8px", borderRadius:10, flexShrink:0 }}>×{inCart.qty}</span>}
+                        <button onClick={() => handleAddOrExpand(p)} style={{ flexShrink:0, padding:"6px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background:inCart?"rgba(249,115,22,0.2)":"rgba(99,102,241,0.7)", color:"white" }}>
                           {isExpanded ? "✕" : inCart ? "Modifier" : "+ Ajouter"}
                         </button>
                       </div>
                       {isExpanded && (
-                        <div style={{ padding:"8px 14px 10px", background:"rgba(99,102,241,0.06)", borderTop:"1px solid rgba(99,102,241,0.15)", display:"flex", alignItems:"center", gap:10 }}>
-                          <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
-                          <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} style={{ flex:1, textAlign:"center", fontSize:26, fontWeight:800, color:"#6366f1", letterSpacing:"-0.02em", border:"none", borderBottom:"2px solid rgba(99,102,241,0.4)", background:"transparent", outline:"none", width:0, minWidth:0, padding:"2px 4px" }} />
-                          <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(99,102,241,0.3)", background:"rgba(99,102,241,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#6366f1", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
+                        <div style={{ padding:"8px 14px 10px", background:"rgba(249,115,22,0.06)", borderTop:"1px solid rgba(249,115,22,0.15)", display:"flex", alignItems:"center", gap:10 }}>
+                          <button onClick={() => setInputQty(q => String(Math.max(0, (parseInt(q)||0)-1)))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(249,115,22,0.3)", background:"var(--t-surface)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#f97316", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>−</button>
+                          <input type="number" inputMode="numeric" pattern="[0-9]*" value={inputQty} onChange={e=>setInputQty(e.target.value)} style={{ flex:1, textAlign:"center", fontSize:26, fontWeight:800, color:"#f97316", letterSpacing:"-0.02em", border:"none", borderBottom:"2px solid rgba(249,115,22,0.4)", background:"transparent", outline:"none", width:0, minWidth:0, padding:"2px 4px" }} />
+                          <button onClick={() => setInputQty(q => String((parseInt(q)||0)+1))} style={{ width:38, height:38, borderRadius:12, border:"1.5px solid rgba(249,115,22,0.3)", background:"rgba(249,115,22,0.1)", cursor:"pointer", fontSize:22, fontWeight:300, color:"#f97316", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>+</button>
                           <button onClick={() => confirmQty(p)} style={{ ...S.btnPrimary, padding:"9px 16px", fontSize:13, flexShrink:0 }}>{(parseInt(inputQty)||0)===0 ? "Retirer" : "OK"}</button>
                           <button onClick={() => { setExpandedRef(null); setInputQty(""); }} style={{ ...S.btnGhost, padding:"9px 10px", flexShrink:0 }}>✕</button>
                         </div>
@@ -2900,14 +2941,14 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
                       <div style={{ fontSize:11, fontFamily:"monospace", color:"var(--t-text-40)" }}>{l.ref}</div>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-                      <button onClick={()=>{setExpandedRef(l.ref);setInputQty(String(l.qty));}} style={{ fontSize:13, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", border:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer" }}>×{l.qty}</button>
+                      <button onClick={()=>{setExpandedRef(l.ref);setInputQty(String(l.qty));}} style={{ fontSize:13, fontWeight:700, color:"#f97316", background:"rgba(249,115,22,0.12)", border:"none", borderRadius:8, padding:"2px 8px", cursor:"pointer" }}>×{l.qty}</button>
                       <button onClick={()=>removeLine(l.ref)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:16, padding:0, lineHeight:1 }}>×</button>
                     </div>
                   </div>
                 ))}
                 <div style={{ display:"flex", justifyContent:"space-between", marginTop:12, paddingTop:10, borderTop:"2px solid var(--t-border-subtle)", fontWeight:700, fontSize:13 }}>
                   <span style={{ color:"var(--t-text-55)" }}>Total articles</span>
-                  <span style={{ color:"#818cf8" }}>{lines.reduce((s,l)=>s+l.qty,0)}</span>
+                  <span style={{ color:"#f97316" }}>{lines.reduce((s,l)=>s+l.qty,0)}</span>
                 </div>
               </>
             )}
@@ -3059,16 +3100,16 @@ function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
       {/* Filtre fournisseur */}
       {supplierList.length > 0 && (
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          <button onClick={()=>setFilterSupplier("all")} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filterSupplier==="all"?700:400, background:filterSupplier==="all"?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterSupplier==="all"?"white":"var(--t-text-55)", borderColor:filterSupplier==="all"?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>Tous</button>
+          <button onClick={()=>setFilterSupplier("all")} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filterSupplier==="all"?700:400, background:filterSupplier==="all"?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterSupplier==="all"?"white":"var(--t-text-55)", borderColor:filterSupplier==="all"?"rgba(249,115,22,0.5)":"var(--t-border-subtle)" }}>Tous</button>
           {supplierList.map(s => (
-            <button key={s} onClick={()=>setFilterSupplier(s)} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filterSupplier===s?700:400, background:filterSupplier===s?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterSupplier===s?"white":"var(--t-text-55)", borderColor:filterSupplier===s?"rgba(99,102,241,0.5)":"var(--t-border-subtle)" }}>{s}</button>
+            <button key={s} onClick={()=>setFilterSupplier(s)} style={{ padding:"6px 14px", borderRadius:20, border:"1.5px solid", cursor:"pointer", fontSize:12, fontWeight:filterSupplier===s?700:400, background:filterSupplier===s?"rgba(99,102,241,0.7)":"var(--t-surface)", color:filterSupplier===s?"white":"var(--t-text-55)", borderColor:filterSupplier===s?"rgba(249,115,22,0.5)":"var(--t-border-subtle)" }}>{s}</button>
           ))}
         </div>
       )}
 
       {/* Formulaire ajout/édition */}
       {showForm && (
-        <div style={{ ...S.card, marginBottom:16, border:"1px solid rgba(99,102,241,0.3)" }}>
+        <div style={{ ...S.card, marginBottom:16, border:"1px solid rgba(249,115,22,0.3)" }}>
           <h2 style={{ margin:"0 0 14px 0", fontSize:13, fontWeight:700, color:"var(--t-text-70)", textTransform:"uppercase", letterSpacing:"0.07em" }}>{editing==="new" ? "Nouvelle proposition" : "Modifier la proposition"}</h2>
           <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
             <Field label="Fournisseur *">
@@ -3211,7 +3252,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
     fontWeight: active ? 700 : 400,
     background: active ? "rgba(99,102,241,0.7)" : "var(--t-surface)",
     color: active ? "white" : "var(--t-text-55)",
-    borderColor: active ? "rgba(99,102,241,0.5)" : "var(--t-border-subtle)",
+    borderColor: active ? "rgba(249,115,22,0.5)" : "var(--t-border-subtle)",
   });
 
   return (
@@ -3253,7 +3294,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
       {/* KPIs rapides */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:20 }}>
         {[
-          { label:"Références", value:totalRefs, color:"#818cf8" },
+          { label:"Références", value:totalRefs, color:"#f97316" },
           { label:"Avec prix", value:withPrice, color:"#34d399" },
           { label:"Avec stock", value:withDispo, color:"#0ea5e9" },
           { label:"Alertes stock", value:alertCount, color:alertCount>0?"#ef4444":"var(--t-text-40)" },
@@ -3356,7 +3397,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                           const isAlert = p.dispo!=null && p.dispo<=stockMin && stockMin>0;
                           const isEditing = editingRef === p.ref+p.supplierId;
                           return (
-                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:isEditing?"rgba(99,102,241,0.06)":p.rupture?"rgba(120,120,120,0.06)":isAlert?"rgba(239,68,68,0.04)":"transparent", opacity:p.rupture&&!isEditing?0.5:1 }}>
+                            <tr key={p.ref+i} style={{ borderBottom:"1px solid var(--t-border-subtle)", background:isEditing?"rgba(249,115,22,0.06)":p.rupture?"rgba(120,120,120,0.06)":isAlert?"rgba(239,68,68,0.04)":"transparent", opacity:p.rupture&&!isEditing?0.5:1 }}>
                               <td style={{ ...S.td, padding:"8px 10px" }}>
                                 <input type="checkbox"
                                   checked={selectedForSheet.some(s=>s.ref===p.ref&&s.supplierId===p.supplierId)}
@@ -3388,7 +3429,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                                 </td>
                               )}
                               {showPrices && (
-                                <td style={{ ...S.td, fontWeight:600, color:"#818cf8", whiteSpace:"nowrap" }}>
+                                <td style={{ ...S.td, fontWeight:600, color:"#f97316", whiteSpace:"nowrap" }}>
                                   {isEditing ? (
                                     <input type="number" value={p.prixVente||""} onChange={e=>updateProductField(p.supplierId,p.ref,"prixVente",parseFloat(e.target.value)||0)} style={{ ...S.input, fontSize:11, padding:"4px 8px", width:80 }} />
                                   ) : (p.prixVente?fmt(p.prixVente):"—")}
@@ -3422,7 +3463,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                                   <button onClick={() => setEditingRef(isEditing ? null : p.ref+p.supplierId)} style={{
                                     padding:"4px 10px", borderRadius:12, border:"1px solid var(--t-border-subtle)", cursor:"pointer", fontSize:10, fontWeight:600, whiteSpace:"nowrap",
                                     background: isEditing ? "rgba(99,102,241,0.7)" : "var(--t-surface)",
-                                    color: isEditing ? "white" : "#818cf8",
+                                    color: isEditing ? "white" : "#f97316",
                                   }}>
                                     {isEditing ? "✓ Terminer" : "✏️ Modifier"}
                                   </button>
@@ -3854,7 +3895,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
             <input value={p.family||""} onChange={e => updateProduct(i,"family",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Famille" disabled={p.rupture} />
             <input value={p.subFamily||""} onChange={e => updateProduct(i,"subFamily",e.target.value)} style={{...S.input,fontSize:11,fontFamily:"monospace"}} placeholder="S-famille" disabled={p.rupture} />
             <input type="number" value={p.price||""} onChange={e => updateProduct(i,"price",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
-            <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#818cf8"}} placeholder="0.00" disabled={p.rupture} />
+            <input type="number" value={p.prixVente||""} onChange={e => updateProduct(i,"prixVente",e.target.value)} style={{...S.input,fontSize:11,color:"#f97316"}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.ecotaxe||""} onChange={e => updateProduct(i,"ecotaxe",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0.00" disabled={p.rupture} />
             <input type="number" value={p.weeklyVolume||""} onChange={e => updateProduct(i,"weeklyVolume",e.target.value)} style={{...S.input,fontSize:11}} placeholder="0" disabled={p.rupture} />
             <input type="number" value={p.stockMin??""} onChange={e => updateProduct(i,"stockMin",e.target.value)} style={{...S.input,fontSize:11}} placeholder="Auto" disabled={p.rupture} />
@@ -3920,7 +3961,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           const lastOrder = supplierOrders.length > 0 ? [...supplierOrders].sort((a,b)=>b.date?.localeCompare(a.date||"")||0)[0] : null;
           const alertCount = s.products.filter(p => p.dispo != null && p.dispo <= (p.stockMin ?? calcStockMin(p.weeklyVolume)) && p.stockMin > 0).length;
           const initials = s.name.split(/\s+/).slice(0,2).map(w=>w[0]?.toUpperCase()||"").join("");
-          const colors = ["#6366f1","#8b5cf6","#0891b2","#059669","#d97706","#e11d48"];
+          const colors = ["#f97316","#ea580c","#0891b2","#059669","#d97706","#e11d48"];
           const color = colors[s.name.charCodeAt(0) % colors.length];
 
           return (
@@ -3988,7 +4029,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
                           {p.dispo!=null?p.dispo:"—"}
                           {p.stockRefFichier && <span title={`Rapproché depuis la référence "${p.stockRefFichier}" du fichier de stock`} style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#f59e0b", background:"rgba(245,158,11,0.12)", padding:"1px 5px", borderRadius:5, cursor:"help" }}>≈</span>}
                         </td>
-                        <td style={{ ...S.td, fontWeight:600, color:"#D97706" }}>{p.stockMin??calcStockMin(p.weeklyVolume)}{p.stockMinAuto&&<span style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#818cf8", background:"rgba(99,102,241,0.12)", padding:"1px 5px", borderRadius:5 }}>auto</span>}</td>
+                        <td style={{ ...S.td, fontWeight:600, color:"#D97706" }}>{p.stockMin??calcStockMin(p.weeklyVolume)}{p.stockMinAuto&&<span style={{ marginLeft:5, fontSize:9, fontWeight:700, color:"#f97316", background:"rgba(249,115,22,0.12)", padding:"1px 5px", borderRadius:5 }}>auto</span>}</td>
                       </tr>
                     ))}</tbody>
                   </table>
@@ -4111,7 +4152,7 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
             <tr key={u.id} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
               <td style={S.td}><span style={{ fontWeight:600 }}>{u.name}</span></td>
               <td style={{ ...S.td,color:"var(--t-text-40)" }}>{u.email}</td>
-              <td style={S.td}><span style={{ padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:600,background:u.role==="admin"?"rgba(99,102,241,0.3)":"var(--t-border-subtle)",color:u.role==="admin"?"#a5b4fc":"var(--t-text-55)",border:`1px solid ${u.role==="admin"?"rgba(99,102,241,0.4)":"var(--t-border-subtle)"}` }}>{u.role==="admin"?"Admin":"Utilisateur"}</span></td>
+              <td style={S.td}><span style={{ padding:"2px 8px",borderRadius:12,fontSize:11,fontWeight:600,background:u.role==="admin"?"rgba(249,115,22,0.3)":"var(--t-border-subtle)",color:u.role==="admin"?"#a5b4fc":"var(--t-text-55)",border:`1px solid ${u.role==="admin"?"rgba(249,115,22,0.4)":"var(--t-border-subtle)"}` }}>{u.role==="admin"?"Admin":"Utilisateur"}</span></td>
               <td style={S.td}><button onClick={() => toggle(u.id,"canSeePrices")} style={{ padding:"3px 10px",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:600,background:u.canSeePrices?"rgba(5,150,105,0.2)":"var(--t-surface)",color:u.canSeePrices?"#34d399":"var(--t-text-55)",border:`1px solid ${u.canSeePrices?"rgba(52,211,153,0.3)":"var(--t-border-subtle)"}` }}>{u.canSeePrices?"✓ Oui":"✕ Non"}</button></td>
               <td style={S.td}><button onClick={() => toggle(u.id,"canUseAI")} style={{ padding:"3px 10px",borderRadius:12,cursor:"pointer",fontSize:11,fontWeight:600,background:u.canUseAI?"rgba(139,92,246,0.2)":"var(--t-surface)",color:u.canUseAI?"#a78bfa":"var(--t-text-55)",border:`1px solid ${u.canUseAI?"rgba(139,92,246,0.35)":"var(--t-border-subtle)"}` }}>{u.canUseAI?"✨ Oui":"✕ Non"}</button></td>
               <td style={S.td}>
