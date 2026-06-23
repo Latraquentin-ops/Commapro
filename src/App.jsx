@@ -377,7 +377,7 @@ const S = {
   input:        { width:"100%", padding:"10px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.12)", fontSize:13, outline:"none", boxSizing:"border-box", background:"var(--t-border-subtle)", backdropFilter:"blur(8px)", color:"#f0f0f5" },
   inputNum:     { width:"100%", padding:"7px 12px", borderRadius:18, border:"1.5px solid rgba(129,140,248,0.45)", fontSize:12, outline:"none", boxSizing:"border-box", background:"rgba(99,102,241,0.08)", backdropFilter:"blur(8px)", color:"#f0f0f5", fontWeight:600, textAlign:"center", transition:"border-color 0.15s" },
   label:        { display:"block", fontSize:11, fontWeight:600, color:"var(--t-text-55)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" },
-  card:         { background:"var(--t-surface)", backdropFilter:"blur(24px) saturate(160%)", WebkitBackdropFilter:"blur(24px) saturate(160%)", borderRadius:20, padding:24, border:"1px solid rgba(255,255,255,0.13)", boxShadow:"0 4px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.1)" },
+  card:         { background:"rgba(255,255,255,0.08)", backdropFilter:"blur(24px) saturate(180%)", WebkitBackdropFilter:"blur(24px) saturate(180%)", borderRadius:20, padding:24, border:"1px solid rgba(255,255,255,0.18)", boxShadow:"0 4px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.25)" },
   td:           { padding:"11px 16px", color:"var(--t-text-90)", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.05)" },
 };
 
@@ -1270,17 +1270,30 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
       }} onClose={() => setScanning(false)} />}
 
       {/* ── 3 KPIs ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginBottom:28 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:28 }}>
         {[
           { value: pending.length, label:"En cours",   color:"#6366f1", onClick: () => { setOrderFilter("commandee"); setPage("orders"); } },
           { value: lateOrders.length, label:"En retard", color: lateOrders.length>0?"#ef4444":"#10b981", onClick: () => setPage("orders") },
           { value: deliveriesToday.length, label:"Aujourd'hui", color:"#0ea5e9", onClick: () => setPage("orders") },
         ].map((k,i) => (
-          <button key={i} onClick={k.onClick} style={{ background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:20, padding:"18px 12px", cursor:"pointer", textAlign:"center", transition:"transform 0.15s" }}
+          <button key={i} onClick={k.onClick} style={{
+            background: "rgba(255,255,255,0.08)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.18)",
+            borderRadius: 20,
+            padding: "20px 8px",
+            cursor: "pointer",
+            textAlign: "center",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)",
+            transition: "transform 0.15s",
+          }}
+            onTouchStart={e=>e.currentTarget.style.transform="scale(0.95)"}
+            onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}
             onMouseEnter={e=>e.currentTarget.style.transform="scale(0.97)"}
             onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
-            <div style={{ fontSize:34, fontWeight:800, color:k.color, lineHeight:1, letterSpacing:"-0.03em" }}>{k.value}</div>
-            <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:6, fontWeight:500 }}>{k.label}</div>
+            <div style={{ fontSize:36, fontWeight:800, color:k.color, lineHeight:1, letterSpacing:"-0.03em" }}>{k.value}</div>
+            <div style={{ fontSize:11, color:"var(--t-text-55)", marginTop:6, fontWeight:600 }}>{k.label}</div>
           </button>
         ))}
       </div>
@@ -1321,30 +1334,41 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
         </div>
       )}
 
-      {/* ── Grille navigation iOS ── */}
-      <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Navigation</div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:12, marginBottom:32 }}>
+      {/* ── Grille navigation iOS — Liquid Glass ── */}
+      <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:14 }}>Navigation</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4, minmax(0, 1fr))", gap:10, marginBottom:32 }}>
         {tiles.map((t,i) => (
           <button key={i} onClick={() => setPage(t.page)} style={{
-            background: t.bg,
-            border: "1px solid " + t.color + "30",
-            borderRadius: 22,
-            padding: "18px 8px 14px",
+            background: "rgba(255,255,255,0.08)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.18)",
+            borderRadius: 20,
+            padding: "16px 4px 12px",
             cursor: "pointer",
             textAlign: "center",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 8,
+            gap: 7,
             transition: "transform 0.15s, box-shadow 0.15s",
-            boxShadow: "0 2px 12px " + t.color + "20",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.25)",
+            minWidth: 0,
           }}
-            onMouseEnter={e=>{e.currentTarget.style.transform="scale(0.94)";e.currentTarget.style.boxShadow="0 6px 20px "+t.color+"35";}}
-            onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="0 2px 12px "+t.color+"20";}}>
-            <div style={{ width:44, height:44, borderRadius:14, background:t.color, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px "+t.color+"50" }}>
-              <t.Icon size={22} color="white" strokeWidth={2}/>
+            onTouchStart={e=>e.currentTarget.style.transform="scale(0.93)"}
+            onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}
+            onMouseEnter={e=>e.currentTarget.style.transform="scale(0.95)"}
+            onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
+            <div style={{
+              width:42, height:42, borderRadius:13,
+              background: t.color,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              boxShadow: "0 4px 14px " + t.color + "55, inset 0 1px 0 rgba(255,255,255,0.3)",
+              flexShrink: 0,
+            }}>
+              <t.Icon size={20} color="white" strokeWidth={2.2}/>
             </div>
-            <div style={{ fontSize:11, fontWeight:600, color:"var(--t-text-85)", lineHeight:1.3, whiteSpace:"pre-wrap" }}>{t.label}</div>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--t-text-85)", lineHeight:1.3, width:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", padding:"0 2px" }}>{t.label}</div>
           </button>
         ))}
       </div>
