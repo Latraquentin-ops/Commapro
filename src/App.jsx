@@ -3620,6 +3620,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
   const [expanded, setExpanded] = useState(null);
   const [importMsg, setImportMsg] = useState("");
   const [stockMsg, setStockMsg]   = useState("");
+  const DEPOTS = ["Magasin Nord", "Magasin Sud", "Dépôt Nord", "Dépôt Sud", "Dépôt Port"];
+  const [importDepot, setImportDepot] = useState(DEPOTS[0]);
 
   // ── Import ÉTAT DE STOCK (format revendeur, ex: Conforama) ──────────────────
   // Met à jour le stock réel des produits déjà présents (par référence/Code),
@@ -3705,18 +3707,15 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           return h;
         };
 
-        let currentDepot = "Principal";
+        // L'emplacement est choisi par l'utilisateur (pas d'auto-détection)
+        const selectedDepot = importDepot;
+        let currentDepot = selectedDepot;
         let headerCols = null;
         const stockByRef = {};
-        const depotsFound = new Set();
+        const depotsFound = new Set([selectedDepot]);
 
-        // Pré-détection : si la 1re ligne est déjà un en-tête, on l'utilise direct
+        // Lecture : en-tête une fois, puis toutes les lignes de données
         for (const row of grid) {
-          if (isDepotHeader(row)) {
-            currentDepot = depotLabel(String(row[0]).trim());
-            depotsFound.add(currentDepot);
-            continue;
-          }
           if (isHeaderRow(row)) {
             headerCols = mapHeader(row);
             continue;
@@ -3801,44 +3800,46 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           return null;
         }
 
-        // 4) Mettre à jour les produits : stocker dispoParDepot + dispo total
+        // 4) Mettre à jour les produits : FUSIONNER le dépôt importé avec les dépôts existants
         let updated = 0, matched = [], unmatchedCount = 0, fuzzyCount = 0;
         setSuppliers(prev => prev.map(s => ({
           ...s,
           products: s.products.map(p => {
             const foundRef = findStockRef(p.ref, p.ean);
             if (!foundRef) { unmatchedCount++; return p; }
-            const depots = stockByRef[foundRef];
+            const newDepotData = stockByRef[foundRef][selectedDepot];
             updated++; matched.push(foundRef);
             if (normRef(foundRef) !== normRef(p.ref)) fuzzyCount++;
-            // Calcul totaux toutes dépôts
-            const allDepots = Object.values(depots);
+            // On garde les autres dépôts déjà importés, on remplace seulement celui choisi
+            const mergedDepots = { ...(p.dispoParDepot || {}), [selectedDepot]: newDepotData };
+            // Totaux tous emplacements confondus
+            const allDepots = Object.values(mergedDepots);
             const totalDispo = allDepots.reduce((s,d)=>s+(d.dispo||0),0);
             const totalStock = allDepots.reduce((s,d)=>s+(d.stock||0),0);
+            // Date d'import par emplacement
+            const mergedDates = { ...(p.stockDateParDepot || {}), [selectedDepot]: exportDate };
             return {
               ...p,
               stock: totalStock,
               dispo: totalDispo,
-              dispoParDepot: depots,  // { "Expo Nord": {dispo:3,...}, "Dépôt Sud": {dispo:1,...} }
+              dispoParDepot: mergedDepots,
               stockDate: exportDate,
-              stockRefFichier: foundRef !== p.ref ? foundRef : undefined,  // trace si le matching n'était pas exact
+              stockDateParDepot: mergedDates,
+              stockRefFichier: foundRef !== p.ref ? foundRef : undefined,
             };
           })
         })));
 
-        // 5) Mémoriser snapshot (dispo total par ref pour calcul des sorties)
+        // 5) Mémoriser snapshot (dispo de CE dépôt par ref pour calcul des sorties)
         const snapshot = {};
         matched.forEach(ref => {
-          const depots = stockByRef[ref];
-          snapshot[ref] = Object.values(depots).reduce((s,d)=>s+(d.dispo||0),0);
+          snapshot[ref] = (stockByRef[ref][selectedDepot]||{}).dispo || 0;
         });
 
-        // 5) ÉTAPE B — Calcul des sorties depuis l'import précédent
+        // 5) ÉTAPE B — Calcul des sorties depuis le dernier import DU MÊME EMPLACEMENT
         //    Sorties = Dispo_précédent − Dispo_actuel + Achats reçus sur la période
-        //    (les achats reçus ont fait remonter le dispo, on les rajoute pour
-        //     retrouver les vraies sorties). Normalisé sur 7 jours.
         const prevImports = stockImports || [];
-        const prev = [...prevImports].reverse().find(im => im.date && im.date !== exportDate);
+        const prev = [...prevImports].reverse().find(im => im.depot === selectedDepot && im.date && im.date !== exportDate);
         let computed = 0;
         const weeklySalesByRef = {};
         if (prev) {
@@ -3847,14 +3848,14 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           for (const ref of matched) {
             const prevDispo = prev.dispo?.[ref];
             if (prevDispo == null) continue;
-            const curDispo = stockByRef[ref].dispo;
-            const achat = stockByRef[ref].achat || 0;  // entrées sur la période
+            const cur = stockByRef[ref][selectedDepot] || {};
+            const curDispo = cur.dispo || 0;
+            const achat = cur.achat || 0;  // entrées sur la période
             const sorties = Math.max(0, prevDispo - curDispo + achat);
             const perWeek = sorties / days * 7;
             weeklySalesByRef[ref] = Math.ceil(perWeek);
             computed++;
           }
-          // Appliquer : stock min = ventes d'1 semaine (passage hebdo des commerciaux)
           if (computed > 0) {
             setSuppliers(prev2 => prev2.map(s => ({
               ...s,
@@ -3868,13 +3869,13 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         }
 
         setStockImports(prevList => {
-          const next = [...(prevList||[]), { date: exportDate, dispo: snapshot, importedAt: new Date().toISOString() }];
-          return next.slice(-12);  // on garde les 12 derniers imports
+          const next = [...(prevList||[]), { depot: selectedDepot, date: exportDate, dispo: snapshot, importedAt: new Date().toISOString() }];
+          return next.slice(-40);  // 5 emplacements × plusieurs imports
         });
 
         const ignored = refsInFile.length - updated;
         const dateFr = exportDate.split("-").reverse().join("/");
-        let msg = "✅ État de stock du " + dateFr + " importé. " + updated + " produit(s) mis à jour" + (ignored>0 ? ", " + ignored + " référence(s) du fichier non rapprochée(s)" : "") + ".";
+        let msg = "✅ " + selectedDepot + " — état du " + dateFr + " importé. " + updated + " produit(s) mis à jour" + (ignored>0 ? ", " + ignored + " référence(s) non rapprochée(s)" : "") + ".";
         if (fuzzyCount > 0) {
           msg += ` 🔍 ${fuzzyCount} produit(s) rapproché(s) par correspondance approximative (réf légèrement différente entre catalogue et état de stock).`;
         }
@@ -4100,9 +4101,12 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap:"wrap", gap:10 }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Fournisseurs & Catalogues</h1>
         {isAdmin && (
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+            <select value={importDepot} onChange={e=>setImportDepot(e.target.value)} style={{ ...S.input, width:"auto", padding:"8px 12px", cursor:"pointer" }}>
+              {DEPOTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
             <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
-              <Package size={15} /> Importer état de stock
+              <Package size={15} /> Importer ici
               <input type="file" accept=".xlsx,.xls" onChange={handleStockImport} style={{ display:"none" }} />
             </label>
             <button onClick={openNew} style={S.btnPrimary}>+ Ajouter</button>
