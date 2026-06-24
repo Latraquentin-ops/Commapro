@@ -937,14 +937,14 @@ export default function App() {
           }
           .app-content { margin-left:228px; }
           .fab-label { display:inline !important; }
+          .tab-bar { display:none !important; }
+          .fab-desktop { display:flex !important; }
         }
         @media (max-width: 1023px) {
           .app-shell { display:block; }
           .fab-label { display:none !important; }
           .fab-new { padding:16px !important; border-radius:50% !important; width:52px; height:52px; justify-content:center; }
-        /* Tab bar — visible mobile, caché desktop */
-        .tab-bar { display:flex !important; }
-        @media (min-width: 1024px) { .tab-bar { display:none !important; } }
+          .tab-bar { display:flex !important; }
         }
 
       `}</style>
@@ -1055,6 +1055,26 @@ export default function App() {
           <span style={{ fontSize:10, fontWeight: page==="dashboard"?700:500, color: page==="dashboard"?"#f59e0b":"var(--t-text-40)", letterSpacing:"-0.01em" }}>Accueil</span>
         </button>
       </div>
+
+      {/* Bouton flottant « Commander » — desktop uniquement (mobile a déjà le + dans la tab bar) */}
+      <button
+        onClick={() => setPage("new")}
+        className="fab-desktop"
+        aria-label="Nouvelle commande"
+        style={{
+          position:"fixed", right:32, bottom:32, zIndex:300,
+          display:"none", alignItems:"center", gap:10, padding:"15px 22px",
+          borderRadius:30, border:"none", cursor:"pointer", color:"white",
+          background:"linear-gradient(135deg,#7c3aed,#8b5cf6)", fontWeight:700, fontSize:15,
+          boxShadow:"0 10px 32px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.25)",
+          letterSpacing:"-0.01em", transition:"transform 0.18s, box-shadow 0.18s",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.transform="translateY(-2px)"; e.currentTarget.style.boxShadow="0 14px 40px rgba(124,58,237,0.6)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform="translateY(0)"; e.currentTarget.style.boxShadow="0 10px 32px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.25)"; }}
+      >
+        <Plus size={20} strokeWidth={2.5} />
+        Commander
+      </button>
     </div>
   );
 }
