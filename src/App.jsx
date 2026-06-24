@@ -3648,82 +3648,96 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         }
         if (!exportDate) exportDate = new Date().toISOString().slice(0,10);
 
-        // 2) Mapping noms de dépôts → labels courts
+        // 2) Mapping noms de dépôts → labels courts (utilisé seulement si format multi-dépôts)
         function depotLabel(raw) {
           const u = raw.toUpperCase();
-          if (u.includes("PORT") || u.includes("CENTRAL")) return "Dépôt Port";
           if (u.includes("EXPO") && u.includes("SUD"))  return "Expo Sud";
           if (u.includes("EXPO") && u.includes("NORD")) return "Expo Nord";
+          if (u.includes("CENTRAL")) return "Dépôt Central";
           if (u.includes("DEPOT") || u.includes("DÉPÔT")) {
             if (u.includes("SUD"))  return "Dépôt Sud";
             if (u.includes("NORD")) return "Dépôt Nord";
+            return "Dépôt";
           }
-          // Fallback : prendre la dernière partie après le dernier "-"
           const parts = raw.split("-").map(s=>s.trim()).filter(Boolean);
           return parts[parts.length-1] || raw;
         }
 
-        // 3) Parser multi-dépôts :
-        //    stockByRef[ref][depotLabel] = { stock, dispo, achat, facture... }
+        // 3) Parser : on repère la ligne d'en-tête (Code + Dispo/Stock) une fois,
+        //    puis on lit toutes les lignes de données. Gère aussi le multi-dépôts
+        //    (lignes "section" intercalées) si jamais le format en contient.
         const norm = (s) => String(s).toLowerCase().replace(/\s+/g," ").trim();
+
+        // Une ligne est une SECTION dépôt si sa 1re cellule est un intitulé de dépôt
+        // ET que le reste de la ligne est vide (pas de chiffres de stock).
         const isDepotHeader = (row) => {
-          const v = String(row[0]||"").trim();
-          return v.length > 5 && (
-            v.toUpperCase().includes("CONFORAMA") ||
-            v.toUpperCase().includes("EXPO") ||
-            v.toUpperCase().includes("DEPOT") ||
-            v.toUpperCase().includes("DÉPÔT") ||
-            v.toUpperCase().includes("PORT")
-          ) && !v.toUpperCase().includes("ELECTRO") && !v.toUpperCase().includes("CUISSON");
+          const v = String(row[0]||"").trim().toUpperCase();
+          if (v.length <= 5) return false;
+          const looksDepot = (v.includes("CONFORAMA") || v.includes("MAGASIN") ||
+            (v.includes("EXPO") && (v.includes("NORD")||v.includes("SUD"))) ||
+            (v.includes("DEPOT")||v.includes("DÉPÔT")));
+          if (!looksDepot) return false;
+          // le reste de la ligne doit être vide (sinon c'est un produit nommé "...PORT...")
+          const rest = row.slice(1).map(x=>String(x||"").trim()).filter(Boolean);
+          return rest.length === 0;
+        };
+
+        const isHeaderRow = (row) => {
+          const cells = row.map(norm);
+          return cells.some(x => x === "code") &&
+                 cells.some(x => x.startsWith("dispo") || x === "stock");
+        };
+        const mapHeader = (row) => {
+          const h = {};
+          row.forEach((cell, i) => {
+            const n = norm(cell);
+            if (n === "code") h.code = i;
+            else if (n === "libellé" || n === "libelle") h.label = i;
+            else if (n.startsWith("achat")) h.achat = i;
+            else if (n === "facture") h.facture = i;
+            else if (n === "stock") h.stock = i;
+            else if (n === "reserve" || n === "réserve") h.reserve = i;
+            else if (n === "emporte" || n === "emporté") h.emporte = i;
+            else if (n === "livraison") h.livraison = i;
+            else if (n.startsWith("dispo")) h.dispo = i;
+            else if (n === "attendu") h.attendu = i;
+          });
+          return h;
         };
 
         let currentDepot = "Principal";
         let headerCols = null;
-        const stockByRef = {};  // { ref: { "Expo Nord": {dispo,stock,...}, "Dépôt Sud": {...} } }
+        const stockByRef = {};
         const depotsFound = new Set();
 
+        // Pré-détection : si la 1re ligne est déjà un en-tête, on l'utilise direct
         for (const row of grid) {
-          // Détection ligne dépôt
           if (isDepotHeader(row)) {
             currentDepot = depotLabel(String(row[0]).trim());
             depotsFound.add(currentDepot);
-            headerCols = null; // reset pour ce dépôt
             continue;
           }
-          // Détection ligne en-tête colonnes
-          const cells = row.map(norm);
-          if (cells.some(x => x === "code") && cells.some(x => x.startsWith("dispo"))) {
-            headerCols = {};
-            row.forEach((h, i) => {
-              const n = norm(h);
-              if (n === "code") headerCols.code = i;
-              else if (n === "libellé" || n === "libelle") headerCols.label = i;
-              else if (n.startsWith("achat")) headerCols.achat = i;
-              else if (n === "facture") headerCols.facture = i;
-              else if (n === "stock") headerCols.stock = i;
-              else if (n === "reserve" || n === "réserve") headerCols.reserve = i;
-              else if (n === "emporte" || n === "emporté") headerCols.emporte = i;
-              else if (n === "livraison") headerCols.livraison = i;
-              else if (n.startsWith("dispo")) headerCols.dispo = i;
-              else if (n === "attendu") headerCols.attendu = i;
-            });
+          if (isHeaderRow(row)) {
+            headerCols = mapHeader(row);
             continue;
           }
           // Ligne de données
           if (headerCols && headerCols.code != null) {
             const code = String(row[headerCols.code] || "").trim();
-            if (code && code.toLowerCase() !== "code" && code.length > 2 && !code.includes(" - ")) {
-              const num = (i) => { const v = parseFloat(row[i]); return isNaN(v) ? 0 : v; };
+            if (code && code.toLowerCase() !== "code" && code.length >= 2) {
+              const num = (i) => { if (i == null) return 0; const v = parseFloat(row[i]); return isNaN(v) ? 0 : v; };
               if (!stockByRef[code]) stockByRef[code] = {};
+              // Si plusieurs lignes même code (multi-dépôts), on additionne sous le dépôt courant
+              const prev = stockByRef[code][currentDepot] || {};
               stockByRef[code][currentDepot] = {
-                stock:     num(headerCols.stock),
-                dispo:     num(headerCols.dispo),
-                reserve:   num(headerCols.reserve),
-                emporte:   num(headerCols.emporte),
-                livraison: num(headerCols.livraison),
-                attendu:   num(headerCols.attendu),
-                achat:     num(headerCols.achat),
-                facture:   num(headerCols.facture),
+                stock:     (prev.stock||0)     + num(headerCols.stock),
+                dispo:     (prev.dispo||0)     + num(headerCols.dispo),
+                reserve:   (prev.reserve||0)   + num(headerCols.reserve),
+                emporte:   (prev.emporte||0)   + num(headerCols.emporte),
+                livraison: (prev.livraison||0) + num(headerCols.livraison),
+                attendu:   (prev.attendu||0)   + num(headerCols.attendu),
+                achat:     (prev.achat||0)     + num(headerCols.achat),
+                facture:   (prev.facture||0)   + num(headerCols.facture),
               };
             }
           }
