@@ -3729,34 +3729,67 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           normIndexNoZero[stripLeadingZeros(n)] = fileRef;
         }
 
-        function findStockRef(catalogRef) {
+        // Plus long préfixe commun entre deux chaînes
+        function commonPrefix(a, b) {
+          let i = 0;
+          while (i < a.length && i < b.length && a[i] === b[i]) i++;
+          return i;
+        }
+
+        function findStockRef(catalogRef, catalogEan) {
           // 1. Correspondance exacte (cas normal)
           if (stockByRef[catalogRef]) return catalogRef;
           const n = normRef(catalogRef);
+          if (!n) {
+            // pas de réf exploitable -> tenter l'EAN directement
+            if (catalogEan) {
+              const ne = normRef(catalogEan);
+              if (normIndex[ne]) return normIndex[ne];
+            }
+            return null;
+          }
           // 2. Correspondance après normalisation (espaces, casse, tirets)
           if (normIndex[n]) return normIndex[n];
           const nz = stripLeadingZeros(n);
-          if (normIndexNoZero[nz]) return normIndexNoZero[nz];
-          // 3. Correspondance par préfixe/suffixe : l'une contient l'autre (≥ 5 caractères communs)
-          if (n.length >= 5) {
+          if (nz && normIndexNoZero[nz]) return normIndexNoZero[nz];
+          // 3. Tentative par EAN / code-barres (si l'état de stock utilise l'EAN)
+          if (catalogEan) {
+            const ne = normRef(catalogEan);
+            if (ne && normIndex[ne]) return normIndex[ne];
+            if (ne && normIndexNoZero[stripLeadingZeros(ne)]) return normIndexNoZero[stripLeadingZeros(ne)];
+          }
+          // 4. Correspondance approximative SÛRE :
+          //    - préfixe commun d'au moins 6 caractères
+          //    - différence de longueur ≤ 2 caractères
+          //    - une SEULE candidate possible (sinon on ne devine pas)
+          if (n.length >= 6) {
+            const candidates = [];
             for (const fileRefNorm of Object.keys(normIndex)) {
-              if (fileRefNorm.length >= 5 && (fileRefNorm.includes(n) || n.includes(fileRefNorm))) {
-                return normIndex[fileRefNorm];
+              if (fileRefNorm.length < 6) continue;
+              const cp = commonPrefix(n, fileRefNorm);
+              const lenDiff = Math.abs(n.length - fileRefNorm.length);
+              // préfixe commun couvrant la quasi-totalité de la plus courte + faible écart
+              const minLen = Math.min(n.length, fileRefNorm.length);
+              if (cp >= 6 && cp >= minLen - 1 && lenDiff <= 2) {
+                candidates.push(fileRefNorm);
               }
             }
+            // On ne rapproche QUE s'il y a exactement une candidate (évite les faux positifs)
+            if (candidates.length === 1) return normIndex[candidates[0]];
           }
           return null;
         }
 
         // 4) Mettre à jour les produits : stocker dispoParDepot + dispo total
-        let updated = 0, matched = [], unmatchedCount = 0;
+        let updated = 0, matched = [], unmatchedCount = 0, fuzzyCount = 0;
         setSuppliers(prev => prev.map(s => ({
           ...s,
           products: s.products.map(p => {
-            const foundRef = findStockRef(p.ref);
+            const foundRef = findStockRef(p.ref, p.ean);
             if (!foundRef) { unmatchedCount++; return p; }
             const depots = stockByRef[foundRef];
             updated++; matched.push(foundRef);
+            if (normRef(foundRef) !== normRef(p.ref)) fuzzyCount++;
             // Calcul totaux toutes dépôts
             const allDepots = Object.values(depots);
             const totalDispo = allDepots.reduce((s,d)=>s+(d.dispo||0),0);
@@ -3821,6 +3854,9 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         const ignored = refsInFile.length - updated;
         const dateFr = exportDate.split("-").reverse().join("/");
         let msg = "✅ État de stock du " + dateFr + " importé. " + updated + " produit(s) mis à jour" + (ignored>0 ? ", " + ignored + " référence(s) du fichier non rapprochée(s)" : "") + ".";
+        if (fuzzyCount > 0) {
+          msg += ` 🔍 ${fuzzyCount} produit(s) rapproché(s) par correspondance approximative (réf légèrement différente entre catalogue et état de stock).`;
+        }
         if (prev && computed > 0) {
           const prevFr = prev.date.split("-").reverse().join("/");
           msg += ` 📊 Sorties calculées entre le ${prevFr} et le ${dateFr} : stock min ajusté pour couvrir 1 semaine sur ${computed} produit(s).`;
