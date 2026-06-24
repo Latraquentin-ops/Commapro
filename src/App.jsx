@@ -3715,67 +3715,54 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           return;
         }
 
-        // 3bis) Normalisation des références pour un matching tolérant
-        //      (espaces, casse, et préfixe/suffixe différents type "TAB906-A" / "001TAB906")
+        // 3bis) Normalisation des références — matching par TRONC commun
+        //   Catalogue app : "THA150TECH"  (suffixe fournisseur = TECH)
+        //   État magasin   : "THA150/L", "THA806/RT", "TBL784/RTD"  (suffixe après /)
+        //   => on compare le tronc, en retirant le suffixe de chaque côté.
         const normRef = (r) => String(r||"").toUpperCase().replace(/[\s\-_./\\]/g,"").trim();
         const stripLeadingZeros = (r) => r.replace(/^0+/, "");
 
-        // Index par référence normalisée pour retrouver vite une correspondance
-        const normIndex = {};        // refNormalisée exacte -> ref originale du fichier
-        const normIndexNoZero = {};  // refNormalisée sans zéros de tête -> ref originale du fichier
-        for (const fileRef of refsInFile) {
-          const n = normRef(fileRef);
-          normIndex[n] = fileRef;
-          normIndexNoZero[stripLeadingZeros(n)] = fileRef;
+        // Tronc d'une référence : on coupe au "/" (magasin) et on retire un suffixe
+        // fournisseur connu en fin (TECH, RTD, RT, L, VAX) puis on normalise.
+        const SUFFIXES = ["TECH","RTD","VAX"];  // suffixes lettres en fin de réf
+        function coreRef(raw) {
+          let s = String(raw||"").toUpperCase().trim();
+          s = s.split("/")[0];                       // enlève "/L", "/RT", "/RTD", "/VAX"…
+          let n = s.replace(/[\s\-_.\\]/g,"");        // enlève séparateurs (garde lettres+chiffres)
+          for (const suf of SUFFIXES) {
+            if (n.length > suf.length + 2 && n.endsWith(suf)) { n = n.slice(0, -suf.length); break; }
+          }
+          return stripLeadingZeros(n);
         }
 
-        // Plus long préfixe commun entre deux chaînes
-        function commonPrefix(a, b) {
-          let i = 0;
-          while (i < a.length && i < b.length && a[i] === b[i]) i++;
-          return i;
+        // Index du fichier magasin : tronc -> ref originale
+        const normIndex = {};       // ref normalisée complète -> ref fichier
+        const coreIndex = {};       // tronc -> [refs fichier]
+        for (const fileRef of refsInFile) {
+          normIndex[normRef(fileRef)] = fileRef;
+          const c = coreRef(fileRef);
+          if (c) (coreIndex[c] = coreIndex[c] || []).push(fileRef);
         }
 
         function findStockRef(catalogRef, catalogEan) {
-          // 1. Correspondance exacte (cas normal)
+          // 1. Correspondance exacte
           if (stockByRef[catalogRef]) return catalogRef;
+          // 2. Normalisée complète
           const n = normRef(catalogRef);
-          if (!n) {
-            // pas de réf exploitable -> tenter l'EAN directement
-            if (catalogEan) {
-              const ne = normRef(catalogEan);
-              if (normIndex[ne]) return normIndex[ne];
-            }
-            return null;
+          if (n && normIndex[n]) return normIndex[n];
+          // 3. Par TRONC (cœur de la logique : THA150TECH <-> THA150/L)
+          const core = coreRef(catalogRef);
+          if (core && coreIndex[core]) {
+            const list = coreIndex[core];
+            if (list.length === 1) return list[0];
+            // plusieurs candidats même tronc : préférer celui dont le suffixe contient RT/RTD
+            const pref = list.find(r => /\/RTD?$/i.test(r)) || list.find(r => /RTD?$/i.test(normRef(r)));
+            return pref || list[0];
           }
-          // 2. Correspondance après normalisation (espaces, casse, tirets)
-          if (normIndex[n]) return normIndex[n];
-          const nz = stripLeadingZeros(n);
-          if (nz && normIndexNoZero[nz]) return normIndexNoZero[nz];
-          // 3. Tentative par EAN / code-barres (si l'état de stock utilise l'EAN)
+          // 4. Par EAN si présent des deux côtés
           if (catalogEan) {
             const ne = normRef(catalogEan);
             if (ne && normIndex[ne]) return normIndex[ne];
-            if (ne && normIndexNoZero[stripLeadingZeros(ne)]) return normIndexNoZero[stripLeadingZeros(ne)];
-          }
-          // 4. Correspondance approximative SÛRE :
-          //    - préfixe commun d'au moins 6 caractères
-          //    - différence de longueur ≤ 2 caractères
-          //    - une SEULE candidate possible (sinon on ne devine pas)
-          if (n.length >= 6) {
-            const candidates = [];
-            for (const fileRefNorm of Object.keys(normIndex)) {
-              if (fileRefNorm.length < 6) continue;
-              const cp = commonPrefix(n, fileRefNorm);
-              const lenDiff = Math.abs(n.length - fileRefNorm.length);
-              // préfixe commun couvrant la quasi-totalité de la plus courte + faible écart
-              const minLen = Math.min(n.length, fileRefNorm.length);
-              if (cp >= 6 && cp >= minLen - 1 && lenDiff <= 2) {
-                candidates.push(fileRefNorm);
-              }
-            }
-            // On ne rapproche QUE s'il y a exactement une candidate (évite les faux positifs)
-            if (candidates.length === 1) return normIndex[candidates[0]];
           }
           return null;
         }
