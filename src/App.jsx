@@ -1252,6 +1252,32 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Bonjour" : hour < 18 ? "Bon après-midi" : "Bonsoir";
+  const showPrices = session.canSeePrices;
+
+  // ── Score de fiabilité fournisseur (% livré à temps) ─────────────────────────
+  function reliability(supplierName) {
+    const delivered = orders.filter(o => o.supplierName === supplierName && ["livree","reception_validee"].includes(o.status) && o.deliveryDate);
+    if (delivered.length === 0) return null;
+    const onTime = delivered.filter(o => {
+      const stamp = (o.statusHistory||{}).livree || (o.statusHistory||{}).reception_validee;
+      if (!stamp) return true; // pas d'info = présumé OK
+      return stamp.slice(0,10) <= o.deliveryDate;
+    }).length;
+    const pct = Math.round(onTime / delivered.length * 100);
+    let grade = "C", color = "#ef4444";
+    if (pct >= 95)      { grade = "A+"; color = "#22c55e"; }
+    else if (pct >= 85) { grade = "A";  color = "#22c55e"; }
+    else if (pct >= 70) { grade = "B+"; color = "#f59e0b"; }
+    else if (pct >= 50) { grade = "B";  color = "#f59e0b"; }
+    return { pct, grade, color, count: delivered.length };
+  }
+
+  // Fournisseurs principaux (triés par nb de commandes)
+  const supplierStats = suppliers.map(s => {
+    const ords = orders.filter(o => o.supplierName === s.name);
+    const ca = ords.filter(o=>o.status!=="brouillon").reduce((sum,o)=>sum+orderTotal(o),0);
+    return { ...s, orderCount: ords.length, ca, rel: reliability(s.name) };
+  }).sort((a,b) => b.orderCount - a.orderCount).slice(0, 6);
 
   return (
     <div style={{ maxWidth: 600, margin: "0 auto" }}>
@@ -1264,6 +1290,9 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
         <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, letterSpacing: "-0.04em", color:"var(--t-text-90)", lineHeight: 1.1 }}>
           {greeting},<br/>{session.name.split(" ")[0]} 👋
         </h1>
+        <div style={{ fontSize:14, color:"var(--t-text-55)", marginTop:8 }}>
+          {(lateOrders.length>0 || urgentAlerts.length>0) ? "Voici ce qui se passe aujourd'hui" : "Tout est sous contrôle"}
+        </div>
       </div>
 
       {/* ── Recherche ── */}
@@ -1304,34 +1333,60 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
         if (m) setSelectedProduct(m);
       }} onClose={() => setScanning(false)} />}
 
-      {/* ── 3 KPIs ── */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:28 }}>
+      {/* ── Carte unifiée "À ne pas manquer" ── */}
+      <div style={{
+        background:"rgba(255,255,255,0.055)",
+        backdropFilter:"blur(24px) saturate(180%)", WebkitBackdropFilter:"blur(24px) saturate(180%)",
+        border:"1px solid rgba(255,255,255,0.12)", borderRadius:28, padding:"6px 6px",
+        marginBottom:16, boxShadow:"0 8px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
+        display:"flex",
+      }}>
         {[
-          { value: pending.length, label:"En cours",   color:"#7c3aed", onClick: () => { setOrderFilter("commandee"); setPage("orders"); } },
-          { value: lateOrders.length, label:"En retard", color: lateOrders.length>0?"#ef4444":"#10b981", onClick: () => setPage("orders") },
-          { value: deliveriesToday.length, label:"Aujourd'hui", color:"#0ea5e9", onClick: () => setPage("orders") },
+          { value: deliveriesToday.length, label:"Livraisons\naujourd'hui", color:"#38bdf8", bg:"rgba(56,189,248,0.14)", Icon:Truck, onClick:()=>setPage("orders") },
+          { value: lateOrders.length, label:"Commandes\nen retard", color:"#f59e0b", bg:"rgba(245,158,11,0.14)", Icon:Clock, onClick:()=>setPage("orders") },
+          { value: urgentAlerts.length, label:"Produits à\ncommander", color:"#7c3aed", bg:"rgba(124,58,237,0.14)", Icon:Package, onClick:()=>setPage("new") },
         ].map((k,i) => (
           <button key={i} onClick={k.onClick} style={{
-            background: "rgba(255,255,255,0.08)",
-            backdropFilter: "blur(20px) saturate(180%)",
-            WebkitBackdropFilter: "blur(20px) saturate(180%)",
-            border: "1px solid rgba(255,255,255,0.18)",
-            borderRadius: 20,
-            padding: "20px 8px",
-            cursor: "pointer",
-            textAlign: "center",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.25)",
-            transition: "transform 0.15s",
+            flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:8,
+            padding:"18px 6px", border:"none", background:"transparent", cursor:"pointer",
+            borderLeft: i>0 ? "1px solid rgba(255,255,255,0.08)" : "none",
+            transition:"opacity 0.15s",
           }}
-            onTouchStart={e=>e.currentTarget.style.transform="scale(0.95)"}
-            onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}
-            onMouseEnter={e=>e.currentTarget.style.transform="scale(0.97)"}
-            onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>
-            <div style={{ fontSize:36, fontWeight:800, color:k.color, lineHeight:1, letterSpacing:"-0.03em" }}>{k.value}</div>
-            <div style={{ fontSize:11, color:"var(--t-text-55)", marginTop:6, fontWeight:600 }}>{k.label}</div>
+            onTouchStart={e=>e.currentTarget.style.opacity="0.6"}
+            onTouchEnd={e=>e.currentTarget.style.opacity="1"}>
+            <div style={{ width:42, height:42, borderRadius:13, background:k.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <k.Icon size={20} color={k.color}/>
+            </div>
+            <div style={{ fontSize:28, fontWeight:800, color:"var(--t-text-90)", lineHeight:1, letterSpacing:"-0.03em" }}>{k.value}</div>
+            <div style={{ fontSize:10.5, color:"var(--t-text-55)", fontWeight:500, lineHeight:1.3, whiteSpace:"pre-line" }}>{k.label}</div>
           </button>
         ))}
       </div>
+
+      {/* ── Total engagé (si droit prix) ── */}
+      {showPrices ? (
+        <div onClick={()=>{setOrderFilter("commandee");setPage("orders");}} style={{
+          background:"rgba(255,255,255,0.055)",
+          backdropFilter:"blur(24px) saturate(180%)", WebkitBackdropFilter:"blur(24px) saturate(180%)",
+          border:"1px solid rgba(255,255,255,0.12)", borderRadius:24, padding:"20px 22px",
+          marginBottom:28, cursor:"pointer", boxShadow:"0 8px 40px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.1)",
+        }}>
+          <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:4, fontWeight:500 }}>Total engagé (en cours)</div>
+          <div style={{ display:"flex", alignItems:"baseline", gap:8 }}>
+            <span style={{ fontSize:30, fontWeight:800, color:"var(--t-text-90)", letterSpacing:"-0.03em" }}>{fmt(pending.reduce((s,o)=>s+orderTotal(o),0))}</span>
+            <span style={{ fontSize:13, color:"var(--t-text-40)", fontWeight:600 }}>HT</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)",
+          borderRadius:24, padding:"18px 22px", marginBottom:28,
+          display:"flex", alignItems:"center", gap:10,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t-text-40)" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span style={{ fontSize:13, color:"var(--t-text-40)" }}>Montants — accès restreint</span>
+        </div>
+      )}
 
       {/* ── Alertes urgentes ── */}
       {(urgentAlerts.length > 0 || lateOrders.length > 0) && (
@@ -1433,6 +1488,43 @@ function DashboardPage({ orders, suppliers, stockAlerts, session, setPage, setOr
                 {session.canSeePrices && <div style={{ fontSize:13, fontWeight:700, color:"#10b981", flexShrink:0 }}>{fmt(orderTotal(o))}</div>}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Fournisseurs principaux ── */}
+      {supplierStats.length > 0 && (
+        <div style={{ marginTop:28 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Fournisseurs</div>
+            <button onClick={() => setPage("suppliers")} style={{ ...S.btnGhost, fontSize:12, padding:"2px 8px" }}>Tous →</button>
+          </div>
+          <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch", scrollbarWidth:"none" }}>
+            {supplierStats.map(s => {
+              const initials = s.name.split(/\s+/).slice(0,3).map(w=>w[0]?.toUpperCase()||"").join("");
+              const colors = ["#7c3aed","#8b5cf6","#0891b2","#059669","#d97706","#e11d48"];
+              const color = colors[s.name.charCodeAt(0) % colors.length];
+              return (
+                <div key={s.id} onClick={()=>setPage("suppliers")} style={{
+                  flexShrink:0, width:150,
+                  background:"rgba(255,255,255,0.05)",
+                  backdropFilter:"blur(20px) saturate(180%)", WebkitBackdropFilter:"blur(20px) saturate(180%)",
+                  border:"1px solid rgba(255,255,255,0.1)", borderRadius:20, padding:16, cursor:"pointer",
+                  boxShadow:"0 4px 20px rgba(0,0,0,0.15)",
+                }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+                    <div style={{ width:40, height:40, borderRadius:12, background:`${color}22`, border:`1.5px solid ${color}55`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color }}>{initials}</div>
+                    {s.rel && <span style={{ fontSize:16, fontWeight:800, color:s.rel.color }}>{s.rel.grade}</span>}
+                  </div>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--t-text-90)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", marginBottom:3 }}>{s.name}</div>
+                  {s.rel
+                    ? <div style={{ fontSize:11, color:"var(--t-text-40)" }}>Fiabilité {s.rel.pct}%</div>
+                    : <div style={{ fontSize:11, color:"var(--t-text-30)" }}>Pas d'historique</div>}
+                  <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:6 }}>{s.orderCount} commande{s.orderCount>1?"s":""}</div>
+                  {showPrices && s.ca>0 && <div style={{ fontSize:12, fontWeight:700, color:"#22c55e", marginTop:4 }}>{fmt(s.ca)}</div>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
