@@ -55,6 +55,7 @@ const ALL_PAGES = [
   { key: "catalogue",   label: "Référencement",  icon: BookOpen },
   { key: "catalogues",  label: "Catalogues",     icon: Folder },
   { key: "tasks",       label: "Tâches",         icon: CheckCircle },
+  { key: "etiquettes",  label: "Étiquettes",     icon: FileText },
   { key: "proposals",   label: "Propositions",   icon: Tag },
   { key: "remplissage", label: "Remplissage",    icon: Package },
   { key: "suppliers",   label: "Fournisseurs",   icon: Factory },
@@ -987,6 +988,7 @@ export default function App() {
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} />}
             {page === "catalogues" && <CataloguesPage promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} suppliers={suppliers} session={session} setPage={setPage} setSelectedProduct={setSelectedProduct} />}
             {page === "tasks" && <TasksPage tasks={tasks} setTasks={setTasks} users={users} suppliers={suppliers} orders={orders} session={session} setPage={setPage} setOrderFilter={setOrderFilter} />}
+            {page === "etiquettes" && <EtiquettesPage suppliers={suppliers} session={session} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
@@ -2558,7 +2560,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 // PDF — Fiche produit porte-étiquette Conforama (généré en HTML pur, sans SVG)
 // Format A4 paysage, 3 fiches par page
 // ═══════════════════════════════════════════════════════════════════════════════
-async function generateProductSheetPDF(products, templateType = "conforama") {
+async function generateProductSheetPDF(products, templateType = "conforama", perPage = 3) {
   const isTopConfo = templateType === "topconfo";
 
   function makeSheet(p) {
@@ -2633,7 +2635,16 @@ async function generateProductSheetPDF(products, templateType = "conforama") {
     </div>`;
   }
 
-  const sheetsHTML = products.map(p => makeSheet(p)).join("\n");
+  // Découpe en pages de `perPage` étiquettes
+  const pages = [];
+  for (let i = 0; i < products.length; i += perPage) {
+    pages.push(products.slice(i, i + perPage));
+  }
+  const pagesHTML = pages.map(pageProducts =>
+    `<div class="page">${pageProducts.map(p => makeSheet(p)).join("\n")}</div>`
+  ).join("\n");
+  // hauteur d'une étiquette selon le nombre par page (A4 portrait ≈ 277mm utile)
+  const sheetHeight = Math.floor((277 - (perPage-1)*3) / perPage);
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -2642,12 +2653,14 @@ async function generateProductSheetPDF(products, templateType = "conforama") {
 <title>Fiches produit</title>
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
-  html,body { width:297mm; background:#fff; font-family:Arial,Helvetica,sans-serif; }
-  @page { size:A4 landscape; margin:6mm; }
+  html,body { width:210mm; background:#fff; font-family:Arial,Helvetica,sans-serif; }
+  @page { size:A4 portrait; margin:8mm; }
   @media print { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-  /* ── 3 fiches par page ── */
-  .page { width:285mm; display:flex; flex-direction:column; gap:3mm; }
+  /* ── ${perPage} étiquette(s) par page A4 ── */
+  .page { width:194mm; display:flex; flex-direction:column; gap:3mm; page-break-after:always; }
+  .page:last-child { page-break-after:auto; }
+  .sheet { height:${sheetHeight}mm !important; width:194mm !important; }
 
   /* ════ FORMAT CONFORAMA STANDARD ════ */
   .sheet.conforama {
@@ -2722,9 +2735,7 @@ async function generateProductSheetPDF(products, templateType = "conforama") {
 </style>
 </head>
 <body>
-<div class="page">
-${sheetsHTML}
-</div>
+${pagesHTML}
 <script>
   const imgs = document.querySelectorAll('img[src*="qrserver"]');
   if (!imgs.length) { setTimeout(() => window.print(), 400); }
@@ -2745,6 +2756,139 @@ ${sheetsHTML}
   a.href = url; a.target = "_blank"; a.rel = "noopener";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ÉTIQUETTES MAGASIN — sélection produits + génération PDF
+// ───────────────────────────────────────────────────────────────────────────────
+// REGISTRE DES FORMATS — c'est ICI qu'on ajoute/modifie un format d'étiquette.
+// Chaque format : id, label affiché, couleur du bouton, nb d'étiquettes/page A4
+// possibles, et le type de gabarit passé au générateur. Quand tu m'enverras tes
+// visuels officiels, je brancherai chaque gabarit ici sans toucher au reste.
+// ═══════════════════════════════════════════════════════════════════════════════
+const ETIQUETTE_FORMATS = [
+  { id:"conforama", label:"Conforama",  color:"#E30613", perPageOptions:[3,4,6], template:"conforama" },
+  { id:"topconfo",  label:"Top Confo",  color:"#1a3a6b", perPageOptions:[3,4,6], template:"topconfo" },
+  // ➕ Futurs formats à ajouter ici (A4, A5, porte-étiquette, par type produit…)
+  // Exemple : { id:"porte_etiquette", label:"Porte-étiquette", color:"#7c3aed", perPageOptions:[8,12], template:"porte_etiquette" },
+];
+
+function EtiquettesPage({ suppliers, session }) {
+  const [search, setSearch] = useState("");
+  const [filterSupplier, setFilterSupplier] = useState("all");
+  const [selected, setSelected] = useState([]);
+  const [formatId, setFormatId] = useState(ETIQUETTE_FORMATS[0].id);
+  const fmt0 = ETIQUETTE_FORMATS.find(f => f.id===formatId) || ETIQUETTE_FORMATS[0];
+  const [perPage, setPerPage] = useState(fmt0.perPageOptions[0]);
+
+  const currentFormat = ETIQUETTE_FORMATS.find(f => f.id===formatId) || ETIQUETTE_FORMATS[0];
+  // si on change de format, on recale le nb/page sur une valeur valide
+  useEffect(() => {
+    if (!currentFormat.perPageOptions.includes(perPage)) setPerPage(currentFormat.perPageOptions[0]);
+  }, [formatId]);
+
+  const allProducts = useMemo(() => {
+    const list = [];
+    suppliers.forEach(s => (s.products||[]).forEach(p => list.push({ ...p, supplierName: s.name, supplierId: s.id })));
+    return list;
+  }, [suppliers]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return allProducts.filter(p => {
+      if (filterSupplier !== "all" && p.supplierId !== filterSupplier) return false;
+      if (!q) return true;
+      return (p.label||"").toLowerCase().includes(q) || (p.ref||"").toLowerCase().includes(q) || (p.ean||"").includes(q);
+    });
+  }, [allProducts, search, filterSupplier]);
+
+  const isSel = (p) => selected.some(s => s.ref===p.ref && s.supplierId===p.supplierId);
+  function toggle(p) {
+    setSelected(prev => isSel(p) ? prev.filter(s=>!(s.ref===p.ref&&s.supplierId===p.supplierId)) : [...prev, p]);
+  }
+  function generate() {
+    if (selected.length === 0) return;
+    generateProductSheetPDF(selected, currentFormat.template, perPage);
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom:16 }}>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Étiquettes magasin</h1>
+        <div style={{ fontSize:13, color:"var(--t-text-55)", marginTop:4 }}>Choisis un format, sélectionne tes produits, génère le PDF à imprimer sur A4</div>
+      </div>
+
+      {/* Choix du format */}
+      <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:16, marginBottom:16 }}>
+        <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:10 }}>Format d'étiquette</div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          {ETIQUETTE_FORMATS.map(f => (
+            <button key={f.id} onClick={()=>setFormatId(f.id)} style={{
+              padding:"9px 16px", borderRadius:12, cursor:"pointer", fontSize:13, fontWeight:700,
+              border: formatId===f.id ? `2px solid ${f.color}` : "1px solid var(--t-border-subtle)",
+              background: formatId===f.id ? f.color : "var(--t-surface)",
+              color: formatId===f.id ? "white" : "var(--t-text-70)",
+            }}>{f.label}</button>
+          ))}
+        </div>
+        <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:10 }}>Étiquettes par page A4</div>
+        <div style={{ display:"flex", gap:8 }}>
+          {currentFormat.perPageOptions.map(n => (
+            <button key={n} onClick={()=>setPerPage(n)} style={{
+              padding:"8px 18px", borderRadius:10, cursor:"pointer", fontSize:13, fontWeight:700,
+              border:"none", background: perPage===n ? "#7c3aed" : "var(--t-surface)",
+              color: perPage===n ? "white" : "var(--t-text-55)",
+            }}>{n}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Barre d'action sélection */}
+      {selected.length > 0 && (
+        <div style={{ position:"sticky", top:8, zIndex:20, background:"var(--t-card-bg)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:"12px 16px", marginBottom:16, boxShadow:"var(--t-card-shadow)" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, flexWrap:"wrap" }}>
+            <span style={{ fontSize:13, fontWeight:700 }}>🖨️ {selected.length} produit{selected.length>1?"s":""} · {currentFormat.label} · {perPage}/page</span>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <button onClick={generate} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:`linear-gradient(135deg,${currentFormat.color},${currentFormat.color})` }}>🖨️ Générer le PDF</button>
+              <button onClick={() => setSelected([])} style={S.btnGhost}>Tout désélectionner</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Chercher par réf, EAN ou nom…" style={{ ...S.input, flex:1, minWidth:200 }} />
+        <select value={filterSupplier} onChange={e=>setFilterSupplier(e.target.value)} style={{ ...S.input, cursor:"pointer" }}>
+          <option value="all">Tous fournisseurs</option>
+          {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign:"center", padding:"40px 20px", color:"var(--t-text-40)" }}>
+          {search.trim() || filterSupplier!=="all" ? "Aucun produit trouvé." : "Cherche un produit ou filtre par fournisseur pour commencer."}
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+          {filtered.slice(0, 80).map(p => {
+            const sel = isSel(p);
+            return (
+              <div key={p.supplierId+p.ref} onClick={()=>toggle(p)} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", background: sel?"rgba(124,58,237,0.1)":"var(--t-card-bg)", border:`1px solid ${sel?"rgba(124,58,237,0.4)":"var(--t-card-border)"}`, borderRadius:12, cursor:"pointer" }}>
+                <div style={{ flexShrink:0, width:22, height:22, borderRadius:6, border:`2px solid ${sel?"#7c3aed":"var(--t-text-30)"}`, background: sel?"#7c3aed":"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  {sel && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.supplierName}</div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length > 80 && <div style={{ textAlign:"center", fontSize:12, color:"var(--t-text-40)", padding:8 }}>Affine ta recherche — {filtered.length} résultats au total</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -3405,19 +3549,6 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage, prom
           <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{totalRefs} référence{totalRefs>1?"s":""} · {supplierList.length} fournisseur{supplierList.length>1?"s":""}</div>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-          {selectedForSheet.length > 0 && (
-            <div style={{ display:"flex", gap:8 }}>
-              <button onClick={() => generateProductSheetPDF(selectedForSheet, "conforama")} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#E30613,#ff3344)" }}>
-                🖨️ Conforama ({selectedForSheet.length})
-              </button>
-              <button onClick={() => generateProductSheetPDF(selectedForSheet, "topconfo")} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"linear-gradient(135deg,#1a3a6b,#2d5db5)" }}>
-                🖨️ Top Confo ({selectedForSheet.length})
-              </button>
-            </div>
-          )}
-          {selectedForSheet.length > 0 && (
-            <button onClick={() => setSelectedForSheet([])} style={{ ...S.btnGhost, fontSize:12 }}>✕ Désélectionner</button>
-          )}
           <div style={{ display:"flex", alignItems:"center", gap:8, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", borderRadius:16, padding:"8px 14px", minWidth:220 }}>
             <Search size={15} style={{ color:"var(--t-text-40)", flexShrink:0 }} />
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Réf, EAN, désignation…" style={{ background:"transparent", border:"none", outline:"none", fontSize:13, color:"var(--t-input-color)", width:"100%" }} />
@@ -3425,13 +3556,6 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage, prom
           </div>
         </div>
       </div>
-      {selectedForSheet.length > 0 && (
-        <div style={{ fontSize:12, color:"#E30613", marginBottom:16, display:"flex", alignItems:"center", gap:6 }}>
-          <span style={{ fontWeight:600 }}>🖨️ {selectedForSheet.length} produit{selectedForSheet.length>1?"s":""} sélectionné{selectedForSheet.length>1?"s":""} pour impression</span>
-          <span style={{ color:"var(--t-text-40)" }}>— coche d'autres produits puis clique "Générer"</span>
-        </div>
-      )}
-
       {/* KPIs rapides */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:10, marginBottom:20 }}>
         {[
