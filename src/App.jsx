@@ -45,6 +45,11 @@ function ConfirmModal({ data, onClose }) {
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIGURATION SUPABASE
+// ═══════════════════════════════════════════════════════════════════════════════
+const SUPABASE_URL = "https://gwzjfdxndxkewpvpkeoc.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3empmZHhuZHhrZXdwdnBrZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTQ2MTksImV4cCI6MjA5NjkzMDYxOX0.O_UL6gDAOVuHWhXhDjbRz5L_vGX22_GpqIjtN5KCmy4";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
