@@ -50,13 +50,14 @@ async function saveCloud(state) {
 // ─── INITIAL DATA ──────────────────────────────────────────────────────────────
 // Pages configurables (admins ont toujours tout)
 const ALL_PAGES = [
-  { key: "dashboard",   label: "Accueil",       icon: Home },
-  { key: "orders",      label: "Commandes",     icon: List },
-  { key: "catalogue",   label: "Catalogue",     icon: BookOpen },
-  { key: "proposals",   label: "Propositions",  icon: Tag },
-  { key: "remplissage", label: "Remplissage",   icon: Package },
-  { key: "suppliers",   label: "Fournisseurs",  icon: Factory },
-  { key: "stats",       label: "Statistiques",  icon: BarChart2 },
+  { key: "dashboard",   label: "Accueil",        icon: Home },
+  { key: "orders",      label: "Commandes",      icon: List },
+  { key: "catalogue",   label: "Référencement",  icon: BookOpen },
+  { key: "catalogues",  label: "Catalogues",     icon: Folder },
+  { key: "proposals",   label: "Propositions",   icon: Tag },
+  { key: "remplissage", label: "Remplissage",    icon: Package },
+  { key: "suppliers",   label: "Fournisseurs",   icon: Factory },
+  { key: "stats",       label: "Statistiques",   icon: BarChart2 },
 ];
 
 const INIT_USERS = [
@@ -641,6 +642,7 @@ export default function App() {
   const [stockImports, setStockImports] = useState([]);  // historique des imports d'état de stock
   const [proposals, setProposals] = useState([]);  // propositions commerciales fournisseurs
   const [replenishments, setReplenishments] = useState([]);  // archive des remplissages rayon
+  const [promoCatalogues, setPromoCatalogues] = useState([]);  // catalogues promo mensuels
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
   const getAutoDark = () => { const h = new Date().getHours(); return h >= 20 || h < 7; };
@@ -675,6 +677,7 @@ export default function App() {
         if (cloud.stockImports) setStockImports(cloud.stockImports);
         if (cloud.proposals) setProposals(cloud.proposals);
         if (cloud.replenishments) setReplenishments(cloud.replenishments);
+        if (cloud.promoCatalogues) setPromoCatalogues(cloud.promoCatalogues);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
         await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
@@ -686,8 +689,8 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments });
-  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, loaded]);
+    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues });
+  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, loaded]);
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -702,6 +705,7 @@ export default function App() {
         if (cloud.stockImports) setStockImports(cloud.stockImports);
         if (cloud.proposals) setProposals(cloud.proposals);
         if (cloud.replenishments) setReplenishments(cloud.replenishments);
+        if (cloud.promoCatalogues) setPromoCatalogues(cloud.promoCatalogues);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -976,7 +980,8 @@ export default function App() {
             {page === "orders"    && <OrdersPage orders={orders} setOrders={setOrders} suppliers={suppliers} session={session} setPage={setPage} setEditingDraft={setEditingDraft} initialFilter={orderFilter} onFilterUsed={() => setOrderFilter("all")} T={T} />}
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} editingDraft={editingDraft} setEditingDraft={setEditingDraft} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
-            {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} />}
+            {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} />}
+            {page === "catalogues" && <CataloguesPage promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} suppliers={suppliers} session={session} setPage={setPage} setSelectedProduct={setSelectedProduct} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
@@ -3315,7 +3320,7 @@ function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // CATALOGUE PAGE — Vue globale de tous les produits, filtrable et analysable
 // ═══════════════════════════════════════════════════════════════════════════════
-function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
+function CataloguePage({ suppliers, setSuppliers, orders, session, setPage, promoCatalogues, setPromoCatalogues }) {
   const [filterSupplier, setFilterSupplier] = useState("all");
   const [filterFamily,   setFilterFamily]   = useState("all");
   const [filterSubFam,   setFilterSubFam]   = useState("all");
@@ -3391,7 +3396,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
       {/* Titre + recherche */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:selectedForSheet.length>0?8:20, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Catalogue</h1>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Référencement</h1>
           <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{totalRefs} référence{totalRefs>1?"s":""} · {supplierList.length} fournisseur{supplierList.length>1?"s":""}</div>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
@@ -3607,6 +3612,268 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage }) {
                     </table>
                   </div>
                 )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATALOGUES PROMO — sélections promotionnelles mensuelles
+// ═══════════════════════════════════════════════════════════════════════════════
+function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, session, setPage, setSelectedProduct }) {
+  const showPrices = session.canSeePrices;
+  const isAdmin = session.role === "admin";
+  const [openId, setOpenId] = useState(null);       // catalogue ouvert
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ name:"", start:"", end:"" });
+  const [addingTo, setAddingTo] = useState(null);   // catalogue où on ajoute des produits
+  const [search, setSearch] = useState("");
+
+  const allProducts = useMemo(() => {
+    const list = [];
+    suppliers.forEach(s => (s.products||[]).forEach(p => list.push({ ...p, supplierName: s.name, supplierId: s.id })));
+    return list;
+  }, [suppliers]);
+
+  const cats = promoCatalogues || [];
+
+  function statusOf(c) {
+    const today = new Date().toISOString().slice(0,10);
+    if (c.status === "brouillon") return { key:"brouillon", label:"Brouillon", color:"#94a3b8", bg:"rgba(148,163,184,0.15)" };
+    if (c.end && c.end < today)    return { key:"termine",   label:"Terminé",   color:"#94a3b8", bg:"rgba(148,163,184,0.15)" };
+    if (c.start && c.start > today) return { key:"avenir",   label:"À venir",   color:"#0ea5e9", bg:"rgba(14,165,233,0.15)" };
+    return { key:"actif", label:"Actif", color:"#22c55e", bg:"rgba(34,197,94,0.15)" };
+  }
+
+  function createCatalogue() {
+    if (!form.name.trim()) return;
+    const c = { id:"cat_"+Date.now(), name:form.name.trim(), start:form.start, end:form.end, status:"brouillon", items:[], createdAt:new Date().toISOString() };
+    setPromoCatalogues(prev => [...(prev||[]), c]);
+    setForm({ name:"", start:"", end:"" }); setCreating(false); setOpenId(c.id);
+  }
+
+  function deleteCatalogue(id) {
+    if (!window.confirm("Supprimer ce catalogue ? Les produits de ton référencement ne sont pas touchés.")) return;
+    setPromoCatalogues(prev => prev.filter(c => c.id !== id));
+    if (openId === id) setOpenId(null);
+  }
+
+  function setStatus(id, status) {
+    setPromoCatalogues(prev => prev.map(c => c.id===id ? { ...c, status } : c));
+  }
+
+  function addProduct(catId, prod) {
+    setPromoCatalogues(prev => prev.map(c => {
+      if (c.id !== catId) return c;
+      if ((c.items||[]).some(it => it.ref === prod.ref)) return c; // déjà dedans
+      const item = {
+        ref: prod.ref, label: prod.label, supplierName: prod.supplierName,
+        prixVente: prod.prixVente || null,       // prix normal (référence)
+        promoType: "euro",                        // "euro" ou "pct"
+        promoValue: prod.prixVente || 0,          // valeur saisie
+      };
+      return { ...c, items:[...(c.items||[]), item] };
+    }));
+  }
+
+  function removeItem(catId, ref) {
+    setPromoCatalogues(prev => prev.map(c => c.id!==catId ? c : { ...c, items:(c.items||[]).filter(it=>it.ref!==ref) }));
+  }
+
+  function updateItem(catId, ref, patch) {
+    setPromoCatalogues(prev => prev.map(c => c.id!==catId ? c : {
+      ...c, items:(c.items||[]).map(it => it.ref===ref ? { ...it, ...patch } : it)
+    }));
+  }
+
+  // Calcule le prix promo final et la remise % à partir du type/valeur saisis
+  function promoPrice(it) {
+    const base = it.prixVente || 0;
+    if (it.promoType === "pct") {
+      const p = base * (1 - (it.promoValue||0)/100);
+      return Math.max(0, Math.round(p*100)/100);
+    }
+    return it.promoValue || 0;
+  }
+  function promoPct(it) {
+    const base = it.prixVente || 0;
+    if (!base) return null;
+    if (it.promoType === "pct") return it.promoValue || 0;
+    return Math.round((1 - (it.promoValue||0)/base) * 100);
+  }
+
+  const openCat = cats.find(c => c.id === openId);
+
+  // ───────── Vue : un catalogue ouvert ─────────
+  if (openCat) {
+    const st = statusOf(openCat);
+    const filtered = allProducts.filter(p => {
+      if (!search.trim()) return false;
+      const q = search.toLowerCase();
+      return (p.label||"").toLowerCase().includes(q) || (p.ref||"").toLowerCase().includes(q) || (p.ean||"").includes(q);
+    }).slice(0, 12);
+
+    return (
+      <div>
+        <button onClick={()=>{setOpenId(null);setAddingTo(null);}} style={{ ...S.btnGhost, marginBottom:14 }}>← Tous les catalogues</button>
+
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12, marginBottom:18 }}>
+          <div>
+            <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>{openCat.name}</h1>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8 }}>
+              <span style={{ fontSize:11, fontWeight:700, color:st.color, background:st.bg, padding:"3px 10px", borderRadius:20 }}>{st.label}</span>
+              {openCat.start && openCat.end && (
+                <span style={{ fontSize:12, color:"var(--t-text-55)" }}>
+                  {openCat.start.split("-").reverse().join("/")} → {openCat.end.split("-").reverse().join("/")}
+                </span>
+              )}
+              <span style={{ fontSize:12, color:"var(--t-text-40)" }}>{(openCat.items||[]).length} produit{(openCat.items||[]).length>1?"s":""}</span>
+            </div>
+          </div>
+          {isAdmin && (
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {openCat.status==="brouillon"
+                ? <button onClick={()=>setStatus(openCat.id,"actif")} style={S.btnPrimary}>Activer</button>
+                : <button onClick={()=>setStatus(openCat.id,"brouillon")} style={S.btnSecondary}>Repasser en brouillon</button>}
+            </div>
+          )}
+        </div>
+
+        {/* Ajout de produits */}
+        {isAdmin && (
+          <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:16, marginBottom:18 }}>
+            <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Ajouter un produit</div>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Chercher par réf, EAN ou nom…" style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+            {filtered.length > 0 && (
+              <div style={{ marginTop:10, display:"flex", flexDirection:"column", gap:6 }}>
+                {filtered.map(p => {
+                  const already = (openCat.items||[]).some(it=>it.ref===p.ref);
+                  return (
+                    <div key={p.supplierId+p.ref} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 12px", background:"var(--t-surface)", borderRadius:10 }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                        <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.supplierName}{showPrices && p.prixVente ? " · "+fmt(p.prixVente) : ""}</div>
+                      </div>
+                      <button disabled={already} onClick={()=>addProduct(openCat.id, p)} style={{ ...(already?S.btnSecondary:S.btnPrimary), padding:"6px 14px", fontSize:12, opacity:already?0.5:1 }}>
+                        {already ? "✓ Ajouté" : "+ Ajouter"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Liste des produits du catalogue */}
+        {(openCat.items||[]).length === 0 ? (
+          <div style={{ textAlign:"center", padding:"40px 20px", color:"var(--t-text-40)" }}>Aucun produit dans ce catalogue. {isAdmin && "Ajoute-en avec la recherche ci-dessus."}</div>
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {(openCat.items||[]).map(it => {
+              const pct = promoPct(it);
+              const finalPrice = promoPrice(it);
+              return (
+                <div key={it.ref} style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:16, padding:"14px 16px" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ fontSize:14, fontWeight:700 }}>{it.label}</div>
+                      <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:2 }}>{it.ref} · {it.supplierName}</div>
+                    </div>
+                    {isAdmin && <button onClick={()=>removeItem(openCat.id, it.ref)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", padding:4 }}><X size={16}/></button>}
+                  </div>
+                  {showPrices && (
+                    <div style={{ display:"flex", alignItems:"center", gap:12, marginTop:12, flexWrap:"wrap" }}>
+                      {it.prixVente != null && <div style={{ fontSize:12, color:"var(--t-text-40)", textDecoration:"line-through" }}>{fmt(it.prixVente)}</div>}
+                      <div style={{ fontSize:18, fontWeight:800, color:"#7c3aed" }}>{fmt(finalPrice)}</div>
+                      {pct != null && pct !== 0 && <span style={{ fontSize:12, fontWeight:700, color:"#22c55e", background:"rgba(34,197,94,0.12)", padding:"2px 8px", borderRadius:6 }}>−{pct}%</span>}
+                      {isAdmin && (
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginLeft:"auto" }}>
+                          <input type="number" inputMode="decimal" value={it.promoValue} onChange={e=>updateItem(openCat.id, it.ref, { promoValue: parseFloat(e.target.value)||0 })} style={{ ...S.input, width:80, padding:"6px 8px", textAlign:"right" }} />
+                          <div style={{ display:"flex", borderRadius:8, overflow:"hidden", border:"1px solid var(--t-input-border)" }}>
+                            <button onClick={()=>updateItem(openCat.id, it.ref, { promoType:"euro" })} style={{ padding:"6px 10px", border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: it.promoType==="euro"?"#7c3aed":"transparent", color: it.promoType==="euro"?"white":"var(--t-text-55)" }}>€</button>
+                            <button onClick={()=>updateItem(openCat.id, it.ref, { promoType:"pct" })} style={{ padding:"6px 10px", border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: it.promoType==="pct"?"#7c3aed":"transparent", color: it.promoType==="pct"?"white":"var(--t-text-55)" }}>%</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ───────── Vue : liste des catalogues ─────────
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12, marginBottom:18 }}>
+        <div>
+          <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Catalogues</h1>
+          <div style={{ fontSize:13, color:"var(--t-text-55)", marginTop:4 }}>Tes sélections promotionnelles</div>
+        </div>
+        {isAdmin && <button onClick={()=>setCreating(true)} style={S.btnPrimary}>+ Nouveau catalogue</button>}
+      </div>
+
+      {creating && (
+        <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:18, marginBottom:18 }}>
+          <div style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Nouveau catalogue</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Nom (ex: Promo Juin, Black Friday…)" style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+              <label style={{ flex:1, minWidth:130 }}>
+                <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Début</div>
+                <input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+              </label>
+              <label style={{ flex:1, minWidth:130 }}>
+                <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Fin</div>
+                <input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+              </label>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={createCatalogue} style={{ ...S.btnPrimary, flex:1 }}>Créer</button>
+              <button onClick={()=>{setCreating(false);setForm({name:"",start:"",end:""});}} style={S.btnGhost}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cats.length === 0 && !creating ? (
+        <div style={{ textAlign:"center", padding:"50px 20px", color:"var(--t-text-40)" }}>
+          <Folder size={40} color="var(--t-text-30)" style={{ marginBottom:12 }}/>
+          <div style={{ fontSize:15, fontWeight:600, marginBottom:4 }}>Aucun catalogue pour l'instant</div>
+          <div style={{ fontSize:13 }}>{isAdmin ? "Crée ton premier catalogue promo." : "Aucun catalogue disponible."}</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          {cats.map(c => {
+            const st = statusOf(c);
+            const nbItems = (c.items||[]).length;
+            return (
+              <div key={c.id} onClick={()=>setOpenId(c.id)} style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:"16px 18px", cursor:"pointer", boxShadow:"var(--t-card-shadow)" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                      <span style={{ fontSize:16, fontWeight:700 }}>{c.name}</span>
+                      <span style={{ fontSize:11, fontWeight:700, color:st.color, background:st.bg, padding:"2px 9px", borderRadius:20 }}>{st.label}</span>
+                    </div>
+                    <div style={{ fontSize:12, color:"var(--t-text-55)", marginTop:6 }}>
+                      {nbItems} produit{nbItems>1?"s":""}
+                      {c.start && c.end && " · " + c.start.split("-").reverse().join("/") + " → " + c.end.split("-").reverse().join("/")}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    {isAdmin && <button onClick={(e)=>{e.stopPropagation();deleteCatalogue(c.id);}} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-30)", padding:4 }}><X size={16}/></button>}
+                    <span style={{ fontSize:18, color:"var(--t-text-30)" }}>›</span>
+                  </div>
+                </div>
               </div>
             );
           })}
