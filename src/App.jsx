@@ -3760,9 +3760,10 @@ const ZONE_TYPES = {
   allee: { label:"Allée",           color:"#0ea5e9" },
   autre: { label:"Autre",           color:"#64748b" },
 };
-function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemove }) {
+function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onUpdate, onRemove, onAddToCatalogue }) {
   const canvasRef = useRef(null);
   const [editing, setEditing] = useState(null);     // zone en cours d'édition (panneau)
+  const [zoneSearch, setZoneSearch] = useState(""); // recherche pour ajouter un produit depuis la zone
   const drag = useRef(null);                          // { id, mode, ... }
 
   function pointerPct(e) {
@@ -3938,24 +3939,50 @@ function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemo
               <button onClick={()=>onUpdate(editZone.id,{rot:(((editZone.rot||0)+15)%360)})} style={{ ...S.btnSecondary, padding:"6px 12px" }}>↻ +15°</button>
               <span style={{ fontSize:12, fontWeight:700, color:"var(--t-text-70)", width:42, textAlign:"right" }}>{editZone.rot||0}°</span>
             </div>
-            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Produits du catalogue dans cette zone</div>
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Produits dans cette zone</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
-              {catItems.length === 0 && <div style={{ fontSize:12, color:"var(--t-text-40)" }}>Ajoute d'abord des produits au catalogue (onglet Produits).</div>}
-              {catItems.map(it => {
-                const inZone = (editZone.refs||[]).includes(it.ref);
+              {(editZone.refs||[]).length === 0 && <div style={{ fontSize:12, color:"var(--t-text-40)" }}>Aucun produit. Cherche ci-dessous pour en ajouter.</div>}
+              {(editZone.refs||[]).map(ref => {
+                const it = catItems.find(i=>i.ref===ref);
                 return (
-                  <div key={it.ref} onClick={()=>{
-                    const refs = inZone ? editZone.refs.filter(r=>r!==it.ref) : [...(editZone.refs||[]), it.ref];
-                    onUpdate(editZone.id, { refs });
-                  }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background: inZone?"rgba(124,58,237,0.1)":"var(--t-surface)", border:`1px solid ${inZone?"rgba(124,58,237,0.4)":"var(--t-border-subtle)"}`, borderRadius:10, cursor:"pointer" }}>
-                    <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${inZone?"#7c3aed":"var(--t-text-30)"}`, background:inZone?"#7c3aed":"transparent", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      {inZone && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  <div key={ref} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background:"rgba(124,58,237,0.1)", border:"1px solid rgba(124,58,237,0.4)", borderRadius:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{it ? it.label : ref}</div>
+                      <div style={{ fontSize:10, color:"var(--t-text-40)" }}>{ref}</div>
                     </div>
-                    <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{it.label}</div>
+                    <button onClick={()=>onUpdate(editZone.id, { refs:(editZone.refs||[]).filter(r=>r!==ref) })} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", padding:2 }}><X size={15}/></button>
                   </div>
                 );
               })}
             </div>
+
+            {/* Recherche directe : ajoute au catalogue (si besoin) ET place dans la zone */}
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Ajouter un produit</div>
+            <input value={zoneSearch} onChange={e=>setZoneSearch(e.target.value)} placeholder="Chercher par réf, EAN ou nom…" style={{ ...S.input, width:"100%", boxSizing:"border-box", marginBottom:8 }} />
+            {zoneSearch.trim() && (
+              <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14 }}>
+                {(allProducts||[]).filter(p => {
+                  const q = zoneSearch.toLowerCase();
+                  return (p.label||"").toLowerCase().includes(q) || (p.ref||"").toLowerCase().includes(q) || (p.ean||"").includes(q);
+                }).slice(0,8).map(p => {
+                  const inZone = (editZone.refs||[]).includes(p.ref);
+                  return (
+                    <div key={p.supplierId+p.ref} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 12px", background:"var(--t-surface)", borderRadius:10 }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                        <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.supplierName}</div>
+                      </div>
+                      <button disabled={inZone} onClick={()=>{
+                        onAddToCatalogue(p);                 // ajoute au catalogue si pas déjà dedans
+                        if (!inZone) onUpdate(editZone.id, { refs:[...(editZone.refs||[]), p.ref] });  // place dans la zone
+                      }} style={{ ...(inZone?S.btnSecondary:S.btnPrimary), padding:"6px 14px", fontSize:12, opacity:inZone?0.5:1 }}>
+                        {inZone ? "✓ Ici" : "+ Ajouter"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <button onClick={()=>{ if(window.confirm("Supprimer cette zone ?")){ onRemove(editZone.id); setEditing(null); } }} style={{ ...S.btnGhost, color:"#ef4444", width:"100%" }}>Supprimer la zone</button>
           </>) : (
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
@@ -4203,10 +4230,12 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
             magasin={catTab.slice(5)}
             zones={getZones(openCat, catTab.slice(5))}
             catItems={openCat.items||[]}
+            allProducts={allProducts}
             isAdmin={isAdmin}
             onAdd={()=>addZone(openCat.id, catTab.slice(5))}
             onUpdate={(zid,patch)=>updateZone(openCat.id, catTab.slice(5), zid, patch)}
             onRemove={(zid)=>removeZone(openCat.id, catTab.slice(5), zid)}
+            onAddToCatalogue={(p)=>addProduct(openCat.id, p)}
           />
         )}
       </div>
