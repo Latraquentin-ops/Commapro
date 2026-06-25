@@ -4013,6 +4013,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   const [addingTo, setAddingTo] = useState(null);   // catalogue où on ajoute des produits
   const [search, setSearch] = useState("");
   const [catTab, setCatTab] = useState("produits");  // produits | plan-nord | plan-sud
+  const [manualForm, setManualForm] = useState(null);  // {ref,label,prixVente} ou null
 
   const allProducts = useMemo(() => {
     const list = [];
@@ -4056,6 +4057,20 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
         prixVente: prod.prixVente || null,       // prix normal (référence)
         promoType: "euro",                        // "euro" ou "pct"
         promoValue: prod.prixVente || 0,          // valeur saisie
+      };
+      return { ...c, items:[...(c.items||[]), item] };
+    }));
+  }
+
+  // Ajout d'une ligne LIBRE (réf créée à la main, hors Référencement)
+  function addManualItem(catId, ref, label, prixVente) {
+    setPromoCatalogues(prev => prev.map(c => {
+      if (c.id !== catId) return c;
+      if (ref && (c.items||[]).some(it => it.ref === ref)) return c;
+      const pv = parseFloat(prixVente) || null;
+      const item = {
+        ref: ref || "LIBRE-"+Date.now(), label: label || "Produit", supplierName: "—",
+        prixVente: pv, promoType: "euro", promoValue: pv || 0, manual: true,
       };
       return { ...c, items:[...(c.items||[]), item] };
     }));
@@ -4164,7 +4179,28 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
         {/* Ajout de produits */}
         {isAdmin && (
           <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:16, marginBottom:18 }}>
-            <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Ajouter un produit</div>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, gap:10, flexWrap:"wrap" }}>
+              <div style={{ fontSize:13, fontWeight:700 }}>Ajouter un produit</div>
+              <button onClick={()=>setManualForm(manualForm ? null : { ref:"", label:"", prixVente:"" })} style={{ ...S.btnGhost, fontSize:12 }}>
+                {manualForm ? "Annuler" : "✏️ Créer une réf libre"}
+              </button>
+            </div>
+
+            {manualForm ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                <div style={{ fontSize:11, color:"var(--t-text-40)" }}>Produit hors référencement (n'affecte pas ta base produits)</div>
+                <input value={manualForm.label} onChange={e=>setManualForm(f=>({...f,label:e.target.value}))} placeholder="Désignation *" style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                  <input value={manualForm.ref} onChange={e=>setManualForm(f=>({...f,ref:e.target.value}))} placeholder="Référence (optionnel)" style={{ ...S.input, flex:1, minWidth:130, boxSizing:"border-box" }} />
+                  <input type="number" inputMode="decimal" value={manualForm.prixVente} onChange={e=>setManualForm(f=>({...f,prixVente:e.target.value}))} placeholder="Prix vente €" style={{ ...S.input, width:120, boxSizing:"border-box" }} />
+                </div>
+                <button onClick={()=>{
+                  if (!manualForm.label.trim()) return;
+                  addManualItem(openCat.id, manualForm.ref.trim(), manualForm.label.trim(), manualForm.prixVente);
+                  setManualForm(null);
+                }} style={{ ...S.btnPrimary, width:"100%" }}>Ajouter au catalogue</button>
+              </div>
+            ) : (<>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Chercher par réf, EAN ou nom…" style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
             {filtered.length > 0 && (
               <div style={{ marginTop:10, display:"flex", flexDirection:"column", gap:6 }}>
@@ -4184,6 +4220,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
                 })}
               </div>
             )}
+            </>)}
           </div>
         )}
 
