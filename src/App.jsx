@@ -3834,11 +3834,13 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
       </div>`;
     }).join("");
     const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Plan ${magasin}</title>
-      <style>*{box-sizing:border-box;margin:0;padding:0}@page{size:A4 landscape;margin:10mm}
+      <style>*{box-sizing:border-box;margin:0;padding:0}@page{size:A4 landscape;margin:8mm}
       @media print{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      html,body{width:281mm;height:194mm;overflow:hidden}
       body{font-family:Arial,sans-serif;padding:0}
-      h1{font-size:16pt;margin-bottom:4mm}.sub{font-size:10pt;color:#666;margin-bottom:6mm}
-      .canvas{position:relative;width:100%;aspect-ratio:16/10;border:1.5pt solid #ccc;border-radius:8px;
+      h1{font-size:15pt;margin-bottom:2mm}.sub{font-size:9pt;color:#666;margin-bottom:3mm}
+      .canvas{position:relative;width:281mm;height:165mm;border:1.5pt solid #ccc;border-radius:8px;
+      page-break-inside:avoid;break-inside:avoid;
       background-image:linear-gradient(#eee 1px,transparent 1px),linear-gradient(90deg,#eee 1px,transparent 1px);background-size:5% 8.33%}</style>
       </head><body>
       <h1>Plan de rayon — ${magasin}</h1>
