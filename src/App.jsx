@@ -3763,13 +3763,13 @@ const ZONE_TYPES = {
 function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemove }) {
   const canvasRef = useRef(null);
   const [editing, setEditing] = useState(null);     // zone en cours d'édition (panneau)
-  const drag = useRef(null);                          // { id, mode:'move'|'resize', startX, startY, ox, oy, ow, oh }
+  const drag = useRef(null);                          // { id, mode, ... }
 
   function pointerPct(e) {
     const r = canvasRef.current.getBoundingClientRect();
     const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
     const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-    return { x: (cx / r.width) * 100, y: (cy / r.height) * 100 };
+    return { x: (cx / r.width) * 100, y: (cy / r.height) * 100, px:cx, py:cy, rect:r };
   }
   function startMove(e, z) {
     if (!isAdmin) return;
@@ -3779,9 +3779,18 @@ function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemo
   }
   function startResize(e, z) {
     if (!isAdmin) return;
-    e.stopPropagation();
+    e.stopPropagation(); e.preventDefault();
     const p = pointerPct(e);
     drag.current = { id:z.id, mode:"resize", sx:p.x, sy:p.y, ow:z.w, oh:z.h };
+  }
+  function startRotate(e, z) {
+    if (!isAdmin) return;
+    e.stopPropagation(); e.preventDefault();
+    const p = pointerPct(e);
+    // centre de la zone en pixels
+    const cx = (z.x + z.w/2)/100 * p.rect.width;
+    const cy = (z.y + z.h/2)/100 * p.rect.height;
+    drag.current = { id:z.id, mode:"rotate", cx, cy, startAngle:z.rot||0, startPointer:Math.atan2(p.py-cy, p.px-cx)*180/Math.PI };
   }
   function onMove(e) {
     if (!drag.current) return;
@@ -3793,30 +3802,73 @@ function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemo
       nx = Math.max(0, Math.min(100 - z.w, nx));
       ny = Math.max(0, Math.min(100 - z.h, ny));
       onUpdate(d.id, { x: Math.round(nx), y: Math.round(ny) });
-    } else {
+    } else if (d.mode === "resize") {
       let nw = d.ow + (p.x - d.sx), nh = d.oh + (p.y - d.sy);
-      nw = Math.max(12, Math.min(100, nw)); nh = Math.max(10, Math.min(100, nh));
+      nw = Math.max(10, Math.min(100, nw)); nh = Math.max(8, Math.min(100, nh));
       onUpdate(d.id, { w: Math.round(nw), h: Math.round(nh) });
+    } else if (d.mode === "rotate") {
+      const ang = Math.atan2(p.py-d.cy, p.px-d.cx)*180/Math.PI;
+      let rot = Math.round(d.startAngle + (ang - d.startPointer));
+      // accroche tous les 15° si proche
+      const snap = Math.round(rot/15)*15;
+      if (Math.abs(rot - snap) <= 4) rot = snap;
+      onUpdate(d.id, { rot: ((rot % 360) + 360) % 360 });
     }
   }
   function endMove() { drag.current = null; }
 
   const editZone = zones.find(z => z.id === editing);
 
+  function exportPDF() {
+    const t = (k) => ZONE_TYPES[k] || ZONE_TYPES.autre;
+    const zonesHTML = zones.map(z => {
+      const c = t(z.type);
+      const prods = (z.refs||[]).map(r => { const it=catItems.find(i=>i.ref===r); return it?it.label:r; });
+      return `<div style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;
+        background:${c.color}22;border:2px solid ${c.color};border-radius:6px;box-sizing:border-box;
+        padding:5px;overflow:hidden;transform:rotate(${z.rot||0}deg);transform-origin:center;">
+        <div style="font-size:10pt;font-weight:800;color:${c.color}">${(z.name||"").replace(/</g,"&lt;")}</div>
+        <div style="font-size:7pt;color:#666;font-weight:600">${c.label}</div>
+        ${prods.length?`<div style="font-size:7pt;color:#444;margin-top:3px">${prods.map(p=>"• "+p.replace(/</g,"&lt;")).join("<br>")}</div>`:""}
+      </div>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Plan ${magasin}</title>
+      <style>*{box-sizing:border-box;margin:0;padding:0}@page{size:A4 landscape;margin:10mm}
+      @media print{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      body{font-family:Arial,sans-serif;padding:0}
+      h1{font-size:16pt;margin-bottom:4mm}.sub{font-size:10pt;color:#666;margin-bottom:6mm}
+      .canvas{position:relative;width:100%;aspect-ratio:16/10;border:1.5pt solid #ccc;border-radius:8px;
+      background-image:linear-gradient(#eee 1px,transparent 1px),linear-gradient(90deg,#eee 1px,transparent 1px);background-size:5% 8.33%}</style>
+      </head><body>
+      <h1>Plan de rayon — ${magasin}</h1>
+      <div class="sub">${zones.length} zone(s) · imprimé le ${new Date().toLocaleDateString("fr-FR")}</div>
+      <div class="canvas">${zonesHTML}</div>
+      <script>setTimeout(()=>window.print(),300)<\/script>
+      </body></html>`;
+    const blob = new Blob([html], { type:"text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  }
+
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:8 }}>
         <div style={{ fontSize:13, color:"var(--t-text-55)" }}>Plan <b>{magasin}</b> — {zones.length} zone{zones.length>1?"s":""}</div>
-        {isAdmin && <button onClick={onAdd} style={S.btnPrimary}>+ Ajouter une zone</button>}
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          {zones.length > 0 && <button onClick={exportPDF} style={S.btnSecondary}>🖨️ Exporter en PDF</button>}
+          {isAdmin && <button onClick={onAdd} style={S.btnPrimary}>+ Ajouter une zone</button>}
+        </div>
       </div>
 
-      {/* Canvas du plan */}
+      {/* Canvas du plan — plus grand sur desktop via maxWidth */}
       <div
         ref={canvasRef}
         onMouseMove={onMove} onMouseUp={endMove} onMouseLeave={endMove}
         onTouchMove={onMove} onTouchEnd={endMove}
         style={{
-          position:"relative", width:"100%", aspectRatio:"16/10",
+          position:"relative", width:"100%", maxWidth:900, margin:"0 auto", aspectRatio:"16/10",
           background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)",
           borderRadius:16, overflow:"hidden", touchAction:"none",
           backgroundImage:"linear-gradient(var(--t-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--t-border-subtle) 1px, transparent 1px)",
@@ -3824,30 +3876,41 @@ function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemo
         }}>
         {zones.length === 0 && (
           <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--t-text-30)", fontSize:13, textAlign:"center", padding:20 }}>
-            {isAdmin ? "Ajoute une zone, puis glisse-la et redimensionne-la sur le plan." : "Aucune zone définie."}
+            {isAdmin ? "Ajoute une zone, puis glisse-la, redimensionne-la et pivote-la sur le plan." : "Aucune zone définie."}
           </div>
         )}
         {zones.map(z => {
           const t = ZONE_TYPES[z.type] || ZONE_TYPES.autre;
+          const isEd = editing === z.id;
           return (
             <div key={z.id}
               onMouseDown={(e)=>startMove(e,z)} onTouchStart={(e)=>startMove(e,z)}
-              onClick={()=>setEditing(z.id)}
+              onClick={(e)=>{e.stopPropagation();setEditing(z.id);}}
               style={{
                 position:"absolute", left:z.x+"%", top:z.y+"%", width:z.w+"%", height:z.h+"%",
+                transform:`rotate(${z.rot||0}deg)`, transformOrigin:"center",
                 background:`${t.color}22`, border:`2px solid ${t.color}`, borderRadius:8,
-                cursor:isAdmin?"move":"pointer", overflow:"hidden", boxSizing:"border-box",
+                cursor:isAdmin?"move":"pointer", boxSizing:"border-box",
                 padding:6, display:"flex", flexDirection:"column", gap:2,
+                boxShadow: isEd ? `0 0 0 3px ${t.color}55` : "none",
               }}>
               <div style={{ fontSize:11, fontWeight:800, color:t.color, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{z.name}</div>
               <div style={{ fontSize:9, color:"var(--t-text-55)", fontWeight:600 }}>{t.label}</div>
               {(z.refs||[]).length > 0 && <div style={{ fontSize:9, color:"var(--t-text-40)" }}>{z.refs.length} produit{z.refs.length>1?"s":""}</div>}
-              {isAdmin && (
-                <div onMouseDown={(e)=>startResize(e,z)} onTouchStart={(e)=>startResize(e,z)}
-                  style={{ position:"absolute", right:0, bottom:0, width:18, height:18, cursor:"nwse-resize", background:t.color, borderRadius:"6px 0 6px 0", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.5"><path d="M9 3v6H3"/></svg>
+              {isAdmin && (<>
+                {/* poignée rotation (haut centre) */}
+                <div onMouseDown={(e)=>startRotate(e,z)} onTouchStart={(e)=>startRotate(e,z)}
+                  title="Pivoter"
+                  style={{ position:"absolute", top:-26, left:"50%", transform:"translateX(-50%)", width:22, height:22, borderRadius:"50%", background:"var(--t-card-bg)", border:`2px solid ${t.color}`, cursor:"grab", display:"flex", alignItems:"center", justifyContent:"center", touchAction:"none" }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={t.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                 </div>
-              )}
+                {/* poignée resize (bas droite) — plus grande pour desktop+tactile */}
+                <div onMouseDown={(e)=>startResize(e,z)} onTouchStart={(e)=>startResize(e,z)}
+                  title="Redimensionner"
+                  style={{ position:"absolute", right:-2, bottom:-2, width:22, height:22, cursor:"nwse-resize", background:t.color, borderRadius:"8px 0 8px 0", display:"flex", alignItems:"center", justifyContent:"center", touchAction:"none" }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.6"><path d="M9 3v6H3"/></svg>
+                </div>
+              </>)}
             </div>
           );
         })}
@@ -3867,6 +3930,13 @@ function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemo
               {Object.entries(ZONE_TYPES).map(([k,t]) => (
                 <button key={k} onClick={()=>onUpdate(editZone.id,{type:k})} style={{ padding:"6px 12px", borderRadius:10, border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: editZone.type===k?t.color:"var(--t-surface)", color: editZone.type===k?"white":"var(--t-text-55)" }}>{t.label}</button>
               ))}
+            </div>
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Rotation</div>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+              <button onClick={()=>onUpdate(editZone.id,{rot:(((editZone.rot||0)-15)%360+360)%360})} style={{ ...S.btnSecondary, padding:"6px 12px" }}>↺ −15°</button>
+              <input type="range" min="0" max="345" step="15" value={editZone.rot||0} onChange={e=>onUpdate(editZone.id,{rot:parseInt(e.target.value)})} style={{ flex:1 }} />
+              <button onClick={()=>onUpdate(editZone.id,{rot:(((editZone.rot||0)+15)%360)})} style={{ ...S.btnSecondary, padding:"6px 12px" }}>↻ +15°</button>
+              <span style={{ fontSize:12, fontWeight:700, color:"var(--t-text-70)", width:42, textAlign:"right" }}>{editZone.rot||0}°</span>
             </div>
             <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Produits du catalogue dans cette zone</div>
             <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
@@ -3983,7 +4053,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   }
   function addZone(catId, magasin) {
     const zones = getZones(cats.find(c=>c.id===catId)||{}, magasin);
-    const z = { id:"z_"+Date.now(), name:"Nouvelle zone", type:"tg", x:8, y:8, w:42, h:24, refs:[] };
+    const z = { id:"z_"+Date.now(), name:"Nouvelle zone", type:"tg", x:8, y:8, w:42, h:24, rot:0, refs:[] };
     setZones(catId, magasin, [...zones, z]);
   }
   function updateZone(catId, magasin, zid, patch) {
