@@ -54,6 +54,7 @@ const ALL_PAGES = [
   { key: "orders",      label: "Commandes",      icon: List },
   { key: "catalogue",   label: "Référencement",  icon: BookOpen },
   { key: "catalogues",  label: "Catalogues",     icon: Folder },
+  { key: "tasks",       label: "Tâches",         icon: CheckCircle },
   { key: "proposals",   label: "Propositions",   icon: Tag },
   { key: "remplissage", label: "Remplissage",    icon: Package },
   { key: "suppliers",   label: "Fournisseurs",   icon: Factory },
@@ -643,6 +644,7 @@ export default function App() {
   const [proposals, setProposals] = useState([]);  // propositions commerciales fournisseurs
   const [replenishments, setReplenishments] = useState([]);  // archive des remplissages rayon
   const [promoCatalogues, setPromoCatalogues] = useState([]);  // catalogues promo mensuels
+  const [tasks, setTasks] = useState([]);  // tâches collaboratives
   const [session,   setSession]   = useState(null);
   const [page,      setPage]      = useState("dashboard");
   const getAutoDark = () => { const h = new Date().getHours(); return h >= 20 || h < 7; };
@@ -678,6 +680,7 @@ export default function App() {
         if (cloud.proposals) setProposals(cloud.proposals);
         if (cloud.replenishments) setReplenishments(cloud.replenishments);
         if (cloud.promoCatalogues) setPromoCatalogues(cloud.promoCatalogues);
+        if (cloud.tasks) setTasks(cloud.tasks);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
         await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
@@ -689,8 +692,8 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues });
-  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, loaded]);
+    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks });
+  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks, loaded]);
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -706,6 +709,7 @@ export default function App() {
         if (cloud.proposals) setProposals(cloud.proposals);
         if (cloud.replenishments) setReplenishments(cloud.replenishments);
         if (cloud.promoCatalogues) setPromoCatalogues(cloud.promoCatalogues);
+        if (cloud.tasks) setTasks(cloud.tasks);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -982,6 +986,7 @@ export default function App() {
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} />}
             {page === "catalogues" && <CataloguesPage promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} suppliers={suppliers} session={session} setPage={setPage} setSelectedProduct={setSelectedProduct} />}
+            {page === "tasks" && <TasksPage tasks={tasks} setTasks={setTasks} users={users} suppliers={suppliers} orders={orders} session={session} setPage={setPage} setOrderFilter={setOrderFilter} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
@@ -3874,6 +3879,236 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
                     <span style={{ fontSize:18, color:"var(--t-text-30)" }}>›</span>
                   </div>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TÂCHES — liste collaborative avec assignation, priorité, commentaires
+// ═══════════════════════════════════════════════════════════════════════════════
+function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage, setOrderFilter }) {
+  const [view, setView] = useState("mine");     // mine | assigned | all
+  const [creating, setCreating] = useState(false);
+  const [openId, setOpenId] = useState(null);
+  const [comment, setComment] = useState("");
+  const blankForm = { title:"", due:"", assignee:"", priority:"normale", notes:"", linkType:"none", linkId:"" };
+  const [form, setForm] = useState(blankForm);
+
+  const PRIORITIES = {
+    basse:   { label:"Basse",   color:"#94a3b8", bg:"rgba(148,163,184,0.15)" },
+    normale: { label:"Normale", color:"#0ea5e9", bg:"rgba(14,165,233,0.15)" },
+    haute:   { label:"Haute",   color:"#f59e0b", bg:"rgba(245,158,11,0.15)" },
+    urgente: { label:"Urgente", color:"#ef4444", bg:"rgba(239,68,68,0.15)" },
+  };
+  const STATUSES = {
+    todo:  { label:"À faire",  color:"#94a3b8" },
+    doing: { label:"En cours", color:"#0ea5e9" },
+    done:  { label:"Terminé",  color:"#22c55e" },
+  };
+
+  const activeUsers = (users||[]).filter(u => u.active);
+  const userName = (id) => (users.find(u=>u.id===id)||{}).name || "—";
+  const list = tasks || [];
+
+  function createTask() {
+    if (!form.title.trim()) return;
+    const t = {
+      id:"task_"+Date.now(), title:form.title.trim(), due:form.due,
+      assignee:form.assignee || session.id, createdBy:session.id,
+      priority:form.priority, notes:form.notes, status:"todo",
+      linkType:form.linkType, linkId:form.linkId,
+      comments:[], createdAt:new Date().toISOString(),
+    };
+    setTasks(prev => [...(prev||[]), t]);
+    setForm(blankForm); setCreating(false);
+  }
+  function patchTask(id, patch) {
+    setTasks(prev => prev.map(t => t.id===id ? { ...t, ...patch } : t));
+  }
+  function deleteTask(id) {
+    if (!window.confirm("Supprimer cette tâche ?")) return;
+    setTasks(prev => prev.filter(t => t.id!==id));
+    if (openId===id) setOpenId(null);
+  }
+  function addComment(id) {
+    if (!comment.trim()) return;
+    setTasks(prev => prev.map(t => t.id!==id ? t : {
+      ...t, comments:[...(t.comments||[]), { by:session.id, text:comment.trim(), at:new Date().toISOString() }]
+    }));
+    setComment("");
+  }
+  function cycleStatus(t) {
+    const next = t.status==="todo" ? "doing" : t.status==="doing" ? "done" : "todo";
+    patchTask(t.id, { status:next });
+  }
+
+  const filtered = list.filter(t => {
+    if (view==="mine")     return t.assignee === session.id;
+    if (view==="assigned") return t.createdBy === session.id && t.assignee !== session.id;
+    return true;
+  }).sort((a,b) => {
+    const ord = { urgente:0, haute:1, normale:2, basse:3 };
+    if (a.status==="done" && b.status!=="done") return 1;
+    if (b.status==="done" && a.status!=="done") return -1;
+    return (ord[a.priority]??2) - (ord[b.priority]??2);
+  });
+
+  const openTask = list.find(t => t.id===openId);
+
+  // ───────── Détail d'une tâche ─────────
+  if (openTask) {
+    const pr = PRIORITIES[openTask.priority] || PRIORITIES.normale;
+    const linkedOrder = openTask.linkType==="order" ? orders.find(o=>o.id===openTask.linkId) : null;
+    const linkedSupp  = openTask.linkType==="supplier" ? suppliers.find(s=>s.id===openTask.linkId) : null;
+    return (
+      <div>
+        <button onClick={()=>setOpenId(null)} style={{ ...S.btnGhost, marginBottom:14 }}>← Toutes les tâches</button>
+        <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+            <h1 style={{ margin:0, fontSize:20, fontWeight:800, letterSpacing:"-0.02em", flex:1 }}>{openTask.title}</h1>
+            <button onClick={()=>deleteTask(openTask.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", padding:4 }}><X size={18}/></button>
+          </div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
+            <button onClick={()=>cycleStatus(openTask)} style={{ fontSize:12, fontWeight:700, color:STATUSES[openTask.status].color, background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)", padding:"5px 12px", borderRadius:20, cursor:"pointer" }}>● {STATUSES[openTask.status].label}</button>
+            <span style={{ fontSize:12, fontWeight:700, color:pr.color, background:pr.bg, padding:"5px 12px", borderRadius:20 }}>{pr.label}</span>
+            {openTask.due && <span style={{ fontSize:12, color:"var(--t-text-55)", padding:"5px 0" }}>📅 {openTask.due.split("-").reverse().join("/")}</span>}
+          </div>
+          <div style={{ marginTop:16, fontSize:13, color:"var(--t-text-70)" }}>
+            <div style={{ marginBottom:4 }}>Assignée à <b>{userName(openTask.assignee)}</b></div>
+            <div style={{ color:"var(--t-text-40)", fontSize:12 }}>Créée par {userName(openTask.createdBy)}</div>
+          </div>
+          {openTask.notes && <div style={{ marginTop:14, fontSize:13, color:"var(--t-text-70)", background:"var(--t-surface)", borderRadius:12, padding:"12px 14px", whiteSpace:"pre-line" }}>{openTask.notes}</div>}
+          {(linkedOrder || linkedSupp) && (
+            <button onClick={()=>{ if(linkedOrder){setOrderFilter("all");setPage("orders");} else setPage("suppliers"); }} style={{ ...S.btnSecondary, marginTop:14, fontSize:12 }}>
+              🔗 {linkedOrder ? "Commande "+(linkedOrder.ref||linkedOrder.id) : "Fournisseur "+linkedSupp.name}
+            </button>
+          )}
+
+          {/* Commentaires */}
+          <div style={{ marginTop:20, borderTop:"1px solid var(--t-border-subtle)", paddingTop:16 }}>
+            <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Commentaires ({(openTask.comments||[]).length})</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:12 }}>
+              {(openTask.comments||[]).map((c,i) => (
+                <div key={i} style={{ background:"var(--t-surface)", borderRadius:10, padding:"8px 12px" }}>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:2 }}>{userName(c.by)} · {new Date(c.at).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>
+                  <div style={{ fontSize:13, color:"var(--t-text-85)" }}>{c.text}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <input value={comment} onChange={e=>setComment(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addComment(openTask.id)} placeholder="Ajouter un commentaire…" style={{ ...S.input, flex:1 }} />
+              <button onClick={()=>addComment(openTask.id)} style={S.btnPrimary}>Envoyer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ───────── Liste ─────────
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12, marginBottom:16 }}>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Tâches</h1>
+        <button onClick={()=>setCreating(true)} style={S.btnPrimary}>+ Nouvelle tâche</button>
+      </div>
+
+      {/* Filtres */}
+      <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+        {[["mine","Mes tâches"],["assigned","Assignées par moi"],["all","Toutes"]].map(([k,lbl]) => (
+          <button key={k} onClick={()=>setView(k)} style={{ padding:"7px 14px", borderRadius:20, border:"none", cursor:"pointer", fontSize:13, fontWeight:600, background: view===k?"#7c3aed":"var(--t-surface)", color: view===k?"white":"var(--t-text-55)" }}>{lbl}</button>
+        ))}
+      </div>
+
+      {creating && (
+        <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:18, marginBottom:18 }}>
+          <div style={{ fontSize:14, fontWeight:700, marginBottom:12 }}>Nouvelle tâche</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Que faut-il faire ?" style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+              <label style={{ flex:1, minWidth:130 }}>
+                <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Échéance</div>
+                <input type="date" value={form.due} onChange={e=>setForm(f=>({...f,due:e.target.value}))} style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+              </label>
+              <label style={{ flex:1, minWidth:130 }}>
+                <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Assigner à</div>
+                <select value={form.assignee} onChange={e=>setForm(f=>({...f,assignee:e.target.value}))} style={{ ...S.input, width:"100%", boxSizing:"border-box", cursor:"pointer" }}>
+                  <option value="">Moi-même</option>
+                  {activeUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </label>
+            </div>
+            <label>
+              <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Priorité</div>
+              <div style={{ display:"flex", gap:6 }}>
+                {Object.entries(PRIORITIES).map(([k,p]) => (
+                  <button key={k} onClick={()=>setForm(f=>({...f,priority:k}))} style={{ flex:1, padding:"8px 4px", borderRadius:10, border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: form.priority===k?p.color:"var(--t-surface)", color: form.priority===k?"white":"var(--t-text-55)" }}>{p.label}</button>
+                ))}
+              </div>
+            </label>
+            <label>
+              <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Lier à (optionnel)</div>
+              <div style={{ display:"flex", gap:8 }}>
+                <select value={form.linkType} onChange={e=>setForm(f=>({...f,linkType:e.target.value,linkId:""}))} style={{ ...S.input, cursor:"pointer" }}>
+                  <option value="none">Rien</option>
+                  <option value="order">Une commande</option>
+                  <option value="supplier">Un fournisseur</option>
+                </select>
+                {form.linkType==="order" && (
+                  <select value={form.linkId} onChange={e=>setForm(f=>({...f,linkId:e.target.value}))} style={{ ...S.input, flex:1, cursor:"pointer" }}>
+                    <option value="">Choisir…</option>
+                    {orders.slice().reverse().map(o => <option key={o.id} value={o.id}>{o.ref||o.id} — {o.supplierName}</option>)}
+                  </select>
+                )}
+                {form.linkType==="supplier" && (
+                  <select value={form.linkId} onChange={e=>setForm(f=>({...f,linkId:e.target.value}))} style={{ ...S.input, flex:1, cursor:"pointer" }}>
+                    <option value="">Choisir…</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                )}
+              </div>
+            </label>
+            <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Notes (optionnel)" rows={2} style={{ ...S.input, width:"100%", boxSizing:"border-box", resize:"vertical", fontFamily:"inherit" }} />
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={createTask} style={{ ...S.btnPrimary, flex:1 }}>Créer la tâche</button>
+              <button onClick={()=>{setCreating(false);setForm(blankForm);}} style={S.btnGhost}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filtered.length === 0 && !creating ? (
+        <div style={{ textAlign:"center", padding:"50px 20px", color:"var(--t-text-40)" }}>
+          <CheckCircle size={40} color="var(--t-text-30)" style={{ marginBottom:12 }}/>
+          <div style={{ fontSize:15, fontWeight:600, marginBottom:4 }}>Aucune tâche</div>
+          <div style={{ fontSize:13 }}>{view==="mine" ? "Rien ne t'est assigné pour l'instant." : "Crée ta première tâche."}</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {filtered.map(t => {
+            const pr = PRIORITIES[t.priority] || PRIORITIES.normale;
+            const overdue = t.due && t.status!=="done" && t.due < new Date().toISOString().slice(0,10);
+            return (
+              <div key={t.id} style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:16, padding:"14px 16px", display:"flex", alignItems:"flex-start", gap:12, boxShadow:"var(--t-card-shadow)" }}>
+                <button onClick={()=>cycleStatus(t)} title="Changer le statut" style={{ flexShrink:0, marginTop:2, width:22, height:22, borderRadius:"50%", border:`2px solid ${STATUSES[t.status].color}`, background: t.status==="done"?STATUSES.done.color:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>
+                  {t.status==="done" && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  {t.status==="doing" && <div style={{ width:8, height:8, borderRadius:"50%", background:STATUSES.doing.color }}/>}
+                </button>
+                <div onClick={()=>setOpenId(t.id)} style={{ flex:1, minWidth:0, cursor:"pointer" }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:"var(--t-text-90)", textDecoration: t.status==="done"?"line-through":"none", opacity: t.status==="done"?0.6:1 }}>{t.title}</div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:5, flexWrap:"wrap" }}>
+                    <span style={{ fontSize:10.5, fontWeight:700, color:pr.color, background:pr.bg, padding:"2px 8px", borderRadius:12 }}>{pr.label}</span>
+                    <span style={{ fontSize:11, color:"var(--t-text-40)" }}>{userName(t.assignee)}</span>
+                    {t.due && <span style={{ fontSize:11, color: overdue?"#ef4444":"var(--t-text-40)", fontWeight: overdue?700:400 }}>📅 {t.due.split("-").reverse().join("/")}{overdue?" (en retard)":""}</span>}
+                    {(t.comments||[]).length>0 && <span style={{ fontSize:11, color:"var(--t-text-40)" }}>💬 {t.comments.length}</span>}
+                  </div>
+                </div>
+                <span onClick={()=>setOpenId(t.id)} style={{ fontSize:18, color:"var(--t-text-30)", cursor:"pointer", alignSelf:"center" }}>›</span>
               </div>
             );
           })}
