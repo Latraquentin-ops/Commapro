@@ -3760,10 +3760,11 @@ const ZONE_TYPES = {
   allee: { label:"Allée",           color:"#0ea5e9" },
   autre: { label:"Autre",           color:"#64748b" },
 };
-function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onUpdate, onRemove, onAddToCatalogue }) {
+function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onUpdate, onRemove, onAddToCatalogue, onAddManual }) {
   const canvasRef = useRef(null);
   const [editing, setEditing] = useState(null);     // zone en cours d'édition (panneau)
   const [zoneSearch, setZoneSearch] = useState(""); // recherche pour ajouter un produit depuis la zone
+  const [zoneManual, setZoneManual] = useState(null); // formulaire réf libre depuis la zone
   const drag = useRef(null);                          // { id, mode, ... }
 
   function pointerPct(e) {
@@ -3958,33 +3959,62 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
               })}
             </div>
 
-            {/* Recherche directe : ajoute au catalogue (si besoin) ET place dans la zone */}
-            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Ajouter un produit</div>
+            {/* Recherche directe : Référencement + réfs libres du catalogue */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, gap:8, flexWrap:"wrap" }}>
+              <div style={{ fontSize:11, color:"var(--t-text-40)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Ajouter un produit</div>
+              <button onClick={()=>setZoneManual(zoneManual ? null : { ref:"", label:"", prixVente:"" })} style={{ ...S.btnGhost, fontSize:11, padding:"3px 8px" }}>
+                {zoneManual ? "Annuler" : "✏️ Réf libre"}
+              </button>
+            </div>
+
+            {zoneManual ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:14 }}>
+                <input value={zoneManual.label} onChange={e=>setZoneManual(f=>({...f,label:e.target.value}))} placeholder="Désignation *" style={{ ...S.input, width:"100%", boxSizing:"border-box" }} />
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                  <input value={zoneManual.ref} onChange={e=>setZoneManual(f=>({...f,ref:e.target.value}))} placeholder="Réf (optionnel)" style={{ ...S.input, flex:1, minWidth:120, boxSizing:"border-box" }} />
+                  <input type="number" inputMode="decimal" value={zoneManual.prixVente} onChange={e=>setZoneManual(f=>({...f,prixVente:e.target.value}))} placeholder="Prix vente €" style={{ ...S.input, width:120, boxSizing:"border-box" }} />
+                </div>
+                <button onClick={()=>{
+                  if (!zoneManual.label.trim()) return;
+                  const ref = zoneManual.ref.trim() || "LIBRE-"+Date.now();
+                  onAddManual(ref, zoneManual.label.trim(), zoneManual.prixVente);  // crée la ligne libre dans le catalogue
+                  onUpdate(editZone.id, { refs:[...(editZone.refs||[]), ref] });      // place dans la zone
+                  setZoneManual(null);
+                }} style={{ ...S.btnPrimary, width:"100%" }}>Créer et placer dans la zone</button>
+              </div>
+            ) : (<>
             <input value={zoneSearch} onChange={e=>setZoneSearch(e.target.value)} placeholder="Chercher par réf, EAN ou nom…" style={{ ...S.input, width:"100%", boxSizing:"border-box", marginBottom:8 }} />
             {zoneSearch.trim() && (
               <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14 }}>
-                {(allProducts||[]).filter(p => {
+                {(() => {
                   const q = zoneSearch.toLowerCase();
-                  return (p.label||"").toLowerCase().includes(q) || (p.ref||"").toLowerCase().includes(q) || (p.ean||"").includes(q);
-                }).slice(0,8).map(p => {
-                  const inZone = (editZone.refs||[]).includes(p.ref);
-                  return (
-                    <div key={p.supplierId+p.ref} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 12px", background:"var(--t-surface)", borderRadius:10 }}>
-                      <div style={{ minWidth:0 }}>
-                        <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
-                        <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.supplierName}</div>
+                  // Réfs du Référencement + réfs libres déjà dans le catalogue (catItems)
+                  const libres = (catItems||[]).filter(it => it.manual).map(it => ({ ...it, supplierId:"libre", supplierName: it.supplierName||"Réf libre" }));
+                  const refMap = {};
+                  [...libres, ...(allProducts||[])].forEach(p => { if(!refMap[p.ref]) refMap[p.ref]=p; });
+                  return Object.values(refMap).filter(p =>
+                    (p.label||"").toLowerCase().includes(q) || (p.ref||"").toLowerCase().includes(q) || (p.ean||"").includes(q)
+                  ).slice(0,8).map(p => {
+                    const inZone = (editZone.refs||[]).includes(p.ref);
+                    return (
+                      <div key={(p.supplierId||"")+p.ref} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 12px", background:"var(--t-surface)", borderRadius:10 }}>
+                        <div style={{ minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}{p.manual && <span style={{ fontSize:10, color:"#7c3aed", marginLeft:6 }}>libre</span>}</div>
+                          <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.supplierName}</div>
+                        </div>
+                        <button disabled={inZone} onClick={()=>{
+                          if (!p.manual) onAddToCatalogue(p);   // produit du Référencement → ajoute au catalogue
+                          if (!inZone) onUpdate(editZone.id, { refs:[...(editZone.refs||[]), p.ref] });
+                        }} style={{ ...(inZone?S.btnSecondary:S.btnPrimary), padding:"6px 14px", fontSize:12, opacity:inZone?0.5:1 }}>
+                          {inZone ? "✓ Ici" : "+ Ajouter"}
+                        </button>
                       </div>
-                      <button disabled={inZone} onClick={()=>{
-                        onAddToCatalogue(p);                 // ajoute au catalogue si pas déjà dedans
-                        if (!inZone) onUpdate(editZone.id, { refs:[...(editZone.refs||[]), p.ref] });  // place dans la zone
-                      }} style={{ ...(inZone?S.btnSecondary:S.btnPrimary), padding:"6px 14px", fontSize:12, opacity:inZone?0.5:1 }}>
-                        {inZone ? "✓ Ici" : "+ Ajouter"}
-                      </button>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
+            </>)}
             <button onClick={()=>{ if(window.confirm("Supprimer cette zone ?")){ onRemove(editZone.id); setEditing(null); } }} style={{ ...S.btnGhost, color:"#ef4444", width:"100%" }}>Supprimer la zone</button>
           </>) : (
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
@@ -4275,6 +4305,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
             onUpdate={(zid,patch)=>updateZone(openCat.id, catTab.slice(5), zid, patch)}
             onRemove={(zid)=>removeZone(openCat.id, catTab.slice(5), zid)}
             onAddToCatalogue={(p)=>addProduct(openCat.id, p)}
+            onAddManual={(ref,label,pv)=>addManualItem(openCat.id, ref, label, pv)}
           />
         )}
       </div>
