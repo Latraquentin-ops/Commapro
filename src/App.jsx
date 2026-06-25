@@ -24,10 +24,27 @@ function CPLogo({ size = 36, light = false }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CONFIGURATION SUPABASE
-// 👉 Remplace les 2 valeurs ci-dessous par les tiennes (voir le guide GUIDE.md).
+// CONFIRM MODAL — boîte de confirmation stylée (remplace window.confirm)
+// Usage : const [confirm, setConfirm] = useState(null);
+//   setConfirm({ message, onYes })  →  <ConfirmModal data={confirm} onClose={()=>setConfirm(null)} />
 // ═══════════════════════════════════════════════════════════════════════════════
-const SUPABASE_URL = "https://gwzjfdxndxkewpvpkeoc.supabase.co";
+function ConfirmModal({ data, onClose }) {
+  if (!data) return null;
+  return (
+    <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:"var(--t-card-bg)", backdropFilter:"blur(40px) saturate(180%)", WebkitBackdropFilter:"blur(40px) saturate(180%)", border:"1px solid var(--t-card-border)", borderRadius:24, padding:24, maxWidth:380, width:"100%", boxShadow:"0 30px 80px rgba(0,0,0,0.5)" }}>
+        <div style={{ fontSize:16, fontWeight:700, color:"var(--t-text-90)", marginBottom:8 }}>{data.title || "Confirmer"}</div>
+        <div style={{ fontSize:14, color:"var(--t-text-70)", lineHeight:1.5, marginBottom:22 }}>{data.message}</div>
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onClose} style={{ ...S.btnSecondary, flex:1, padding:"12px", fontSize:14 }}>Annuler</button>
+          <button onClick={()=>{ data.onYes && data.onYes(); onClose(); }} style={{ flex:1, padding:"12px", fontSize:14, fontWeight:700, borderRadius:22, border:"none", cursor:"pointer", color:"white", background:"linear-gradient(135deg,#ef4444,#dc2626)" }}>
+            {data.confirmLabel || "Supprimer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3empmZHhuZHhrZXdwdnBrZW9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTQ2MTksImV4cCI6MjA5NjkzMDYxOX0.O_UL6gDAOVuHWhXhDjbRz5L_vGX22_GpqIjtN5KCmy4";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -382,7 +399,7 @@ const S = {
   btnSecondary: { padding:"8px 16px", borderRadius:22, border:"1px solid rgba(255,255,255,0.14)", cursor:"pointer", background:"var(--t-border-subtle)", color:"var(--t-btn-sec-color)", fontWeight:500, fontSize:13, backdropFilter:"blur(8px)", transition:"all 0.18s" },
   btnDanger:    { padding:"8px 16px", borderRadius:22, border:"1px solid rgba(239,68,68,0.35)", cursor:"pointer", background:"rgba(239,68,68,0.12)", color:"#f87171", fontWeight:500, fontSize:13, backdropFilter:"blur(8px)", transition:"all 0.18s" },
   btnGhost:     { padding:"6px 12px", borderRadius:16, border:"none", cursor:"pointer", background:"transparent", color:"var(--t-btn-ghost)", fontWeight:500, fontSize:13, transition:"all 0.18s" },
-  input:        { width:"100%", padding:"10px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.12)", fontSize:13, outline:"none", boxSizing:"border-box", background:"var(--t-border-subtle)", backdropFilter:"blur(8px)", color:"#f0f0f5" },
+  input:        { width:"100%", padding:"10px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.12)", fontSize:16, outline:"none", boxSizing:"border-box", background:"var(--t-border-subtle)", backdropFilter:"blur(8px)", color:"#f0f0f5" },
   inputNum:     { width:"100%", padding:"7px 12px", borderRadius:18, border:"1.5px solid rgba(129,140,248,0.45)", fontSize:12, outline:"none", boxSizing:"border-box", background:"rgba(124,58,237,0.08)", backdropFilter:"blur(8px)", color:"#f0f0f5", fontWeight:600, textAlign:"center", transition:"border-color 0.15s" },
   label:        { display:"block", fontSize:11, fontWeight:600, color:"var(--t-text-55)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" },
   card:         { background:"rgba(255,255,255,0.08)", backdropFilter:"blur(24px) saturate(180%)", WebkitBackdropFilter:"blur(24px) saturate(180%)", borderRadius:20, padding:24, border:"1px solid rgba(255,255,255,0.18)", boxShadow:"0 4px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.25)" },
@@ -909,7 +926,7 @@ export default function App() {
           /* Grille d'édition produit (9 colonnes) : scroll horizontal */
           .product-edit-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
         }
-        input, select, textarea { color:var(--t-input-color) !important; background:var(--t-input-bg) !important; transition:all 0.18s !important; font-weight:500; }
+        input, select, textarea { color:var(--t-input-color) !important; background:var(--t-input-bg) !important; transition:all 0.18s !important; font-weight:500; font-size:16px; }
         input:focus, select:focus, textarea:focus { outline:none !important; border-color:rgba(124,58,237,0.5) !important; box-shadow:0 0 0 3px rgba(124,58,237,0.12) !important; }
         input::placeholder, textarea::placeholder { color:var(--t-placeholder) !important; }
         option { background:var(--t-option-bg); color:var(--t-input-color); }
@@ -1637,7 +1654,7 @@ function StatsPage({ orders, suppliers, session }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Statistiques</h1>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Statistiques</h1>
         <div style={{ display: "flex", gap: 6 }}>
           {[7,30,90,365].map(d => (
             <button key={d} onClick={() => setPeriod(d)} style={{ padding: "6px 12px", borderRadius: 20, border: "1.5px solid", fontSize: 12, cursor: "pointer", fontWeight: period===d ? 700 : 400, background:period===d?"rgba(99,102,241,0.7)":"var(--t-surface)", color:period===d?"white":"var(--t-text-55)", borderColor:period===d?"rgba(124,58,237,0.5)":"var(--t-border-subtle)", backdropFilter:"blur(8px)", boxShadow:period===d?"0 0 16px rgba(124,58,237,0.35)":"none" }}>
@@ -2009,7 +2026,7 @@ function OrdersPage({ orders, setOrders, suppliers, session, setPage, setEditing
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Historique des commandes</h1>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Commandes</h1>
         <button onClick={() => setPage("new")} style={S.btnPrimary}>+ Nouvelle commande</button>
       </div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
@@ -2366,7 +2383,7 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
 
   return (
     <div>
-      <h1 style={{ margin:"0 0 20px 0", fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>{editingDraft ? "✏️ Modifier le brouillon" : "Nouvelle commande"}</h1>
+      <h1 style={{ margin:"0 0 20px 0", fontSize:24, fontWeight:800, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>{editingDraft ? "✏️ Modifier le brouillon" : "Nouvelle commande"}</h1>
 
       {/* ① Fournisseur */}
       <div style={{ ...S.card, marginBottom:16 }}>
@@ -3084,7 +3101,7 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6, flexWrap:"wrap", gap:10 }}>
-        <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Remplissage rayon</h1>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Remplissage rayon</h1>
         <button onClick={()=>setShowArchive(v=>!v)} style={{ ...S.btnGhost, fontSize:12, display:"inline-flex", alignItems:"center", gap:6 }}>
           {showArchive ? "✕ Fermer l'archive" : `🗄️ Archive (${replenishments.length})`}
         </button>
@@ -3363,7 +3380,7 @@ function ProposalsPage({ proposals, setProposals, suppliers, isAdmin }) {
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Propositions</h1>
+          <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Propositions</h1>
           <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{proposals.length} offre{proposals.length>1?"s":""} fournisseur{proposals.length>1?"s":""}</div>
         </div>
         {isAdmin && (
@@ -3545,7 +3562,7 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage, prom
       {/* Titre + recherche */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:selectedForSheet.length>0?8:20, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 style={{ margin:0, fontSize:22, fontWeight:700, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Référencement</h1>
+          <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em", color:"var(--t-text-90)" }}>Référencement</h1>
           <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:2 }}>{totalRefs} référence{totalRefs>1?"s":""} · {supplierList.length} fournisseur{supplierList.length>1?"s":""}</div>
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
@@ -3765,6 +3782,7 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
   const [editing, setEditing] = useState(null);     // zone en cours d'édition (panneau)
   const [zoneSearch, setZoneSearch] = useState(""); // recherche pour ajouter un produit depuis la zone
   const [zoneManual, setZoneManual] = useState(null); // formulaire réf libre depuis la zone
+  const [confirmDel, setConfirmDel] = useState(null);
   const drag = useRef(null);                          // { id, mode, ... }
 
   function pointerPct(e) {
@@ -4015,7 +4033,7 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
               </div>
             )}
             </>)}
-            <button onClick={()=>{ if(window.confirm("Supprimer cette zone ?")){ onRemove(editZone.id); setEditing(null); } }} style={{ ...S.btnGhost, color:"#ef4444", width:"100%" }}>Supprimer la zone</button>
+            <button onClick={()=>setConfirmDel(editZone.id)} style={{ ...S.btnGhost, color:"#ef4444", width:"100%" }}>Supprimer la zone</button>
           </>) : (
             <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
               {(editZone.refs||[]).length === 0 ? <div style={{ fontSize:12, color:"var(--t-text-40)" }}>Aucun produit dans cette zone.</div>
@@ -4027,6 +4045,7 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
           )}
         </div>
       )}
+      <ConfirmModal data={confirmDel ? { title:"Supprimer la zone", message:"Cette zone et son affectation de produits seront supprimées du plan.", onYes:()=>{ onRemove(confirmDel); setEditing(null); } } : null} onClose={()=>setConfirmDel(null)} />
     </div>
   );
 }
@@ -4044,6 +4063,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   const [search, setSearch] = useState("");
   const [catTab, setCatTab] = useState("produits");  // produits | plan-nord | plan-sud
   const [manualForm, setManualForm] = useState(null);  // {ref,label,prixVente} ou null
+  const [confirmDelCat, setConfirmDelCat] = useState(null);
 
   const allProducts = useMemo(() => {
     const list = [];
@@ -4069,7 +4089,9 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   }
 
   function deleteCatalogue(id) {
-    if (!window.confirm("Supprimer ce catalogue ? Les produits de ton référencement ne sont pas touchés.")) return;
+    setConfirmDelCat(id);
+  }
+  function doDeleteCatalogue(id) {
     setPromoCatalogues(prev => prev.filter(c => c.id !== id));
     if (openId === id) setOpenId(null);
   }
@@ -4378,6 +4400,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
           })}
         </div>
       )}
+      <ConfirmModal data={confirmDelCat ? { title:"Supprimer le catalogue", message:"Le catalogue et son plan seront supprimés. Les produits de ton référencement ne sont pas touchés.", onYes:()=>doDeleteCatalogue(confirmDelCat) } : null} onClose={()=>setConfirmDelCat(null)} />
     </div>
   );
 }
@@ -4390,6 +4413,7 @@ function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage
   const [creating, setCreating] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [comment, setComment] = useState("");
+  const [confirmDelTask, setConfirmDelTask] = useState(null);
   const blankForm = { title:"", due:"", assignee:"", priority:"normale", notes:"", linkType:"none", linkId:"" };
   const [form, setForm] = useState(blankForm);
 
@@ -4425,7 +4449,9 @@ function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage
     setTasks(prev => prev.map(t => t.id===id ? { ...t, ...patch } : t));
   }
   function deleteTask(id) {
-    if (!window.confirm("Supprimer cette tâche ?")) return;
+    setConfirmDelTask(id);
+  }
+  function doDeleteTask(id) {
     setTasks(prev => prev.filter(t => t.id!==id));
     if (openId===id) setOpenId(null);
   }
@@ -4500,6 +4526,7 @@ function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage
             </div>
           </div>
         </div>
+        <ConfirmModal data={confirmDelTask ? { title:"Supprimer la tâche", message:"Cette tâche et ses commentaires seront supprimés.", onYes:()=>doDeleteTask(confirmDelTask) } : null} onClose={()=>setConfirmDelTask(null)} />
       </div>
     );
   }
@@ -4608,6 +4635,7 @@ function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage
           })}
         </div>
       )}
+      <ConfirmModal data={confirmDelTask ? { title:"Supprimer la tâche", message:"Cette tâche et ses commentaires seront supprimés.", onYes:()=>doDeleteTask(confirmDelTask) } : null} onClose={()=>setConfirmDelTask(null)} />
     </div>
   );
 }
@@ -5100,7 +5128,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap:"wrap", gap:10 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Fournisseurs & Catalogues</h1>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Fournisseurs</h1>
         {isAdmin && (
           <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
             <select value={importDepot} onChange={e=>setImportDepot(e.target.value)} style={{ ...S.input, width:"auto", padding:"8px 12px", cursor:"pointer" }}>
@@ -5284,7 +5312,7 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
   return (
     <div>
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
-        <h1 style={{ margin:0,fontSize:20,fontWeight:700 }}>Gestion des utilisateurs</h1>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Gestion des utilisateurs</h1>
         <button onClick={openNew} style={S.btnPrimary}>+ Créer un compte</button>
       </div>
       {/* Lieux de livraison */}
