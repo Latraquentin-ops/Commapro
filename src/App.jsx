@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { Home, List, BarChart2, Factory, Bell, Clock, CheckCircle, Folder, Search, MapPin, FileText, Package, Sun, Moon, X, Plus, Camera, Truck, BookOpen, Tag, Settings, Edit, DollarSign } from "lucide-react";
@@ -3751,6 +3751,158 @@ function CataloguePage({ suppliers, setSuppliers, orders, session, setPage, prom
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PLAN EDITOR — éditeur visuel de zones (TG, promo, allée) glisser/redimensionner
+// Coordonnées en % du canvas (0–100) pour rester responsive.
+// ═══════════════════════════════════════════════════════════════════════════════
+const ZONE_TYPES = {
+  tg:    { label:"Tête de gondole", color:"#7c3aed" },
+  promo: { label:"Zone promo",      color:"#ef4444" },
+  allee: { label:"Allée",           color:"#0ea5e9" },
+  autre: { label:"Autre",           color:"#64748b" },
+};
+function PlanEditor({ magasin, zones, catItems, isAdmin, onAdd, onUpdate, onRemove }) {
+  const canvasRef = useRef(null);
+  const [editing, setEditing] = useState(null);     // zone en cours d'édition (panneau)
+  const drag = useRef(null);                          // { id, mode:'move'|'resize', startX, startY, ox, oy, ow, oh }
+
+  function pointerPct(e) {
+    const r = canvasRef.current.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    return { x: (cx / r.width) * 100, y: (cy / r.height) * 100 };
+  }
+  function startMove(e, z) {
+    if (!isAdmin) return;
+    e.stopPropagation();
+    const p = pointerPct(e);
+    drag.current = { id:z.id, mode:"move", sx:p.x, sy:p.y, ox:z.x, oy:z.y };
+  }
+  function startResize(e, z) {
+    if (!isAdmin) return;
+    e.stopPropagation();
+    const p = pointerPct(e);
+    drag.current = { id:z.id, mode:"resize", sx:p.x, sy:p.y, ow:z.w, oh:z.h };
+  }
+  function onMove(e) {
+    if (!drag.current) return;
+    const p = pointerPct(e);
+    const d = drag.current;
+    if (d.mode === "move") {
+      const z = zones.find(z=>z.id===d.id);
+      let nx = d.ox + (p.x - d.sx), ny = d.oy + (p.y - d.sy);
+      nx = Math.max(0, Math.min(100 - z.w, nx));
+      ny = Math.max(0, Math.min(100 - z.h, ny));
+      onUpdate(d.id, { x: Math.round(nx), y: Math.round(ny) });
+    } else {
+      let nw = d.ow + (p.x - d.sx), nh = d.oh + (p.y - d.sy);
+      nw = Math.max(12, Math.min(100, nw)); nh = Math.max(10, Math.min(100, nh));
+      onUpdate(d.id, { w: Math.round(nw), h: Math.round(nh) });
+    }
+  }
+  function endMove() { drag.current = null; }
+
+  const editZone = zones.find(z => z.id === editing);
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12, flexWrap:"wrap", gap:8 }}>
+        <div style={{ fontSize:13, color:"var(--t-text-55)" }}>Plan <b>{magasin}</b> — {zones.length} zone{zones.length>1?"s":""}</div>
+        {isAdmin && <button onClick={onAdd} style={S.btnPrimary}>+ Ajouter une zone</button>}
+      </div>
+
+      {/* Canvas du plan */}
+      <div
+        ref={canvasRef}
+        onMouseMove={onMove} onMouseUp={endMove} onMouseLeave={endMove}
+        onTouchMove={onMove} onTouchEnd={endMove}
+        style={{
+          position:"relative", width:"100%", aspectRatio:"16/10",
+          background:"var(--t-surface)", border:"1px solid var(--t-border-subtle)",
+          borderRadius:16, overflow:"hidden", touchAction:"none",
+          backgroundImage:"linear-gradient(var(--t-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--t-border-subtle) 1px, transparent 1px)",
+          backgroundSize:"5% 8.33%",
+        }}>
+        {zones.length === 0 && (
+          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--t-text-30)", fontSize:13, textAlign:"center", padding:20 }}>
+            {isAdmin ? "Ajoute une zone, puis glisse-la et redimensionne-la sur le plan." : "Aucune zone définie."}
+          </div>
+        )}
+        {zones.map(z => {
+          const t = ZONE_TYPES[z.type] || ZONE_TYPES.autre;
+          return (
+            <div key={z.id}
+              onMouseDown={(e)=>startMove(e,z)} onTouchStart={(e)=>startMove(e,z)}
+              onClick={()=>setEditing(z.id)}
+              style={{
+                position:"absolute", left:z.x+"%", top:z.y+"%", width:z.w+"%", height:z.h+"%",
+                background:`${t.color}22`, border:`2px solid ${t.color}`, borderRadius:8,
+                cursor:isAdmin?"move":"pointer", overflow:"hidden", boxSizing:"border-box",
+                padding:6, display:"flex", flexDirection:"column", gap:2,
+              }}>
+              <div style={{ fontSize:11, fontWeight:800, color:t.color, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{z.name}</div>
+              <div style={{ fontSize:9, color:"var(--t-text-55)", fontWeight:600 }}>{t.label}</div>
+              {(z.refs||[]).length > 0 && <div style={{ fontSize:9, color:"var(--t-text-40)" }}>{z.refs.length} produit{z.refs.length>1?"s":""}</div>}
+              {isAdmin && (
+                <div onMouseDown={(e)=>startResize(e,z)} onTouchStart={(e)=>startResize(e,z)}
+                  style={{ position:"absolute", right:0, bottom:0, width:18, height:18, cursor:"nwse-resize", background:t.color, borderRadius:"6px 0 6px 0", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.5"><path d="M9 3v6H3"/></svg>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Panneau d'édition de la zone sélectionnée */}
+      {editZone && (
+        <div style={{ marginTop:14, background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+            <div style={{ fontSize:14, fontWeight:700 }}>Zone : {editZone.name}</div>
+            <button onClick={()=>setEditing(null)} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)" }}><X size={18}/></button>
+          </div>
+          {isAdmin ? (<>
+            <input value={editZone.name} onChange={e=>onUpdate(editZone.id,{name:e.target.value})} placeholder="Nom de la zone" style={{ ...S.input, width:"100%", boxSizing:"border-box", marginBottom:10 }} />
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Type</div>
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
+              {Object.entries(ZONE_TYPES).map(([k,t]) => (
+                <button key={k} onClick={()=>onUpdate(editZone.id,{type:k})} style={{ padding:"6px 12px", borderRadius:10, border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: editZone.type===k?t.color:"var(--t-surface)", color: editZone.type===k?"white":"var(--t-text-55)" }}>{t.label}</button>
+              ))}
+            </div>
+            <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:6, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.06em" }}>Produits du catalogue dans cette zone</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
+              {catItems.length === 0 && <div style={{ fontSize:12, color:"var(--t-text-40)" }}>Ajoute d'abord des produits au catalogue (onglet Produits).</div>}
+              {catItems.map(it => {
+                const inZone = (editZone.refs||[]).includes(it.ref);
+                return (
+                  <div key={it.ref} onClick={()=>{
+                    const refs = inZone ? editZone.refs.filter(r=>r!==it.ref) : [...(editZone.refs||[]), it.ref];
+                    onUpdate(editZone.id, { refs });
+                  }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background: inZone?"rgba(124,58,237,0.1)":"var(--t-surface)", border:`1px solid ${inZone?"rgba(124,58,237,0.4)":"var(--t-border-subtle)"}`, borderRadius:10, cursor:"pointer" }}>
+                    <div style={{ width:18, height:18, borderRadius:5, border:`2px solid ${inZone?"#7c3aed":"var(--t-text-30)"}`, background:inZone?"#7c3aed":"transparent", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      {inZone && <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{it.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <button onClick={()=>{ if(window.confirm("Supprimer cette zone ?")){ onRemove(editZone.id); setEditing(null); } }} style={{ ...S.btnGhost, color:"#ef4444", width:"100%" }}>Supprimer la zone</button>
+          </>) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+              {(editZone.refs||[]).length === 0 ? <div style={{ fontSize:12, color:"var(--t-text-40)" }}>Aucun produit dans cette zone.</div>
+                : (editZone.refs||[]).map(ref => {
+                    const it = catItems.find(i=>i.ref===ref);
+                    return <div key={ref} style={{ fontSize:13, padding:"6px 10px", background:"var(--t-surface)", borderRadius:8 }}>{it ? it.label : ref}</div>;
+                  })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // CATALOGUES PROMO — sélections promotionnelles mensuelles
 // ═══════════════════════════════════════════════════════════════════════════════
 function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, session, setPage, setSelectedProduct }) {
@@ -3761,6 +3913,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   const [form, setForm] = useState({ name:"", start:"", end:"" });
   const [addingTo, setAddingTo] = useState(null);   // catalogue où on ajoute des produits
   const [search, setSearch] = useState("");
+  const [catTab, setCatTab] = useState("produits");  // produits | plan-nord | plan-sud
 
   const allProducts = useMemo(() => {
     const list = [];
@@ -3819,6 +3972,29 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
     }));
   }
 
+  // ── Plans de rayon (zones) par magasin ──────────────────────────────────────
+  // Stockés dans c.plans = { "Magasin Nord": [zones], "Magasin Sud": [zones] }
+  // Une zone : { id, name, type, x, y, w, h, refs:[] }
+  function getZones(cat, magasin) { return ((cat.plans||{})[magasin]) || []; }
+  function setZones(catId, magasin, zones) {
+    setPromoCatalogues(prev => prev.map(c => c.id!==catId ? c : {
+      ...c, plans: { ...(c.plans||{}), [magasin]: zones }
+    }));
+  }
+  function addZone(catId, magasin) {
+    const zones = getZones(cats.find(c=>c.id===catId)||{}, magasin);
+    const z = { id:"z_"+Date.now(), name:"Nouvelle zone", type:"tg", x:8, y:8, w:42, h:24, refs:[] };
+    setZones(catId, magasin, [...zones, z]);
+  }
+  function updateZone(catId, magasin, zid, patch) {
+    const zones = getZones(cats.find(c=>c.id===catId)||{}, magasin);
+    setZones(catId, magasin, zones.map(z => z.id===zid ? { ...z, ...patch } : z));
+  }
+  function removeZone(catId, magasin, zid) {
+    const zones = getZones(cats.find(c=>c.id===catId)||{}, magasin);
+    setZones(catId, magasin, zones.filter(z => z.id!==zid));
+  }
+
   // Calcule le prix promo final et la remise % à partir du type/valeur saisis
   function promoPrice(it) {
     const base = it.prixVente || 0;
@@ -3872,6 +4048,20 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
           )}
         </div>
 
+        {/* Onglets : Produits / Plan Nord / Plan Sud */}
+        <div style={{ display:"flex", gap:6, marginBottom:18, borderBottom:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
+          {[["produits","Produits"],["plan-Magasin Nord","Plan Nord"],["plan-Magasin Sud","Plan Sud"]].map(([k,lbl]) => (
+            <button key={k} onClick={()=>setCatTab(k)} style={{
+              padding:"10px 16px", border:"none", background:"transparent", cursor:"pointer",
+              fontSize:14, fontWeight:700, whiteSpace:"nowrap",
+              color: catTab===k ? "#7c3aed" : "var(--t-text-40)",
+              borderBottom: catTab===k ? "2px solid #7c3aed" : "2px solid transparent",
+              marginBottom:-1,
+            }}>{lbl}</button>
+          ))}
+        </div>
+
+        {catTab === "produits" && (<>
         {/* Ajout de produits */}
         {isAdmin && (
           <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:16, marginBottom:18 }}>
@@ -3936,11 +4126,22 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
             })}
           </div>
         )}
+        </>)}
+
+        {catTab.startsWith("plan-") && (
+          <PlanEditor
+            magasin={catTab.slice(5)}
+            zones={getZones(openCat, catTab.slice(5))}
+            catItems={openCat.items||[]}
+            isAdmin={isAdmin}
+            onAdd={()=>addZone(openCat.id, catTab.slice(5))}
+            onUpdate={(zid,patch)=>updateZone(openCat.id, catTab.slice(5), zid, patch)}
+            onRemove={(zid)=>removeZone(openCat.id, catTab.slice(5), zid)}
+          />
+        )}
       </div>
     );
   }
-
-  // ───────── Vue : liste des catalogues ─────────
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12, marginBottom:18 }}>
