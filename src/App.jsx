@@ -3825,7 +3825,7 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
     const t = (k) => ZONE_TYPES[k] || ZONE_TYPES.autre;
     const zonesHTML = zones.map(z => {
       const c = t(z.type);
-      const prods = (z.refs||[]).map(r => { const it=catItems.find(i=>i.ref===r); return it?it.label:r; });
+      const prods = (z.refs||[]);
       return `<div style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;
         background:${c.color}22;border:2px solid ${c.color};border-radius:6px;box-sizing:border-box;
         padding:5px;overflow:hidden;transform:rotate(${z.rot||0}deg);transform-origin:center;">
