@@ -4780,6 +4780,83 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
     const d = new Date().toISOString().slice(0,10);
     XLSX.writeFile(wb, `commapro-refs-a-integrer-${d}.xlsx`);
   }
+
+  const [integrateMsg, setIntegrateMsg] = useState("");
+  // ── Ré-import du tableau rempli : crée les fournisseurs manquants et range les produits ──
+  function handleIntegrateRefs(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type:"binary" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval:"" });
+        if (rows.length === 0) { setIntegrateMsg("⚠️ Le fichier est vide."); return; }
+
+        const norm = (s) => String(s||"").trim();
+        const num  = (v) => { const n = parseFloat(String(v).replace(",",".")); return isNaN(n) ? 0 : n; };
+        // tolère plusieurs noms de colonnes
+        const pick = (row, keys) => { for (const k of keys) { for (const rk of Object.keys(row)) { if (rk.toLowerCase().trim() === k) return row[rk]; } } return ""; };
+
+        let created = 0, added = 0, skipped = 0, newSuppliers = 0;
+        const integratedRefs = [];
+
+        setSuppliers(prev => {
+          const next = prev.map(s => ({ ...s, products: [...s.products] }));
+          const findSupp = (name) => next.find(s => s.name.toLowerCase().trim() === name.toLowerCase().trim());
+
+          rows.forEach(row => {
+            const ref   = norm(pick(row, ["référence","reference","ref"]));
+            const label = norm(pick(row, ["désignation","designation","libellé","libelle"]));
+            const supp  = norm(pick(row, ["fournisseur"]));
+            if (!ref || !supp) { skipped++; return; }   // sans réf ou sans fournisseur → ignoré
+
+            let s = findSupp(supp);
+            if (!s) {
+              s = { id:"s"+Date.now()+"_"+Math.random().toString(36).slice(2,6), name:supp, commercial:"", email:"", emails:[], products:[] };
+              next.push(s); newSuppliers++;
+            }
+            // déjà présent ? on ne duplique pas
+            if (s.products.some(p => String(p.ref).toLowerCase().trim() === ref.toLowerCase().trim())) { skipped++; return; }
+
+            const ean   = norm(pick(row, ["ean","code ean","gencode"]));
+            const achat = num(pick(row, ["prix achat ht","prix achat","prix d'achat"]));
+            const vente = num(pick(row, ["prix vente ttc","prix vente","prix de vente"]));
+            const fam   = norm(pick(row, ["famille"]));
+            const sfam  = norm(pick(row, ["sous-famille","sous famille","subfamily"]));
+
+            s.products.push({
+              ref, label, ean,
+              price: achat || 0,
+              prixVente: vente || null,
+              family: fam, subFamily: sfam,
+              weeklyVolume: 0, stockMin: 0,
+            });
+            added++;
+            integratedRefs.push(ref.toLowerCase().trim());
+            if (s.products.length === 1 && newSuppliers) created++;
+          });
+          return next;
+        });
+
+        // Retire de la liste "à intégrer" les réfs qu'on vient d'ajouter
+        if (integratedRefs.length > 0) {
+          const done = new Set(integratedRefs);
+          setUnknownRefs(prev => (prev||[]).filter(u => !done.has(String(u.ref).toLowerCase().trim())));
+        }
+
+        const parts = [`✅ ${added} produit(s) intégré(s)`];
+        if (newSuppliers > 0) parts.push(`${newSuppliers} fournisseur(s) créé(s)`);
+        if (skipped > 0) parts.push(`${skipped} ligne(s) ignorée(s) (déjà présent ou incomplet)`);
+        setIntegrateMsg(parts.join(" · "));
+      } catch (err) {
+        setIntegrateMsg("❌ Erreur de lecture. Vérifie que c'est bien le fichier Excel exporté, rempli.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  }
   const DEPOTS = ["Magasin Nord", "Magasin Sud", "Dépôt Nord", "Dépôt Sud", "Dépôt Port"];
   const [importDepot, setImportDepot] = useState(DEPOTS[0]);
 
@@ -5309,9 +5386,14 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
             </div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               <button onClick={exportUnknownRefs} style={S.btnPrimary}>⬇️ Exporter en Excel</button>
+              <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
+                ⬆️ Importer le tableau rempli
+                <input type="file" accept=".xlsx,.xls" onChange={handleIntegrateRefs} style={{ display:"none" }} />
+              </label>
               <button onClick={()=>setUnknownRefs([])} style={S.btnGhost}>Vider la liste</button>
             </div>
           </div>
+          {integrateMsg && <div style={{ marginTop:12, fontSize:13, fontWeight:600, color: integrateMsg.startsWith("✅")?"#22c55e":"#ef4444" }}>{integrateMsg}</div>}
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
