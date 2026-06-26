@@ -686,6 +686,7 @@ export default function App() {
   const [orders,    setOrders]    = useState(INIT_ORDERS);
   const [locations, setLocations] = useState(INIT_LOCATIONS);
   const [stockImports, setStockImports] = useState([]);  // historique des imports d'état de stock
+  const [unknownRefs, setUnknownRefs] = useState([]);    // réfs vues en import mais absentes du référencement
   const [proposals, setProposals] = useState([]);  // propositions commerciales fournisseurs
   const [replenishments, setReplenishments] = useState([]);  // archive des remplissages rayon
   const [promoCatalogues, setPromoCatalogues] = useState([]);  // catalogues promo mensuels
@@ -737,10 +738,10 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    const state = { users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks };
+    const state = { users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks };
     saveCloud(state);
     pushSnapshot(state);  // garde un instantané horodaté (auto-limité à 1/10min, max 10)
-  }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks, loaded]);
+  }, [users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks, loaded]);
 
   // ── Export / Import de TOUTES les données (sauvegarde de sécurité) ──────────
   function exportAllData() {
@@ -748,7 +749,7 @@ export default function App() {
       _commapro_backup: true,
       _version: 1,
       _exportedAt: new Date().toISOString(),
-      users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks,
+      users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     const url = URL.createObjectURL(blob);
@@ -769,6 +770,7 @@ export default function App() {
         if (data.orders) setOrders(data.orders);
         if (data.locations) setLocations(data.locations);
         if (data.stockImports) setStockImports(data.stockImports);
+        if (data.unknownRefs) setUnknownRefs(data.unknownRefs);
         if (data.proposals) setProposals(data.proposals);
         if (data.replenishments) setReplenishments(data.replenishments);
         if (data.promoCatalogues) setPromoCatalogues(data.promoCatalogues);
@@ -789,6 +791,7 @@ export default function App() {
     if (d.orders) setOrders(d.orders);
     if (d.locations) setLocations(d.locations);
     if (d.stockImports) setStockImports(d.stockImports);
+    if (d.unknownRefs) setUnknownRefs(d.unknownRefs);
     if (d.proposals) setProposals(d.proposals);
     if (d.replenishments) setReplenishments(d.replenishments);
     if (d.promoCatalogues) setPromoCatalogues(d.promoCatalogues);
@@ -1090,7 +1093,7 @@ export default function App() {
             {page === "etiquettes" && <EtiquettesPage suppliers={suppliers} session={session} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
-            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
+            {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} unknownRefs={unknownRefs} setUnknownRefs={setUnknownRefs} T={T} />}
             {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} onExport={exportAllData} onImport={importAllData} loadHistory={loadHistory} onRestoreSnapshot={applyState} T={T} />}
             </div>
           </main>
@@ -4758,12 +4761,25 @@ function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage
 // ═══════════════════════════════════════════════════════════════════════════════
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════════════════════════════
-function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stockImports, setStockImports }) {
+function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stockImports, setStockImports, unknownRefs, setUnknownRefs }) {
   const [editing, setEditing] = useState(null);
   const [form, setForm]       = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [importMsg, setImportMsg] = useState("");
   const [stockMsg, setStockMsg]   = useState("");
+
+  // Exporte les références inconnues (vues en import mais absentes du référencement)
+  function exportUnknownRefs() {
+    const list = unknownRefs || [];
+    const header = ["Référence", "Désignation", "Fournisseur", "EAN", "Prix achat HT", "Prix vente TTC", "Famille", "Sous-famille", "Vu le", "Emplacement"];
+    const rows = list.map(u => [u.ref || "", u.label || "", "", "", "", "", "", "", u.date || "", u.depot || ""]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws["!cols"] = [{wch:16},{wch:40},{wch:22},{wch:16},{wch:13},{wch:14},{wch:18},{wch:18},{wch:12},{wch:16}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Réfs à intégrer");
+    const d = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `commapro-refs-a-integrer-${d}.xlsx`);
+  }
   const DEPOTS = ["Magasin Nord", "Magasin Sud", "Dépôt Nord", "Dépôt Sud", "Dépôt Port"];
   const [importDepot, setImportDepot] = useState(DEPOTS[0]);
 
@@ -4870,6 +4886,9 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
             if (code && code.toLowerCase() !== "code" && code.length >= 2) {
               const num = (i) => { if (i == null) return 0; const v = parseFloat(row[i]); return isNaN(v) ? 0 : v; };
               if (!stockByRef[code]) stockByRef[code] = {};
+              if (headerCols.label != null && !stockByRef[code]._label) {
+                stockByRef[code]._label = String(row[headerCols.label] || "").trim();
+              }
               // Si plusieurs lignes même code (multi-dépôts), on additionne sous le dépôt courant
               const prev = stockByRef[code][currentDepot] || {};
               stockByRef[code][currentDepot] = {
@@ -4887,6 +4906,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         }
 
         const refsInFile = Object.keys(stockByRef);
+        const fileLabel = (ref) => (stockByRef[ref] && stockByRef[ref]._label) || "";
         if (refsInFile.length === 0) {
           setStockMsg("⚠️ Aucune donnée de stock reconnue. Vérifie le format du fichier.");
           return;
@@ -4979,6 +4999,19 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         matched.forEach(ref => {
           snapshot[ref] = (stockByRef[ref][selectedDepot]||{}).dispo || 0;
         });
+
+        // 4ter) Références du fichier NON rapprochées au référencement → liste à compléter
+        const matchedSet = new Set(matched.map(r => normRef(r)));
+        const newUnknowns = refsInFile
+          .filter(ref => !matchedSet.has(normRef(ref)))
+          .map(ref => ({ ref, label: fileLabel(ref), depot: selectedDepot, date: exportDate }));
+        if (newUnknowns.length > 0 && typeof setUnknownRefs === "function") {
+          setUnknownRefs(prev => {
+            const byRef = {};
+            [...(prev||[]), ...newUnknowns].forEach(u => { byRef[normRef(u.ref)] = u; }); // dédoublonne, garde le plus récent
+            return Object.values(byRef);
+          });
+        }
 
         // 5) ÉTAPE B — Calcul des sorties depuis le dernier import DU MÊME EMPLACEMENT
         //    Sorties = Dispo_précédent − Dispo_actuel + Achats reçus sur la période
@@ -5263,6 +5296,22 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           {stockImports && stockImports.length >= 2 && (
             <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:4 }}>{stockImports.length} imports mémorisés — les sorties sont calculées entre deux dates.</div>
           )}
+        </div>
+      )}
+
+      {/* Références à intégrer (vues en import, absentes du référencement) */}
+      {isAdmin && (unknownRefs||[]).length > 0 && (
+        <div style={{ marginBottom:16, padding:16, borderRadius:18, background:"var(--t-card-bg)", border:"1px solid rgba(245,158,11,0.35)" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>📋 {(unknownRefs||[]).length} référence{(unknownRefs||[]).length>1?"s":""} à intégrer</div>
+              <div style={{ fontSize:12, color:"var(--t-text-55)", marginTop:2 }}>Vues dans tes imports mais absentes du référencement. Exporte la liste, complète le fournisseur et les infos, puis intègre-les.</div>
+            </div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <button onClick={exportUnknownRefs} style={S.btnPrimary}>⬇️ Exporter en Excel</button>
+              <button onClick={()=>setUnknownRefs([])} style={S.btnGhost}>Vider la liste</button>
+            </div>
+          </div>
         </div>
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
