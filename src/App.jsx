@@ -69,6 +69,28 @@ async function saveCloud(state) {
   if (error) console.error("Supabase save error:", error);
 }
 
+// ── Historique des versions : stocké dans une 2e ligne (id=2) de la même table ──
+// data = { snapshots: [ { at: ISOdate, state: {...} }, ... ] }  (max 10, plus récent en tête)
+const HISTORY_ROW_ID = 2;
+const MAX_SNAPSHOTS = 10;
+
+async function loadHistory() {
+  const { data, error } = await supabase.from("app_data").select("data").eq("id", HISTORY_ROW_ID).single();
+  if (error) return [];
+  return (data?.data?.snapshots) || [];
+}
+
+async function pushSnapshot(state) {
+  try {
+    const snaps = await loadHistory();
+    // Évite les doublons trop rapprochés : 1 snapshot max / 10 min
+    const now = Date.now();
+    if (snaps[0] && (now - new Date(snaps[0].at).getTime()) < 10*60*1000) return;
+    const next = [{ at: new Date().toISOString(), state }, ...snaps].slice(0, MAX_SNAPSHOTS);
+    await supabase.from("app_data").upsert({ id: HISTORY_ROW_ID, data: { snapshots: next } });
+  } catch (e) { console.error("snapshot error", e); }
+}
+
 // ─── INITIAL DATA ──────────────────────────────────────────────────────────────
 // Pages configurables (admins ont toujours tout)
 const ALL_PAGES = [
@@ -715,8 +737,63 @@ export default function App() {
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
-    saveCloud({ users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks });
+    const state = { users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks };
+    saveCloud(state);
+    pushSnapshot(state);  // garde un instantané horodaté (auto-limité à 1/10min, max 10)
   }, [users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks, loaded]);
+
+  // ── Export / Import de TOUTES les données (sauvegarde de sécurité) ──────────
+  function exportAllData() {
+    const data = {
+      _commapro_backup: true,
+      _version: 1,
+      _exportedAt: new Date().toISOString(),
+      users, suppliers, orders, locations, stockImports, proposals, replenishments, promoCatalogues, tasks,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const d = new Date().toISOString().slice(0,10);
+    a.href = url; a.download = `commapro-sauvegarde-${d}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  }
+  function importAllData(file, onResult) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data._commapro_backup) { onResult("❌ Ce fichier n'est pas une sauvegarde CommaPro valide."); return; }
+        if (data.users) setUsers(data.users);
+        if (data.suppliers) setSuppliers(data.suppliers);
+        if (data.orders) setOrders(data.orders);
+        if (data.locations) setLocations(data.locations);
+        if (data.stockImports) setStockImports(data.stockImports);
+        if (data.proposals) setProposals(data.proposals);
+        if (data.replenishments) setReplenishments(data.replenishments);
+        if (data.promoCatalogues) setPromoCatalogues(data.promoCatalogues);
+        if (data.tasks) setTasks(data.tasks);
+        const when = data._exportedAt ? new Date(data._exportedAt).toLocaleString("fr-FR") : "?";
+        onResult(`✅ Sauvegarde du ${when} restaurée. (${(data.suppliers||[]).length} fournisseurs, ${(data.promoCatalogues||[]).length} catalogues, ${(data.tasks||[]).length} tâches)`);
+      } catch (err) {
+        onResult("❌ Fichier illisible ou corrompu.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Applique un état complet (utilisé par la restauration de version)
+  function applyState(d) {
+    if (d.users) setUsers(d.users);
+    if (d.suppliers) setSuppliers(d.suppliers);
+    if (d.orders) setOrders(d.orders);
+    if (d.locations) setLocations(d.locations);
+    if (d.stockImports) setStockImports(d.stockImports);
+    if (d.proposals) setProposals(d.proposals);
+    if (d.replenishments) setReplenishments(d.replenishments);
+    if (d.promoCatalogues) setPromoCatalogues(d.promoCatalogues);
+    if (d.tasks) setTasks(d.tasks);
+  }
 
   // ── Rafraîchissement temps réel (autres utilisateurs) toutes les 5 sec ──────
   useEffect(() => {
@@ -1014,7 +1091,7 @@ export default function App() {
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} T={T} />}
-            {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} T={T} />}
+            {page === "admin" && isAdmin && <AdminPage users={users} setUsers={setUsers} locations={locations} setLocations={setLocations} onExport={exportAllData} onImport={importAllData} loadHistory={loadHistory} onRestoreSnapshot={applyState} T={T} />}
             </div>
           </main>
         </div>
@@ -4069,6 +4146,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   const [catTab, setCatTab] = useState("produits");  // produits | plan-nord | plan-sud
   const [manualForm, setManualForm] = useState(null);  // {ref,label,prixVente} ou null
   const [confirmDelCat, setConfirmDelCat] = useState(null);
+  const [editingDates, setEditingDates] = useState(false);
 
   const allProducts = useMemo(() => {
     const list = [];
@@ -4103,6 +4181,21 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
 
   function setStatus(id, status) {
     setPromoCatalogues(prev => prev.map(c => c.id===id ? { ...c, status } : c));
+  }
+
+  function updateDates(id, start, end) {
+    setPromoCatalogues(prev => prev.map(c => c.id===id ? { ...c, start, end } : c));
+  }
+
+  function exportCatalogue(cat) {
+    const data = { _commapro_catalogue: true, _version:1, _exportedAt:new Date().toISOString(), catalogue: cat };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const safe = (cat.name||"catalogue").replace(/[^a-z0-9]/gi,"-").toLowerCase();
+    a.href = url; a.download = `commapro-catalogue-${safe}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
   }
 
   function addProduct(catId, prod) {
@@ -4200,7 +4293,7 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", flexWrap:"wrap", gap:12, marginBottom:18 }}>
           <div>
             <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>{openCat.name}</h1>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, flexWrap:"wrap" }}>
               <span style={{ fontSize:11, fontWeight:700, color:st.color, background:st.bg, padding:"3px 10px", borderRadius:20 }}>{st.label}</span>
               {openCat.start && openCat.end && (
                 <span style={{ fontSize:12, color:"var(--t-text-55)" }}>
@@ -4208,10 +4301,27 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
                 </span>
               )}
               <span style={{ fontSize:12, color:"var(--t-text-40)" }}>{(openCat.items||[]).length} produit{(openCat.items||[]).length>1?"s":""}</span>
+              {isAdmin && openCat.status==="brouillon" && (
+                <button onClick={()=>setEditingDates(v=>!v)} style={{ ...S.btnGhost, fontSize:11, padding:"3px 8px" }}>{editingDates ? "Fermer" : "📅 Modifier les dates"}</button>
+              )}
             </div>
+            {/* Édition des dates (uniquement en brouillon) */}
+            {isAdmin && editingDates && openCat.status==="brouillon" && (
+              <div style={{ display:"flex", gap:10, marginTop:12, flexWrap:"wrap", alignItems:"flex-end" }}>
+                <label>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Début</div>
+                  <input type="date" value={openCat.start||""} onChange={e=>updateDates(openCat.id, e.target.value, openCat.end)} style={{ ...S.input, boxSizing:"border-box" }} />
+                </label>
+                <label>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)", marginBottom:4 }}>Fin</div>
+                  <input type="date" value={openCat.end||""} onChange={e=>updateDates(openCat.id, openCat.start, e.target.value)} style={{ ...S.input, boxSizing:"border-box" }} />
+                </label>
+              </div>
+            )}
           </div>
           {isAdmin && (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              <button onClick={()=>exportCatalogue(openCat)} style={S.btnSecondary}>⬇️ Exporter</button>
               {openCat.status==="brouillon"
                 ? <button onClick={()=>setStatus(openCat.id,"actif")} style={S.btnPrimary}>Activer</button>
                 : <button onClick={()=>setStatus(openCat.id,"brouillon")} style={S.btnSecondary}>Repasser en brouillon</button>}
@@ -5247,9 +5357,12 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════════════════════════════════════════
-function AdminPage({ users, setUsers, locations, setLocations }) {
+function AdminPage({ users, setUsers, locations, setLocations, onExport, onImport, loadHistory, onRestoreSnapshot }) {
   const [form, setForm]     = useState(null);
   const [editing, setEditing] = useState(null);
+  const [importMsg, setImportMsg] = useState("");
+  const [history, setHistory] = useState(null);
+  const [restoreMsg, setRestoreMsg] = useState("");
   function openNew() { setForm({ id:"u"+Date.now(), email:"", password:"", name:"", role:"user", canSeePrices:false, canUseAI:false, active:true, pages:["dashboard","orders","new"] }); setEditing("new"); }
   function openEdit(u) { setForm({...u}); setEditing(u.id); }
   function save() {
@@ -5319,6 +5432,57 @@ function AdminPage({ users, setUsers, locations, setLocations }) {
       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
         <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Gestion des utilisateurs</h1>
         <button onClick={openNew} style={S.btnPrimary}>+ Créer un compte</button>
+      </div>
+
+      {/* Sauvegarde des données */}
+      <div style={{ ...S.card, marginBottom:20, border:"1px solid rgba(124,58,237,0.3)" }}>
+        <h2 style={{ margin:"0 0 6px 0", fontSize:15, fontWeight:700, display:"flex", alignItems:"center", gap:8 }}>🛟 Sauvegarde des données</h2>
+        <div style={{ fontSize:13, color:"var(--t-text-55)", marginBottom:16, lineHeight:1.5 }}>
+          Télécharge un fichier de sauvegarde avec toutes tes données (fournisseurs, catalogues, tâches, commandes…). Garde-le sur ton ordinateur ou un cloud. En cas de problème, tu pourras tout restaurer.
+        </div>
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+          <button onClick={onExport} style={{ ...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6 }}>⬇️ Exporter ma sauvegarde</button>
+          <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
+            ⬆️ Restaurer une sauvegarde
+            <input type="file" accept="application/json,.json" style={{ display:"none" }} onChange={e => {
+              const f = e.target.files && e.target.files[0];
+              if (f) onImport(f, setImportMsg);
+              e.target.value = "";
+            }} />
+          </label>
+        </div>
+        {importMsg && <div style={{ marginTop:12, fontSize:13, fontWeight:600, color: importMsg.startsWith("✅")?"#22c55e":"#ef4444" }}>{importMsg}</div>}
+
+        {/* Historique des versions automatiques */}
+        <div style={{ marginTop:18, borderTop:"1px solid var(--t-border-subtle)", paddingTop:16 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontSize:14, fontWeight:700 }}>🕐 Historique des versions</div>
+              <div style={{ fontSize:12, color:"var(--t-text-55)", marginTop:2 }}>Sauvegardes automatiques (10 dernières). Restaure si quelque chose a disparu.</div>
+            </div>
+            <button onClick={async ()=>{ setHistory("loading"); const h = await loadHistory(); setHistory(h); }} style={S.btnSecondary}>
+              {history==="loading" ? "Chargement…" : "Afficher l'historique"}
+            </button>
+          </div>
+          {Array.isArray(history) && (
+            history.length === 0
+              ? <div style={{ fontSize:13, color:"var(--t-text-40)", marginTop:12 }}>Aucune version enregistrée pour l'instant. Les sauvegardes se créent automatiquement au fil de ton utilisation.</div>
+              : <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:12 }}>
+                  {history.map((snap,i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"10px 14px", background:"var(--t-surface)", borderRadius:10 }}>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600 }}>{new Date(snap.at).toLocaleString("fr-FR",{ weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}</div>
+                        <div style={{ fontSize:11, color:"var(--t-text-40)" }}>
+                          {(snap.state?.suppliers||[]).length} fourn. · {(snap.state?.promoCatalogues||[]).length} catalogues · {(snap.state?.tasks||[]).length} tâches
+                        </div>
+                      </div>
+                      <button onClick={()=>{ onRestoreSnapshot(snap.state); setRestoreMsg("✅ Version du "+new Date(snap.at).toLocaleString("fr-FR")+" restaurée."); }} style={{ ...S.btnPrimary, padding:"6px 14px", fontSize:12 }}>Restaurer</button>
+                    </div>
+                  ))}
+                </div>
+          )}
+          {restoreMsg && <div style={{ marginTop:12, fontSize:13, fontWeight:600, color:"#22c55e" }}>{restoreMsg}</div>}
+        </div>
       </div>
       {/* Lieux de livraison */}
       <div style={{ ...S.card, marginBottom:20 }}>
