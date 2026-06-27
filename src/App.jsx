@@ -104,6 +104,7 @@ const ALL_PAGES = [
   { key: "remplissage", label: "Remplissage",    icon: Package },
   { key: "suppliers",   label: "Fournisseurs",   icon: Factory },
   { key: "stats",       label: "Statistiques",   icon: BarChart2 },
+  { key: "apparence",   label: "Apparence",      icon: Settings },
 ];
 
 const INIT_USERS = [
@@ -707,6 +708,20 @@ export default function App() {
   }, [darkOverride]);
 
   const toggleDark = () => setDarkOverride(v => v === null ? !effectiveDark : v === effectiveDark ? !v : null);
+
+  // ── Apparence personnalisable (couleur d'accent, taille texte, arrondi) ──────
+  const [appearance, setAppearance] = useState(() => {
+    try { const v = JSON.parse(localStorage.getItem("cp_appearance")||"null"); if (v) return v; } catch(e){}
+    return { accent:"#7c3aed", fontScale:100, radius:100 };
+  });
+  useEffect(() => {
+    try { localStorage.setItem("cp_appearance", JSON.stringify(appearance)); } catch(e){}
+    const root = document.documentElement;
+    root.style.setProperty("--cp-accent", appearance.accent);
+    root.style.setProperty("--cp-font-scale", (appearance.fontScale/100));
+    root.style.setProperty("--cp-radius-scale", (appearance.radius/100));
+  }, [appearance]);
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingDraft, setEditingDraft] = useState(null);
@@ -1063,6 +1078,14 @@ export default function App() {
           .tab-bar { display:flex !important; }
         }
 
+        /* ── APPARENCE PERSONNALISÉE ── */
+        /* Couleur d'accent : remplace le violet sur les éléments clés */
+        .lg-btn-primary, .fab-new { background: linear-gradient(135deg, var(--cp-accent,#7c3aed), var(--cp-accent,#7c3aed)) !important; }
+        /* Taille de texte globale */
+        body { font-size: calc(1rem * var(--cp-font-scale, 1)); }
+        /* Arrondi : agit sur les cartes et boutons principaux */
+        .lg-card { border-radius: calc(20px * var(--cp-radius-scale, 1)) !important; }
+
       `}</style>
 
       {/* Ambient blobs */}
@@ -1088,9 +1111,10 @@ export default function App() {
             {page === "new"       && <NewOrderPage orders={orders} setOrders={setOrders} suppliers={suppliers} setSuppliers={setSuppliers} locations={locations} session={session} setPage={setPage} editingDraft={editingDraft} setEditingDraft={setEditingDraft} T={T} />}
             {page === "stats"     && <StatsPage orders={orders} suppliers={suppliers} session={session} T={T} />}
             {page === "catalogue" && <CataloguePage suppliers={suppliers} setSuppliers={setSuppliers} orders={orders} session={session} setPage={setPage} promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} />}
-            {page === "catalogues" && <CataloguesPage promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} suppliers={suppliers} session={session} setPage={setPage} setSelectedProduct={setSelectedProduct} />}
+            {page === "catalogues" && <CataloguesPage promoCatalogues={promoCatalogues} setPromoCatalogues={setPromoCatalogues} suppliers={suppliers} session={session} setPage={setPage} setSelectedProduct={setSelectedProduct} orders={orders} setOrders={setOrders} />}
             {page === "tasks" && <TasksPage tasks={tasks} setTasks={setTasks} users={users} suppliers={suppliers} orders={orders} session={session} setPage={setPage} setOrderFilter={setOrderFilter} />}
             {page === "etiquettes" && <EtiquettesPage suppliers={suppliers} session={session} />}
+            {page === "apparence" && <AppearancePage appearance={appearance} setAppearance={setAppearance} dark={effectiveDark} toggleDark={toggleDark} darkOverride={darkOverride} />}
             {page === "proposals" && <ProposalsPage proposals={proposals} setProposals={setProposals} suppliers={suppliers} isAdmin={isAdmin} />}
             {page === "remplissage" && <FillSheetPage suppliers={suppliers} setSuppliers={setSuppliers} session={session} replenishments={replenishments} setReplenishments={setReplenishments} />}
             {page === "suppliers" && <SuppliersPage suppliers={suppliers} setSuppliers={setSuppliers} isAdmin={isAdmin} orders={orders} setPage={setPage} stockImports={stockImports} setStockImports={setStockImports} unknownRefs={unknownRefs} setUnknownRefs={setUnknownRefs} T={T} />}
@@ -3065,6 +3089,85 @@ ${pagesHTML}
 // possibles, et le type de gabarit passé au générateur. Quand tu m'enverras tes
 // visuels officiels, je brancherai chaque gabarit ici sans toucher au reste.
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPARENCE — réglages visuels personnalisables par l'utilisateur
+// ═══════════════════════════════════════════════════════════════════════════════
+function AppearancePage({ appearance, setAppearance, dark, toggleDark, darkOverride }) {
+  const ACCENTS = [
+    { name:"Violet (défaut)", color:"#7c3aed" },
+    { name:"Indigo", color:"#6366f1" },
+    { name:"Bleu", color:"#3b82f6" },
+    { name:"Cyan", color:"#0891b2" },
+    { name:"Émeraude", color:"#10b981" },
+    { name:"Ambre", color:"#f59e0b" },
+    { name:"Rose", color:"#ec4899" },
+    { name:"Rouge", color:"#ef4444" },
+  ];
+  const set = (patch) => setAppearance(a => ({ ...a, ...patch }));
+  const Card = ({ title, desc, children }) => (
+    <div style={{ ...S.card, marginBottom:16 }}>
+      <div style={{ fontSize:15, fontWeight:700, marginBottom: desc?4:14 }}>{title}</div>
+      {desc && <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:14 }}>{desc}</div>}
+      {children}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ marginBottom:18 }}>
+        <h1 style={{ margin:0, fontSize:24, fontWeight:800, letterSpacing:"-0.03em" }}>Apparence</h1>
+        <div style={{ fontSize:13, color:"var(--t-text-55)", marginTop:4 }}>Personnalise le look de l'app. Les réglages sont gardés sur cet appareil.</div>
+      </div>
+
+      <Card title="Couleur d'accent" desc="La couleur des boutons principaux et des éléments mis en avant.">
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+          {ACCENTS.map(a => (
+            <button key={a.color} onClick={()=>set({accent:a.color})} title={a.name} style={{
+              width:44, height:44, borderRadius:12, cursor:"pointer", background:a.color,
+              border: appearance.accent===a.color ? "3px solid var(--t-text-90)" : "3px solid transparent",
+              boxShadow: appearance.accent===a.color ? "0 0 0 2px "+a.color : "none",
+            }} />
+          ))}
+        </div>
+        <div style={{ marginTop:14, display:"flex", alignItems:"center", gap:10 }}>
+          <span style={{ fontSize:13, color:"var(--t-text-55)" }}>Ou choisis librement :</span>
+          <input type="color" value={appearance.accent} onChange={e=>set({accent:e.target.value})} style={{ width:48, height:32, borderRadius:8, border:"none", cursor:"pointer", background:"none" }} />
+          <span style={{ fontSize:13, fontWeight:600, fontFamily:"monospace" }}>{appearance.accent}</span>
+        </div>
+      </Card>
+
+      <Card title="Taille du texte" desc={`Actuellement ${appearance.fontScale}%. Agrandis si tu trouves le texte petit.`}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <span style={{ fontSize:12, color:"var(--t-text-40)" }}>A</span>
+          <input type="range" min="85" max="130" step="5" value={appearance.fontScale} onChange={e=>set({fontScale:parseInt(e.target.value)})} style={{ flex:1 }} />
+          <span style={{ fontSize:20, color:"var(--t-text-40)" }}>A</span>
+          <span style={{ fontSize:13, fontWeight:700, width:48, textAlign:"right" }}>{appearance.fontScale}%</span>
+        </div>
+      </Card>
+
+      <Card title="Arrondi des cartes" desc={`Actuellement ${appearance.radius}%. Des coins plus ou moins ronds.`}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <span style={{ fontSize:12, color:"var(--t-text-40)" }}>▢</span>
+          <input type="range" min="40" max="160" step="10" value={appearance.radius} onChange={e=>set({radius:parseInt(e.target.value)})} style={{ flex:1 }} />
+          <span style={{ fontSize:13, fontWeight:700, width:48, textAlign:"right" }}>{appearance.radius}%</span>
+        </div>
+      </Card>
+
+      <Card title="Thème" desc="Par défaut, le thème s'adapte automatiquement à l'heure (clair le jour, sombre le soir).">
+        <button onClick={toggleDark} style={{ ...S.btnSecondary }}>
+          {darkOverride === null ? "🌗 Automatique (selon l'heure)" : dark ? "🌙 Sombre (forcé)" : "☀️ Clair (forcé)"}
+        </button>
+        <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:8 }}>Touche pour basculer : Auto → Clair/Sombre.</div>
+      </Card>
+
+      <button onClick={()=>set({ accent:"#7c3aed", fontScale:100, radius:100 })} style={{ ...S.btnGhost, width:"100%", marginTop:4 }}>↺ Réinitialiser l'apparence par défaut</button>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ÉTIQUETTES MAGASIN
+// ═══════════════════════════════════════════════════════════════════════════════
 const ETIQUETTE_FORMATS = [
   { id:"conforama", label:"Conforama",  color:"#E30613", perPageOptions:[3,4,6], template:"conforama" },
   { id:"topconfo",  label:"Top Confo",  color:"#1a3a6b", perPageOptions:[3,4,6], template:"topconfo" },
@@ -4335,7 +4438,7 @@ function PlanEditor({ magasin, zones, catItems, allProducts, isAdmin, onAdd, onU
 // ═══════════════════════════════════════════════════════════════════════════════
 // CATALOGUES PROMO — sélections promotionnelles mensuelles
 // ═══════════════════════════════════════════════════════════════════════════════
-function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, session, setPage, setSelectedProduct }) {
+function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, session, setPage, setSelectedProduct, orders, setOrders }) {
   const showPrices = session.canSeePrices;
   const isAdmin = session.role === "admin";
   const [openId, setOpenId] = useState(null);       // catalogue ouvert
@@ -4347,6 +4450,11 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
   const [manualForm, setManualForm] = useState(null);  // {ref,label,prixVente} ou null
   const [confirmDelCat, setConfirmDelCat] = useState(null);
   const [editingDates, setEditingDates] = useState(false);
+  const DEPOTS_GEN = ["Magasin Nord", "Magasin Sud", "Dépôt Nord", "Dépôt Sud", "Dépôt Port"];
+  const [genOpen, setGenOpen] = useState(false);          // panneau de génération de brouillon
+  const [genQty, setGenQty] = useState({});                // { ref: { "Magasin Nord": 5, ... } }
+  const [hiddenDepots, setHiddenDepots] = useState([]);    // dépôts masqués
+  const [genMsg, setGenMsg] = useState("");
 
   const allProducts = useMemo(() => {
     const list = [];
@@ -4396,6 +4504,47 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
     a.href = url; a.download = `commapro-catalogue-${safe}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  }
+
+  // Génère des brouillons de commande (1 par fournisseur) à partir des qtés saisies par dépôt
+  function generateDraftsFromCatalogue(cat) {
+    const items = cat.items || [];
+    const bySupplier = {};
+    items.forEach(it => {
+      const qByDepot = genQty[it.ref] || {};
+      const visibleDepots = DEPOTS_GEN.filter(d=>!hiddenDepots.includes(d));
+      const totalQty = visibleDepots.reduce((s,d)=> s + (parseInt(qByDepot[d])||0), 0);
+      if (totalQty <= 0) return;
+      const suppName = it.manual ? "Réfs libres" : (it.supplierName || "Réfs libres");
+      if (!bySupplier[suppName]) bySupplier[suppName] = [];
+      const depotDetail = {};
+      visibleDepots.forEach(d => { const q=parseInt(qByDepot[d])||0; if(q>0) depotDetail[d]=q; });
+      bySupplier[suppName].push({ ref: it.ref, label: it.label, qty: totalQty, price: 0, family: "", subFamily: "", depotQty: depotDetail });
+    });
+
+    const suppNames = Object.keys(bySupplier);
+    if (suppNames.length === 0) { setGenMsg("⚠️ Saisis au moins une quantité avant de générer."); return; }
+
+    let workingOrders = [...orders];
+    const created = [];
+    suppNames.forEach(name => {
+      const supplier = suppliers.find(s => s.name === name);
+      const id = genOrderId(workingOrders);
+      const draft = {
+        id, userId: session.id, supplierName: name,
+        commercial: supplier?.commercial || "", email: supplier?.email || "",
+        date: new Date().toISOString().split("T")[0], deliveryDate: "", deliveryPlace: "",
+        notes: `Généré depuis le catalogue « ${cat.name} »`,
+        lines: bySupplier[name],
+        status: "brouillon", statusHistory: { brouillon: new Date().toISOString() },
+        createdBy: session.name,
+      };
+      workingOrders = [draft, ...workingOrders];
+      created.push(draft);
+    });
+    setOrders(workingOrders);
+    setGenMsg(`✅ ${created.length} brouillon(s) créé(s) : ${suppNames.join(", ")}. Retrouve-les dans Commandes.`);
+    setGenOpen(false); setGenQty({});
   }
 
   function addProduct(catId, prod) {
@@ -4522,12 +4671,71 @@ function CataloguesPage({ promoCatalogues, setPromoCatalogues, suppliers, sessio
           {isAdmin && (
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               <button onClick={()=>exportCatalogue(openCat)} style={S.btnSecondary}>⬇️ Exporter</button>
+              {(openCat.items||[]).length > 0 && <button onClick={()=>{ setGenOpen(true); setGenMsg(""); }} style={S.btnSecondary}>🧾 Générer un brouillon</button>}
               {openCat.status==="brouillon"
                 ? <button onClick={()=>setStatus(openCat.id,"actif")} style={S.btnPrimary}>Activer</button>
                 : <button onClick={()=>setStatus(openCat.id,"brouillon")} style={S.btnSecondary}>Repasser en brouillon</button>}
             </div>
           )}
         </div>
+
+        {genMsg && <div style={{ fontSize:13, fontWeight:600, marginBottom:14, color: genMsg.startsWith("✅")?"#22c55e":"#f59e0b" }}>{genMsg}</div>}
+
+        {/* Panneau de génération de brouillon : quantités par dépôt */}
+        {genOpen && (
+          <div style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:18, padding:16, marginBottom:18 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6, flexWrap:"wrap", gap:8 }}>
+              <div style={{ fontSize:14, fontWeight:700 }}>🧾 Générer un brouillon — quantités par dépôt</div>
+              <button onClick={()=>setGenOpen(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)" }}><X size={18}/></button>
+            </div>
+            <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:12 }}>Saisis les quantités à commander pour chaque dépôt. Un brouillon par fournisseur sera créé (produits sans quantité ignorés).</div>
+
+            {/* Masquer des dépôts */}
+            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
+              {DEPOTS_GEN.map(d => {
+                const hidden = hiddenDepots.includes(d);
+                return <button key={d} onClick={()=>setHiddenDepots(prev => hidden ? prev.filter(x=>x!==d) : [...prev, d])} style={{ padding:"5px 10px", borderRadius:16, border:"none", cursor:"pointer", fontSize:11, fontWeight:600, background: hidden?"var(--t-surface)":"#7c3aed", color: hidden?"var(--t-text-40)":"white", textDecoration: hidden?"line-through":"none" }}>{d}</button>;
+              })}
+            </div>
+
+            <div style={{ overflowX:"auto" }}>
+              <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                <thead>
+                  <tr style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
+                    <th style={{ textAlign:"left", padding:"6px 8px", fontWeight:700, position:"sticky", left:0, background:"var(--t-card-bg)" }}>Produit</th>
+                    {DEPOTS_GEN.filter(d=>!hiddenDepots.includes(d)).map(d => <th key={d} style={{ padding:"6px 8px", fontWeight:700, minWidth:80 }}>{d}</th>)}
+                    <th style={{ padding:"6px 8px", fontWeight:700 }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(openCat.items||[]).map(it => {
+                    const visible = DEPOTS_GEN.filter(d=>!hiddenDepots.includes(d));
+                    const total = visible.reduce((s,d)=> s + (parseInt((genQty[it.ref]||{})[d])||0), 0);
+                    return (
+                      <tr key={it.ref} style={{ borderBottom:"1px solid var(--t-border-subtle)" }}>
+                        <td style={{ padding:"6px 8px", position:"sticky", left:0, background:"var(--t-card-bg)" }}>
+                          <div style={{ fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:160 }}>{it.label}{it.manual && <span style={{ fontSize:9, color:"#7c3aed", marginLeft:4 }}>libre</span>}</div>
+                          <div style={{ fontSize:10, color:"var(--t-text-40)" }}>{it.ref} · {it.supplierName||"—"}</div>
+                        </td>
+                        {visible.map(d => (
+                          <td key={d} style={{ padding:"4px 6px", textAlign:"center" }}>
+                            <input type="number" inputMode="numeric" min="0"
+                              value={(genQty[it.ref]||{})[d] || ""}
+                              onChange={e=>setGenQty(prev => ({ ...prev, [it.ref]: { ...(prev[it.ref]||{}), [d]: e.target.value } }))}
+                              style={{ ...S.input, width:56, padding:"5px 6px", textAlign:"center" }} placeholder="0" />
+                          </td>
+                        ))}
+                        <td style={{ padding:"6px 8px", textAlign:"center", fontWeight:700, color: total>0?"#7c3aed":"var(--t-text-30)" }}>{total}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <button onClick={()=>generateDraftsFromCatalogue(openCat)} style={{ ...S.btnPrimary, width:"100%", marginTop:14 }}>✓ Créer les brouillons</button>
+          </div>
+        )}
 
         {/* Onglets : Produits / Plan Nord / Plan Sud */}
         <div style={{ display:"flex", gap:6, marginBottom:18, borderBottom:"1px solid var(--t-border-subtle)", overflowX:"auto" }}>
