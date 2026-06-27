@@ -751,9 +751,20 @@ export default function App() {
   }, []);
 
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
+  const lastGoodRef = useRef(null);
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
     const state = { users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks };
+    // Garde-fou anti-effacement massif : si l'état devient quasi-vide alors qu'on
+    // avait des données juste avant, on suspecte un bug et on NE sauvegarde PAS.
+    const weight = (st) => (st.suppliers?.length||0) + (st.promoCatalogues?.length||0) + (st.orders?.length||0) + (st.tasks?.length||0);
+    const now = weight(state);
+    const before = lastGoodRef.current;
+    if (before != null && before >= 3 && now === 0) {
+      console.warn("Sauvegarde ignorée : état quasi-vide suspect (anti-effacement).");
+      return;  // on refuse d'écraser le cloud par du vide
+    }
+    lastGoodRef.current = now;
     saveCloud(state);
     pushSnapshot(state);  // garde un instantané horodaté (auto-limité à 1/10min, max 10)
   }, [users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks, loaded]);
@@ -818,17 +829,28 @@ export default function App() {
     if (!loaded) return;
     const interval = setInterval(async () => {
       const cloud = await loadCloud();
-      if (cloud) {
-        if (cloud.users)     setUsers(cloud.users);
-        if (cloud.suppliers) setSuppliers(cloud.suppliers);
-        if (cloud.orders)    setOrders(cloud.orders);
-        if (cloud.locations) setLocations(cloud.locations);
-        if (cloud.stockImports) setStockImports(cloud.stockImports);
-        if (cloud.proposals) setProposals(cloud.proposals);
-        if (cloud.replenishments) setReplenishments(cloud.replenishments);
-        if (cloud.promoCatalogues) setPromoCatalogues(cloud.promoCatalogues);
-        if (cloud.tasks) setTasks(cloud.tasks);
-      }
+      if (!cloud) return;  // pas de réponse → on ne touche à rien
+      // Garde-fou : ne JAMAIS remplacer une liste locale non vide par une liste cloud vide.
+      // (protège contre une réponse partielle/instable qui effacerait les données)
+      const safeSet = (cloudVal, setter) => {
+        if (cloudVal == null) return;                 // champ absent → on ignore
+        setter(prev => {
+          const prevArr = Array.isArray(prev) ? prev : [];
+          const cloudArr = Array.isArray(cloudVal) ? cloudVal : [];
+          if (cloudArr.length === 0 && prevArr.length > 0) return prev;  // refuse l'effacement
+          return cloudVal;
+        });
+      };
+      safeSet(cloud.users, setUsers);
+      safeSet(cloud.suppliers, setSuppliers);
+      safeSet(cloud.orders, setOrders);
+      safeSet(cloud.locations, setLocations);
+      safeSet(cloud.stockImports, setStockImports);
+      safeSet(cloud.unknownRefs, setUnknownRefs);
+      safeSet(cloud.proposals, setProposals);
+      safeSet(cloud.replenishments, setReplenishments);
+      safeSet(cloud.promoCatalogues, setPromoCatalogues);
+      safeSet(cloud.tasks, setTasks);
     }, 5000);
     return () => clearInterval(interval);
   }, [loaded]);
