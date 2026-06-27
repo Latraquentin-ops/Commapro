@@ -1735,6 +1735,63 @@ function StatsPage({ orders, suppliers, session }) {
       {children}
     </div>
   );
+  const StatSectionDark = ({ title, children }) => (
+    <div style={{ ...S.card }}>
+      <h2 style={{ margin: "0 0 16px 0", fontSize: 14, fontWeight: 700, color: "var(--t-text-90)" }}>{title}</h2>
+      {children}
+    </div>
+  );
+
+  // ═══ PILOTAGE DU RAYON (basé sur les sorties calculées via les imports de stock) ═══
+  const showPrices = session.canSeePrices;
+  // Tous les produits à plat, avec sorties hebdo (weeklyVolume), stock dispo, valeur
+  const allProds = useMemo(() => {
+    const list = [];
+    suppliers.forEach(s => (s.products||[]).forEach(p => {
+      const w = p.weeklyVolume || 0;
+      const dispo = p.dispo != null ? p.dispo : null;
+      list.push({
+        ref: p.ref, label: p.label, supplier: s.name,
+        family: p.family || "Autre", subFamily: p.subFamily || "—",
+        weekly: w, dispo,
+        prixVente: p.prixVente || 0, price: p.price || 0,
+        caHebdo: w * (p.prixVente || 0),                       // CA hebdo estimé
+        rotation: (dispo != null && dispo > 0) ? (w / dispo) : (w > 0 ? Infinity : 0), // sorties/stock
+      });
+    }));
+    return list;
+  }, [suppliers]);
+
+  const hasSalesData = useMemo(() => allProds.some(p => p.weekly > 0), [allProds]);
+
+  // Produits dormants : aucune sortie (weekly = 0) mais encore en stock
+  const dormants = useMemo(() =>
+    allProds.filter(p => p.weekly === 0 && (p.dispo == null || p.dispo > 0))
+      .sort((a,b) => (b.dispo||0) - (a.dispo||0)), [allProds]);
+
+  // Tops ventes (par volume) et par CA
+  const topVolume = useMemo(() => [...allProds].filter(p=>p.weekly>0).sort((a,b)=>b.weekly-a.weekly).slice(0,10), [allProds]);
+  const topCA = useMemo(() => [...allProds].filter(p=>p.caHebdo>0).sort((a,b)=>b.caHebdo-a.caHebdo).slice(0,10), [allProds]);
+  // Flops : sortent peu mais sortent quand même (1-2/sem), triés du plus faible
+  const flops = useMemo(() => [...allProds].filter(p=>p.weekly>0).sort((a,b)=>a.weekly-b.weekly).slice(0,10), [allProds]);
+
+  // Part des sous-familles (volume + valeur)
+  const subFamShare = useMemo(() => {
+    const map = {};
+    allProds.forEach(p => {
+      if (!map[p.subFamily]) map[p.subFamily] = { vol:0, ca:0, family:p.family, nb:0 };
+      map[p.subFamily].vol += p.weekly;
+      map[p.subFamily].ca += p.caHebdo;
+      map[p.subFamily].nb += 1;
+    });
+    return Object.entries(map).map(([label,d])=>({ label, ...d })).sort((a,b)=> (showPrices ? b.ca-a.ca : b.vol-a.vol));
+  }, [allProds, showPrices]);
+  const subVolTotal = subFamShare.reduce((s,d)=>s+d.vol,0);
+  const subCaTotal = subFamShare.reduce((s,d)=>s+d.ca,0);
+
+  // Rotation : ce qui tourne vite (sorties élevées vs stock) vs ce qui dort
+  const rotationFast = useMemo(() => [...allProds].filter(p=>p.dispo!=null && p.weekly>0).sort((a,b)=>b.rotation-a.rotation).slice(0,8), [allProds]);
+  const rotationSlow = useMemo(() => [...allProds].filter(p=>p.dispo!=null && p.dispo>0 && p.weekly>0).sort((a,b)=>a.rotation-b.rotation).slice(0,8), [allProds]);
 
   return (
     <div>
@@ -1748,6 +1805,93 @@ function StatsPage({ orders, suppliers, session }) {
           ))}
         </div>
       </div>
+
+      {/* ═══ SECTION PILOTAGE DU RAYON ═══ */}
+      {hasSalesData ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:16, marginBottom:16 }}>
+          <div style={{ fontSize:12, color:"var(--t-text-40)", fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em" }}>📊 Pilotage du rayon — basé sur les sorties (rythme hebdomadaire)</div>
+
+          {/* Part des sous-familles */}
+          <StatSectionDark title="Part des sous-familles">
+            {subFamShare.slice(0,12).map((d,i) => {
+              const pct = showPrices ? (subCaTotal? Math.round(d.ca/subCaTotal*100):0) : (subVolTotal? Math.round(d.vol/subVolTotal*100):0);
+              return (
+                <div key={i} style={{ marginBottom:10 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
+                    <span style={{ fontWeight:600 }}>{d.label} <span style={{ fontSize:11, color:"var(--t-text-40)" }}>({d.nb})</span></span>
+                    <span style={{ fontWeight:700 }}>{pct}% · {showPrices ? fmt(d.ca)+"/sem" : d.vol+" u/sem"}</span>
+                  </div>
+                  <div style={{ height:8, background:"var(--t-surface)", borderRadius:8, overflow:"hidden" }}>
+                    <div style={{ width:pct+"%", height:"100%", background:"linear-gradient(90deg,#7c3aed,#a78bfa)", borderRadius:8 }} />
+                  </div>
+                </div>
+              );
+            })}
+          </StatSectionDark>
+
+          {/* Tops ventes */}
+          <StatSectionDark title={showPrices ? "🏆 Top ventes (par CA hebdo)" : "🏆 Top ventes (par volume hebdo)"}>
+            {(showPrices ? topCA : topVolume).map((p,i) => (
+              <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom: i<9?"1px solid var(--t-border-subtle)":"none" }}>
+                <div style={{ minWidth:0, flex:1 }}>
+                  <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{i+1}. {p.label}</div>
+                  <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.subFamily}</div>
+                </div>
+                <div style={{ textAlign:"right", fontWeight:700, fontSize:13 }}>
+                  {p.weekly} u/sem{showPrices && p.caHebdo>0 && <div style={{ fontSize:11, color:"#22c55e" }}>{fmt(p.caHebdo)}/sem</div>}
+                </div>
+              </div>
+            ))}
+          </StatSectionDark>
+
+          {/* Produits dormants */}
+          <StatSectionDark title={"🐌 Produits dormants (" + dormants.length + ") — aucune sortie"}>
+            {dormants.length === 0
+              ? <div style={{ fontSize:13, color:"var(--t-text-40)" }}>Aucun produit dormant 👍</div>
+              : <>
+                  <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:10 }}>À animer (mise en avant, promo) ou à déréférencer si ça ne décolle pas.</div>
+                  {dormants.slice(0,15).map((p,i) => (
+                    <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"7px 0", borderBottom: i<Math.min(14,dormants.length-1)?"1px solid var(--t-border-subtle)":"none" }}>
+                      <div style={{ minWidth:0, flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</div>
+                        <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{p.ref} · {p.supplier}</div>
+                      </div>
+                      {p.dispo != null && <div style={{ fontSize:12, color:"#f59e0b", fontWeight:700 }}>{p.dispo} en stock</div>}
+                    </div>
+                  ))}
+                  {dormants.length > 15 && <div style={{ fontSize:11, color:"var(--t-text-40)", marginTop:8 }}>+ {dormants.length-15} autres…</div>}
+                </>}
+          </StatSectionDark>
+
+          {/* Rotation */}
+          <StatSectionDark title="🔄 Rotation du stock">
+            <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+              <div style={{ flex:1, minWidth:200 }}>
+                <div style={{ fontSize:12, fontWeight:700, color:"#22c55e", marginBottom:8 }}>⚡ Tourne vite</div>
+                {rotationFast.map((p,i)=>(
+                  <div key={i} style={{ fontSize:12, padding:"5px 0", display:"flex", justifyContent:"space-between", gap:8 }}>
+                    <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</span>
+                    <span style={{ color:"var(--t-text-40)", whiteSpace:"nowrap" }}>{p.weekly}/sem · {p.dispo} stk</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ flex:1, minWidth:200 }}>
+                <div style={{ fontSize:12, fontWeight:700, color:"#f59e0b", marginBottom:8 }}>🐢 Dort en stock</div>
+                {rotationSlow.map((p,i)=>(
+                  <div key={i} style={{ fontSize:12, padding:"5px 0", display:"flex", justifyContent:"space-between", gap:8 }}>
+                    <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.label}</span>
+                    <span style={{ color:"var(--t-text-40)", whiteSpace:"nowrap" }}>{p.weekly}/sem · {p.dispo} stk</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </StatSectionDark>
+        </div>
+      ) : (
+        <div style={{ ...S.card, padding:20, marginBottom:16, textAlign:"center" }}>
+          <div style={{ fontSize:13, color:"var(--t-text-55)" }}>📊 Le pilotage du rayon (dormants, tops, rotation, sous-familles) s'affichera dès que tu auras importé ton état de stock <b>au moins deux fois</b> (pour calculer les sorties).</div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div style={{ ...S.card, textAlign: "center", padding: 48, color:"var(--t-text-40)" }}>
@@ -2359,6 +2503,19 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
   const [inputQty, setInputQty] = useState("");
   const supp = suppliers.find(s => s.id === suppId);
 
+  // Familles & sous-familles existantes (toutes les fiches), pour les listes déroulantes
+  const familyMap = useMemo(() => {
+    const m = {};
+    suppliers.forEach(s => (s.products||[]).forEach(p => {
+      const f = (p.family||"").trim(); if (!f) return;
+      if (!m[f]) m[f] = new Set();
+      const sf = (p.subFamily||"").trim(); if (sf) m[f].add(sf);
+    }));
+    const out = {}; Object.keys(m).sort().forEach(f => out[f] = Array.from(m[f]).sort());
+    return out;
+  }, [suppliers]);
+  const familyList = Object.keys(familyMap);
+
   // Quitter le mode édition si on change de page sans sauvegarder
   useEffect(() => {
     return () => { if (editingDraft) setEditingDraft(null); };
@@ -2519,8 +2676,48 @@ function NewOrderPage({ orders, setOrders, suppliers, setSuppliers, locations, s
                   </div>
                   <div style={{ marginBottom:8 }}><label style={S.label}>Désignation *</label><input value={newProd.label} onChange={e=>setNewProd(p=>({...p,label:e.target.value}))} style={S.input} placeholder="Nom du produit" /></div>
                   <div className="grid-2" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-                    <div><label style={S.label}>Famille</label><input value={newProd.family} onChange={e=>setNewProd(p=>({...p,family:e.target.value}))} style={S.input} placeholder="Ex: Electroménager" /></div>
-                    <div><label style={S.label}>Sous-famille</label><input value={newProd.subFamily} onChange={e=>setNewProd(p=>({...p,subFamily:e.target.value}))} style={S.input} placeholder="Ex: E31MO" /></div>
+                    <div>
+                      <label style={S.label}>Famille</label>
+                      <select
+                        value={familyList.includes(newProd.family) ? newProd.family : (newProd.family==="" ? "" : "__autre__")}
+                        onChange={e => {
+                          const v = e.target.value;
+                          if (v === "__autre__") setNewProd(p=>({...p, family:" ", subFamily:""}));   // espace = mode saisie libre
+                          else setNewProd(p=>({...p, family:v, subFamily:""}));
+                        }}
+                        style={{ ...S.input, cursor:"pointer" }}>
+                        <option value="">— Choisir —</option>
+                        {familyList.map(f => <option key={f} value={f}>{f}</option>)}
+                        <option value="__autre__">+ Autre (saisir)</option>
+                      </select>
+                      {(newProd.family!=="" && !familyList.includes(newProd.family)) && (
+                        <input value={newProd.family.trim()===""?"":newProd.family} onChange={e=>setNewProd(p=>({...p,family:e.target.value}))} style={{ ...S.input, marginTop:6 }} placeholder="Nouvelle famille" autoFocus />
+                      )}
+                    </div>
+                    <div>
+                      <label style={S.label}>Sous-famille</label>
+                      {(() => {
+                        const subs = familyMap[newProd.family] || [];
+                        const knownFam = familyList.includes(newProd.family);
+                        if (knownFam && subs.length > 0) {
+                          return (<>
+                            <select
+                              value={subs.includes(newProd.subFamily) ? newProd.subFamily : (newProd.subFamily==="" ? "" : "__autre__")}
+                              onChange={e => { const v=e.target.value; setNewProd(p=>({...p, subFamily: v==="__autre__" ? " " : v })); }}
+                              style={{ ...S.input, cursor:"pointer" }}>
+                              <option value="">— Choisir —</option>
+                              {subs.map(sf => <option key={sf} value={sf}>{sf}</option>)}
+                              <option value="__autre__">+ Autre (saisir)</option>
+                            </select>
+                            {(newProd.subFamily!=="" && !subs.includes(newProd.subFamily)) && (
+                              <input value={newProd.subFamily.trim()===""?"":newProd.subFamily} onChange={e=>setNewProd(p=>({...p,subFamily:e.target.value}))} style={{ ...S.input, marginTop:6 }} placeholder="Nouvelle sous-famille" autoFocus />
+                            )}
+                          </>);
+                        }
+                        // famille libre/nouvelle → saisie libre directe
+                        return <input value={newProd.subFamily.trim()===""?"":newProd.subFamily} onChange={e=>setNewProd(p=>({...p,subFamily:e.target.value}))} style={S.input} placeholder="Ex: E31MO" />;
+                      })()}
+                    </div>
                   </div>
                   <div style={{ marginBottom:10 }}><label style={S.label}>Prix HT</label><input type="number" value={newProd.price} onChange={e=>setNewProd(p=>({...p,price:e.target.value}))} style={S.input} placeholder="0.00" /></div>
                   <div style={{ display:"flex", gap:8 }}>
@@ -4799,7 +4996,7 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
         // tolère plusieurs noms de colonnes
         const pick = (row, keys) => { for (const k of keys) { for (const rk of Object.keys(row)) { if (rk.toLowerCase().trim() === k) return row[rk]; } } return ""; };
 
-        let created = 0, added = 0, skipped = 0, newSuppliers = 0;
+        let created = 0, added = 0, skipped = 0, newSuppliers = 0, noSupplier = 0;
         const integratedRefs = [];
 
         setSuppliers(prev => {
@@ -4810,7 +5007,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
             const ref   = norm(pick(row, ["référence","reference","ref"]));
             const label = norm(pick(row, ["désignation","designation","libellé","libelle"]));
             const supp  = norm(pick(row, ["fournisseur"]));
-            if (!ref || !supp) { skipped++; return; }   // sans réf ou sans fournisseur → ignoré
+            if (!ref) { skipped++; return; }              // sans référence → ignoré
+            if (!supp) { noSupplier++; return; }          // sans fournisseur → on n'ajoute pas la réf
 
             let s = findSupp(supp);
             if (!s) {
@@ -4848,7 +5046,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
 
         const parts = [`✅ ${added} produit(s) intégré(s)`];
         if (newSuppliers > 0) parts.push(`${newSuppliers} fournisseur(s) créé(s)`);
-        if (skipped > 0) parts.push(`${skipped} ligne(s) ignorée(s) (déjà présent ou incomplet)`);
+        if (noSupplier > 0) parts.push(`⚠️ ${noSupplier} ligne(s) sans fournisseur non ajoutée(s)`);
+        if (skipped > 0) parts.push(`${skipped} ligne(s) ignorée(s) (déjà présent ou sans réf)`);
         setIntegrateMsg(parts.join(" · "));
       } catch (err) {
         setIntegrateMsg("❌ Erreur de lecture. Vérifie que c'est bien le fichier Excel exporté, rempli.");
@@ -4857,8 +5056,177 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
     reader.readAsBinaryString(file);
     e.target.value = "";
   }
-  const DEPOTS = ["Magasin Nord", "Magasin Sud", "Dépôt Nord", "Dépôt Sud", "Dépôt Port"];
-  const [importDepot, setImportDepot] = useState(DEPOTS[0]);
+
+  // ── EXPORT du référencement complet (avec ID caché pour le recroisement) ─────
+  const [refSyncMsg, setRefSyncMsg] = useState("");
+  const [pendingRefImport, setPendingRefImport] = useState(null);  // {toUpdate, toCreate, toDelete, apply}
+  const [exportOpen, setExportOpen] = useState(false);
+  const [expFilters, setExpFilters] = useState({ suppliers:[], families:[], subFamilies:[], onlyNoPrice:false, onlyNoEan:false });
+
+  function ensurePid(p, supId) { return p.pid || ("p_"+supId+"_"+String(p.ref||"").replace(/[^a-z0-9]/gi,"").toLowerCase()+"_"+Math.random().toString(36).slice(2,5)); }
+
+  function exportReferencement(filters) {
+    const f = filters || {};
+    // Attribue un pid stable aux produits qui n'en ont pas (et sauvegarde)
+    setSuppliers(prev => prev.map(s => ({ ...s, products: s.products.map(p => p.pid ? p : { ...p, pid: ensurePid(p, s.id) }) })));
+    const header = ["ID","Référence","Désignation","Fournisseur","EAN","Prix achat HT","Prix vente TTC","Famille","Sous-famille","Conso hebdo","Stock mini"];
+    const okSet = (set, val) => !set || set.length === 0 || set.includes(val);
+    const rows = [];
+    let count = 0;
+    suppliers.forEach(s => {
+      if (!okSet(f.suppliers, s.name)) return;
+      (s.products||[]).forEach(p => {
+        if (!okSet(f.families, p.family||"")) return;
+        if (!okSet(f.subFamilies, p.subFamily||"")) return;
+        if (f.onlyNoPrice && p.prixVente != null && p.prixVente !== "") return;
+        if (f.onlyNoEan && p.ean) return;
+        rows.push([
+          p.pid || ensurePid(p, s.id), p.ref||"", p.label||"", s.name||"", p.ean||"",
+          p.price ?? "", p.prixVente ?? "", p.family||"", p.subFamily||"",
+          p.weeklyVolume ?? "", p.stockMin ?? "",
+        ]);
+        count++;
+      });
+    });
+    if (count === 0) { setRefSyncMsg("⚠️ Aucun produit ne correspond à ces filtres."); return; }
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    ws["!cols"] = [{wch:22},{wch:16},{wch:40},{wch:22},{wch:16},{wch:13},{wch:14},{wch:16},{wch:16},{wch:11},{wch:10}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Référencement");
+    const d = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `commapro-referencement-${d}.xlsx`);
+    setRefSyncMsg(`📤 ${count} produit(s) exporté(s). Modifie le fichier (ne touche PAS à la colonne ID), puis réimporte-le.`);
+  }
+
+  // ── ANALYSE du fichier réimporté → prépare un récapitulatif avant d'appliquer ─
+  function analyzeRefImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type:"binary" });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" });
+        if (rows.length === 0) { setRefSyncMsg("⚠️ Fichier vide."); return; }
+        const norm = (s)=>String(s||"").trim();
+        const pick = (row, keys) => { for (const k of keys) for (const rk of Object.keys(row)) if (rk.toLowerCase().trim()===k) return row[rk]; return ""; };
+        const hasCol = (row, k) => Object.keys(row).some(rk => rk.toLowerCase().trim()===k);
+
+        // IDs présents dans le fichier
+        const fileIds = new Set();
+        rows.forEach(r => { const id = norm(pick(r,["id"])); if (id) fileIds.add(id); });
+
+        // IDs existants dans l'app
+        let existingCount = 0;
+        suppliers.forEach(s => (s.products||[]).forEach(p => { if (p.pid) existingCount++; }));
+
+        let toUpdate=0, toCreate=0, toSkipNoSupplier=0;
+        rows.forEach(r => {
+          const id = norm(pick(r,["id"]));
+          if (id) { toUpdate++; return; }
+          const ref = norm(pick(r,["référence","reference","ref"]));
+          const supp = norm(pick(r,["fournisseur"]));
+          if (ref && supp) toCreate++;
+          else if (ref && !supp) toSkipNoSupplier++;   // nouvelle ligne sans fournisseur → ignorée
+        });
+
+        // À supprimer = produits avec pid absent du fichier
+        let toDelete = 0;
+        suppliers.forEach(s => (s.products||[]).forEach(p => { if (p.pid && !fileIds.has(p.pid)) toDelete++; }));
+
+        setPendingRefImport({ rows, fileIds, toUpdate, toCreate, toDelete, toSkipNoSupplier, norm, pick, hasCol });
+        setRefSyncMsg("");
+      } catch (err) {
+        setRefSyncMsg("❌ Erreur de lecture. Vérifie que c'est bien le fichier de référencement exporté.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = "";
+  }
+
+  // ── APPLIQUE la synchronisation après confirmation ───────────────────────────
+  function applyRefImport() {
+    const job = pendingRefImport;
+    if (!job) return;
+    const { rows, fileIds, norm, pick } = job;
+    const numOrKeep = (v, old) => { const s=String(v).trim(); if (s==="") return old; const n=parseFloat(s.replace(",",".")); return isNaN(n)?old:n; };
+    const strOrKeep = (v, old) => { const s=String(v||"").trim(); return s===""?old:s; };
+
+    setSuppliers(prev => {
+      let next = prev.map(s => ({ ...s, products: [...s.products] }));
+      const findSupp = (name) => next.find(s => s.name.toLowerCase().trim()===name.toLowerCase().trim());
+
+      // 1) MISE À JOUR + CRÉATION
+      rows.forEach(r => {
+        const id    = norm(pick(r,["id"]));
+        const ref   = norm(pick(r,["référence","reference","ref"]));
+        const label = pick(r,["désignation","designation","libellé","libelle"]);
+        const supp  = norm(pick(r,["fournisseur"]));
+        const ean   = pick(r,["ean","code ean","gencode"]);
+        const achat = pick(r,["prix achat ht","prix achat"]);
+        const vente = pick(r,["prix vente ttc","prix vente"]);
+        const fam   = pick(r,["famille"]);
+        const sfam  = pick(r,["sous-famille","sous famille"]);
+        const conso = pick(r,["conso hebdo","conso","volume hebdo"]);
+        const smin  = pick(r,["stock mini","stock min"]);
+
+        if (id) {
+          // mise à jour du produit ayant ce pid (peut changer de fournisseur)
+          for (const s of next) {
+            const idx = s.products.findIndex(p => p.pid === id);
+            if (idx >= 0) {
+              const p = s.products[idx];
+              const updated = {
+                ...p,
+                ref: strOrKeep(ref, p.ref),
+                label: strOrKeep(label, p.label),
+                ean: strOrKeep(ean, p.ean),
+                price: numOrKeep(achat, p.price),
+                prixVente: numOrKeep(vente, p.prixVente),
+                family: strOrKeep(fam, p.family),
+                subFamily: strOrKeep(sfam, p.subFamily),
+                weeklyVolume: numOrKeep(conso, p.weeklyVolume),
+                stockMin: numOrKeep(smin, p.stockMin),
+              };
+              // changement de fournisseur ?
+              if (supp && s.name.toLowerCase().trim() !== supp.toLowerCase().trim()) {
+                s.products.splice(idx,1);
+                let dest = findSupp(supp);
+                if (!dest) { dest = { id:"s"+Date.now()+"_"+Math.random().toString(36).slice(2,6), name:supp, commercial:"", email:"", emails:[], products:[] }; next.push(dest); }
+                dest.products.push(updated);
+              } else {
+                s.products[idx] = updated;
+              }
+              break;
+            }
+          }
+        } else if (ref && supp) {
+          // création : nouvelle ligne sans ID
+          let dest = findSupp(supp);
+          if (!dest) { dest = { id:"s"+Date.now()+"_"+Math.random().toString(36).slice(2,6), name:supp, commercial:"", email:"", emails:[], products:[] }; next.push(dest); }
+          if (!dest.products.some(p => String(p.ref).toLowerCase().trim()===ref.toLowerCase().trim())) {
+            dest.products.push({
+              pid:"p_new_"+Date.now()+"_"+Math.random().toString(36).slice(2,5),
+              ref, label:String(label||"").trim(), ean:String(ean||"").trim(),
+              price: parseFloat(String(achat).replace(",","."))||0,
+              prixVente: parseFloat(String(vente).replace(",","."))||null,
+              family:String(fam||"").trim(), subFamily:String(sfam||"").trim(),
+              weeklyVolume: parseFloat(String(conso).replace(",","."))||0,
+              stockMin: parseFloat(String(smin).replace(",","."))||0,
+            });
+          }
+        }
+      });
+
+      // 2) SUPPRESSION : produits avec pid absent du fichier
+      next = next.map(s => ({ ...s, products: s.products.filter(p => !p.pid || fileIds.has(p.pid)) }));
+      return next;
+    });
+
+    setPendingRefImport(null);
+    setRefSyncMsg(`✅ Référencement synchronisé : ${job.toUpdate} mis à jour, ${job.toCreate} créé(s), ${job.toDelete} supprimé(s).`);
+  }
+
 
   // ── Import ÉTAT DE STOCK (format revendeur, ex: Conforama) ──────────────────
   // Met à jour le stock réel des produits déjà présents (par référence/Code),
@@ -5396,6 +5764,111 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
           {integrateMsg && <div style={{ marginTop:12, fontSize:13, fontWeight:600, color: integrateMsg.startsWith("✅")?"#22c55e":"#ef4444" }}>{integrateMsg}</div>}
         </div>
       )}
+
+      {/* Modifier le référencement en masse via Excel */}
+      {isAdmin && (
+        <div style={{ marginBottom:16, padding:16, borderRadius:18, background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)" }}>
+          <div style={{ fontSize:14, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>📝 Modifier le référencement (Excel)</div>
+          <div style={{ fontSize:12, color:"var(--t-text-55)", marginTop:2, marginBottom:14, lineHeight:1.5 }}>
+            Exporte tout ton référencement, modifie/complète dans Excel, puis réimporte. L'app recroise par l'ID caché : elle met à jour, crée les nouvelles lignes et supprime celles que tu retires. <b>Ne touche jamais à la colonne ID.</b> Une case laissée vide ne modifie pas l'info existante.
+          </div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            <button onClick={()=>setExportOpen(true)} style={S.btnPrimary}>⬇️ Exporter le référencement</button>
+            <label style={{ ...S.btnSecondary, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 }}>
+              ⬆️ Réimporter le fichier modifié
+              <input type="file" accept=".xlsx,.xls" onChange={analyzeRefImport} style={{ display:"none" }} />
+            </label>
+          </div>
+          {refSyncMsg && <div style={{ marginTop:12, fontSize:13, fontWeight:600, color: refSyncMsg.startsWith("✅")||refSyncMsg.startsWith("📤")?"#22c55e":"#ef4444" }}>{refSyncMsg}</div>}
+        </div>
+      )}
+
+      {/* Fenêtre d'export avec filtres combinables */}
+      {exportOpen && (() => {
+        const allFamilies = Array.from(new Set(suppliers.flatMap(s => (s.products||[]).map(p => p.family||"").filter(Boolean)))).sort();
+        const allSubFamilies = Array.from(new Set(suppliers.flatMap(s => (s.products||[]).map(p => p.subFamily||"").filter(Boolean)))).sort();
+        const toggle = (key, val) => setExpFilters(f => ({ ...f, [key]: f[key].includes(val) ? f[key].filter(x=>x!==val) : [...f[key], val] }));
+        const okSet = (set, val) => !set || set.length === 0 || set.includes(val);
+        const preview = suppliers.reduce((n,s) => {
+          if (!okSet(expFilters.suppliers, s.name)) return n;
+          return n + (s.products||[]).filter(p =>
+            okSet(expFilters.families, p.family||"") && okSet(expFilters.subFamilies, p.subFamily||"") &&
+            !(expFilters.onlyNoPrice && p.prixVente != null && p.prixVente !== "") &&
+            !(expFilters.onlyNoEan && p.ean)
+          ).length;
+        }, 0);
+        const Chip = ({ active, onClick, children }) => (
+          <button onClick={onClick} style={{ padding:"6px 12px", borderRadius:20, border:"none", cursor:"pointer", fontSize:12, fontWeight:600, background: active?"#7c3aed":"var(--t-surface)", color: active?"white":"var(--t-text-55)" }}>{children}</button>
+        );
+        return (
+          <div onClick={()=>setExportOpen(false)} style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:24, padding:22, maxWidth:480, width:"100%", maxHeight:"85vh", overflowY:"auto", boxShadow:"0 30px 80px rgba(0,0,0,0.5)" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                <div style={{ fontSize:16, fontWeight:700 }}>Exporter le référencement</div>
+                <button onClick={()=>setExportOpen(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"var(--t-text-40)" }}><X size={18}/></button>
+              </div>
+              <div style={{ fontSize:12, color:"var(--t-text-55)", marginBottom:16 }}>Combine les filtres. Aucun filtre = tout le référencement.</div>
+
+              <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Fournisseurs</div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+                {suppliers.map(s => <Chip key={s.id} active={expFilters.suppliers.includes(s.name)} onClick={()=>toggle("suppliers", s.name)}>{s.name}</Chip>)}
+              </div>
+
+              {allFamilies.length > 0 && (<>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Familles</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+                  {allFamilies.map(fam => <Chip key={fam} active={expFilters.families.includes(fam)} onClick={()=>toggle("families", fam)}>{fam}</Chip>)}
+                </div>
+              </>)}
+
+              {allSubFamilies.length > 0 && (<>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>Sous-familles</div>
+                <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:16 }}>
+                  {allSubFamilies.map(sf => <Chip key={sf} active={expFilters.subFamilies.includes(sf)} onClick={()=>toggle("subFamilies", sf)}>{sf}</Chip>)}
+                </div>
+              </>)}
+
+              <div style={{ fontSize:11, fontWeight:700, color:"var(--t-text-40)", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:8 }}>À compléter</div>
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:18 }}>
+                <Chip active={expFilters.onlyNoPrice} onClick={()=>setExpFilters(f=>({...f,onlyNoPrice:!f.onlyNoPrice}))}>Sans prix de vente</Chip>
+                <Chip active={expFilters.onlyNoEan} onClick={()=>setExpFilters(f=>({...f,onlyNoEan:!f.onlyNoEan}))}>Sans EAN</Chip>
+              </div>
+
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                <button onClick={()=>setExpFilters({ suppliers:[], families:[], subFamilies:[], onlyNoPrice:false, onlyNoEan:false })} style={{ ...S.btnGhost, fontSize:12 }}>Réinitialiser</button>
+                <div style={{ fontSize:13, color:"var(--t-text-55)" }}>{preview} produit(s)</div>
+              </div>
+              <button onClick={()=>{ exportReferencement(expFilters); setExportOpen(false); }} disabled={preview===0} style={{ ...S.btnPrimary, width:"100%", marginTop:12, opacity:preview===0?0.5:1 }}>⬇️ Exporter {preview} produit(s)</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Confirmation avant d'appliquer la synchro du référencement */}
+      {pendingRefImport && (
+        <div onClick={()=>setPendingRefImport(null)} style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.55)", backdropFilter:"blur(4px)", display:"flex", alignItems:"center", justifyContent:"center", padding:24 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:"var(--t-card-bg)", border:"1px solid var(--t-card-border)", borderRadius:24, padding:24, maxWidth:420, width:"100%", boxShadow:"0 30px 80px rgba(0,0,0,0.5)" }}>
+            <div style={{ fontSize:16, fontWeight:700, marginBottom:10 }}>Confirmer la synchronisation</div>
+            <div style={{ fontSize:14, color:"var(--t-text-70)", lineHeight:1.6, marginBottom:8 }}>Voici ce qui va être appliqué à ton référencement :</div>
+            <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:18, fontSize:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between" }}><span>✏️ Produits mis à jour</span><b>{pendingRefImport.toUpdate}</b></div>
+              <div style={{ display:"flex", justifyContent:"space-between" }}><span>➕ Produits créés</span><b style={{ color:"#22c55e" }}>{pendingRefImport.toCreate}</b></div>
+              <div style={{ display:"flex", justifyContent:"space-between" }}><span>🗑️ Produits supprimés</span><b style={{ color: pendingRefImport.toDelete>0?"#ef4444":"inherit" }}>{pendingRefImport.toDelete}</b></div>
+              {pendingRefImport.toSkipNoSupplier > 0 && <div style={{ display:"flex", justifyContent:"space-between" }}><span>⚠️ Nouvelles lignes sans fournisseur (ignorées)</span><b style={{ color:"#f59e0b" }}>{pendingRefImport.toSkipNoSupplier}</b></div>}
+            </div>
+            {pendingRefImport.toDelete > 0 && (
+              <div style={{ fontSize:12, color:"#ef4444", background:"rgba(239,68,68,0.1)", padding:"8px 12px", borderRadius:10, marginBottom:16 }}>
+                ⚠️ {pendingRefImport.toDelete} produit(s) seront définitivement retirés du référencement (absents du fichier). Pense à avoir une sauvegarde.
+              </div>
+            )}
+            <div style={{ display:"flex", gap:10 }}>
+              <button onClick={()=>setPendingRefImport(null)} style={{ ...S.btnSecondary, flex:1, padding:"12px" }}>Annuler</button>
+              <button onClick={applyRefImport} style={{ ...S.btnPrimary, flex:1, padding:"12px" }}>Appliquer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {suppliers.map(s => {
           // Stats du fournisseur
