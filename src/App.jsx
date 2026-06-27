@@ -189,7 +189,7 @@ const genOrderId = (orders) => {
   return `BC-${year}-${String(next).padStart(3, "0")}`;
 };
 const lineTotal = (l) => (l.qty || 0) * (l.price || 0);
-const orderTotal = (o) => o.lines.reduce((s, l) => s + lineTotal(l), 0);
+const orderTotal = (o) => (o.lines||[]).reduce((s, l) => s + lineTotal(l), 0);
 const calcStockMin = (weeklyVolume, weeks = 3) => Math.ceil((weeklyVolume || 0) * weeks);
 
 const COLORS = ["#1D4ED8","#059669","#D97706","#7C3AED","#DC2626","#0891B2","#65A30D","#DB2777"];
@@ -211,7 +211,7 @@ function generatePDF(order, showPrices) {
   const total = orderTotal(order);
   const tva = total * 0.085; // TVA 8.5% La Réunion
   const ttc = total + tva;
-  const linesHTML = order.lines.map((l, i) => `
+  const linesHTML = (order.lines||[]).map((l, i) => `
     <tr style="background:${i%2===0?'#ffffff':'#f9fafb'}">
       <td style="padding:10px 14px;font-size:12px;color:#374151;font-family:monospace">${l.ref}</td>
       <td style="padding:10px 14px;font-size:12px;color:#111827;font-weight:500">${l.label}</td>
@@ -729,19 +729,31 @@ export default function App() {
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
+  const lastGoodRef = useRef(null);
   useEffect(() => {
     (async () => {
-      const cloud = await loadCloud();
+      let cloud = await loadCloud();
+      // Si la 1re réponse est nulle, on retente 2 fois (réseau instable) avant de conclure
+      for (let i = 0; i < 2 && !cloud; i++) {
+        await new Promise(r => setTimeout(r, 800));
+        cloud = await loadCloud();
+      }
       if (cloud) {
-        if (cloud.users)     setUsers(cloud.users);
-        if (cloud.suppliers) setSuppliers(cloud.suppliers);
-        if (cloud.orders)    setOrders(cloud.orders);
-        if (cloud.locations) setLocations(cloud.locations);
-        if (cloud.stockImports) setStockImports(cloud.stockImports);
-        if (cloud.proposals) setProposals(cloud.proposals);
-        if (cloud.replenishments) setReplenishments(cloud.replenishments);
-        if (cloud.promoCatalogues) setPromoCatalogues(cloud.promoCatalogues);
-        if (cloud.tasks) setTasks(cloud.tasks);
+        // setIf : ne pose la valeur que si elle existe (les tableaux vides sont acceptés
+        // au chargement initial car c'est la vérité de départ, mais jamais null/undefined)
+        const setIf = (val, setter) => { if (val != null) setter(val); };
+        setIf(cloud.users, setUsers);
+        setIf(cloud.suppliers, setSuppliers);
+        setIf(cloud.orders, setOrders);
+        setIf(cloud.locations, setLocations);
+        setIf(cloud.stockImports, setStockImports);
+        setIf(cloud.unknownRefs, setUnknownRefs);
+        setIf(cloud.proposals, setProposals);
+        setIf(cloud.replenishments, setReplenishments);
+        setIf(cloud.promoCatalogues, setPromoCatalogues);
+        setIf(cloud.tasks, setTasks);
+        // mémorise le "poids" initial pour le garde-fou anti-effacement
+        lastGoodRef.current = (cloud.suppliers?.length||0) + (cloud.promoCatalogues?.length||0) + (cloud.orders?.length||0) + (cloud.tasks?.length||0);
       } else {
         // Première utilisation : on envoie les données de départ vers Supabase
         await saveCloud({ users: INIT_USERS, suppliers: INIT_SUPPLIERS, orders: INIT_ORDERS, locations: INIT_LOCATIONS });
@@ -751,7 +763,6 @@ export default function App() {
   }, []);
 
   // ── Sauvegarde automatique vers Supabase à chaque changement ────────────────
-  const lastGoodRef = useRef(null);
   useEffect(() => {
     if (!loaded) return;  // on n'écrase pas le cloud tant qu'on n'a pas chargé
     const state = { users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks };
@@ -1739,7 +1750,7 @@ function StatsPage({ orders, suppliers, session }) {
   // Part par famille (rayon)
   const byFamily = useMemo(() => {
     const map = {};
-    filtered.forEach(o => o.lines.forEach(l => {
+    filtered.forEach(o => (o.lines||[]).forEach(l => {
       const fam = l.family || "Autre";
       map[fam] = (map[fam] || 0) + lineTotal(l);
     }));
@@ -1749,7 +1760,7 @@ function StatsPage({ orders, suppliers, session }) {
   // Part par sous-famille
   const bySubFamily = useMemo(() => {
     const map = {};
-    filtered.forEach(o => o.lines.forEach(l => {
+    filtered.forEach(o => (o.lines||[]).forEach(l => {
       const sf = l.subFamily || "—";
       if (!map[sf]) map[sf] = { value: 0, family: l.family || "Autre" };
       map[sf].value += lineTotal(l);
@@ -2509,7 +2520,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
               ))}
             </tr></thead>
             <tbody>
-              {order.lines.map((l, i) => (
+              {(order.lines||[]).map((l, i) => (
                 <tr key={i} style={{ borderBottom: "1px solid var(--t-border-subtle)" }}>
                   <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12, color:"var(--t-text-40)" }}>{l.ref}</td>
                   <td style={{ ...S.td, fontWeight: 500 }}>{l.label}</td>
@@ -3527,7 +3538,7 @@ function FillSheetPage({ suppliers, setSuppliers, session, replenishments, setRe
                 <div key={r.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:"var(--t-surface)", borderRadius:12, border:"1px solid var(--t-border-subtle)", flexWrap:"wrap", gap:8 }}>
                   <div>
                     <div style={{ fontSize:13, fontWeight:700, color:"var(--t-text-90)" }}>{fmtDate(r.date)}</div>
-                    <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{r.lines.length} référence(s) · {r.lines.reduce((s,l)=>s+l.qty,0)} article(s) · par {r.createdBy}</div>
+                    <div style={{ fontSize:11, color:"var(--t-text-40)" }}>{(r.lines||[]).length} référence(s) · {(r.lines||[]).reduce((s,l)=>s+l.qty,0)} article(s) · par {r.createdBy}</div>
                   </div>
                   <button onClick={()=>reprint(r)} style={{ ...S.btnSecondary, fontSize:12, padding:"6px 14px" }}>🖨️ Réimprimer</button>
                 </div>
