@@ -186,7 +186,8 @@ const genOrderId = (orders) => {
   const year = new Date().getFullYear();
   const nums = orders.filter(o => o.id.startsWith(`BC-${year}`)).map(o => parseInt(o.id.split("-")[2]) || 0);
   const next = nums.length ? Math.max(...nums) + 1 : 1;
-  return `BC-${year}-${String(next).padStart(3, "0")}`;
+    const ts = Date.now().toString(36).slice(-3).toUpperCase();
+  return `BC-${year}-${String(next).padStart(3, "0")}-${ts}`;
 };
 const lineTotal = (l) => (l.qty || 0) * (l.price || 0);
 const orderTotal = (o) => (o.lines||[]).reduce((s, l) => s + lineTotal(l), 0);
@@ -729,7 +730,7 @@ export default function App() {
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
-  const lastGoodRef = useRef(null);
+    const saveTimerRef = useRef(null);
   useEffect(() => {
     (async () => {
       let cloud = await loadCloud();
