@@ -431,7 +431,7 @@ const S = {
   input:        { width:"100%", padding:"10px 14px", borderRadius:14, border:"1px solid rgba(255,255,255,0.12)", fontSize:16, outline:"none", boxSizing:"border-box", background:"var(--t-border-subtle)", backdropFilter:"blur(8px)", color:"#f0f0f5" },
   inputNum:     { width:"100%", padding:"7px 12px", borderRadius:18, border:"1.5px solid rgba(129,140,248,0.45)", fontSize:12, outline:"none", boxSizing:"border-box", background:"rgba(124,58,237,0.08)", backdropFilter:"blur(8px)", color:"#f0f0f5", fontWeight:600, textAlign:"center", transition:"border-color 0.15s" },
   label:        { display:"block", fontSize:11, fontWeight:600, color:"var(--t-text-55)", marginBottom:6, textTransform:"uppercase", letterSpacing:"0.07em" },
-  card:         { background:"rgba(255,255,255,0.08)", backdropFilter:"blur(24px) saturate(180%)", WebkitBackdropFilter:"blur(24px) saturate(180%)", borderRadius:20, padding:24, border:"1px solid rgba(255,255,255,0.18)", boxShadow:"0 4px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.25)" },
+  card:         { background:"var(--t-card-bg)", borderRadius:14, padding:24, border:"1px solid var(--t-card-border)", boxShadow:"var(--t-card-shadow)" },
   td:           { padding:"11px 16px", color:"var(--t-text-90)", fontSize:13, borderBottom:"1px solid rgba(255,255,255,0.05)" },
 };
 
