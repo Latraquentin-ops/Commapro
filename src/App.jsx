@@ -778,8 +778,8 @@ export default function App() {
       return;  // on refuse d'écraser le cloud par du vide
     }
     lastGoodRef.current = now;
-    saveCloud(state);
-    pushSnapshot(state);  // garde un instantané horodaté (auto-limité à 1/10min, max 10)
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { saveCloud(state); pushSnapshot(state); }, 500);
   }, [users, suppliers, orders, locations, stockImports, unknownRefs, proposals, replenishments, promoCatalogues, tasks, loaded]);
 
   // ── Export / Import de TOUTES les données (sauvegarde de sécurité) ──────────
