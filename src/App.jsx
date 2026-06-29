@@ -730,7 +730,8 @@ export default function App() {
   const [loaded,    setLoaded]    = useState(false);  // true une fois les données cloud chargées
 
   // ── Chargement initial depuis Supabase ──────────────────────────────────────
-    const saveTimerRef = useRef(null);
+    const lastGoodRef = useRef(null);
+  const saveTimerRef = useRef(null);
   useEffect(() => {
     (async () => {
       let cloud = await loadCloud();
