@@ -5202,8 +5202,8 @@ function TasksPage({ tasks, setTasks, users, suppliers, orders, session, setPage
 // SUPPLIERS
 // ═══════════════════════════════════════════════════════════════════════════════
 function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stockImports, setStockImports, unknownRefs, setUnknownRefs }) {
-  const [editing, setEditing] = useState(null);
-  const [form, setForm]       = useState(null);
+  const DEPOTS = ["Magasin Nord", "Magasin Sud", "Dépôt Nord", "Dépôt Sud", "Dépôt Port"];
+  const [importDepot, setImportDepot] = useState(DEPOTS[0]);
   const [expanded, setExpanded] = useState(null);
   const [importMsg, setImportMsg] = useState("");
   const [stockMsg, setStockMsg]   = useState("");
