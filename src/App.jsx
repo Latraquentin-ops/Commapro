@@ -2364,7 +2364,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
     setOrders(prev => prev.map(o => {
       if (o.id !== order.id) return o;
       const history = { ...(o.statusHistory||{}), reception_validee: o.statusHistory?.reception_validee || now };
-      return { ...o, status:"reception_validee", statusHistory: history, numAchat: numAchat.trim(), numBL: numBL.trim() };
+            return { ...o, status: s, statusHistory: history, updatedAt: now, updatedBy: session.name };
     }));
   }
 
@@ -2374,7 +2374,7 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
       if (o.id !== order.id) return o;
       const history = { ...(o.statusHistory || {}) };
       if (!history[s]) history[s] = now;  // mémorise la 1ère date d'entrée dans ce statut
-      return { ...o, status: s, statusHistory: history };
+            return { ...o, status: s, statusHistory: history, updatedAt: now, updatedBy: session.name };
     }));
   }
   function deleteOrder() {
