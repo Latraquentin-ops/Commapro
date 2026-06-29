@@ -1009,11 +1009,11 @@ export default function App() {
   `;
 
   const T = effectiveDark ? {
-    bg:       "linear-gradient(165deg,#060914 0%,#080b16 45%,#0a0818 100%)",
+    bg:       "#0a0a0c",
     color:    "#ffffff",
     headerBg: "rgba(6,9,20,0.82)",
     headerBorder: "rgba(255,255,255,0.08)",
-    blob1: "rgba(124,58,237,0.16)", blob2: "rgba(56,189,248,0.1)", blob3: "rgba(139,92,246,0.12)",
+    blob1: "transparent", blob2: "transparent", blob3: "transparent",
     accent: "linear-gradient(135deg,#ede9fe,#a78bfa)",
   } : {
     bg:       "linear-gradient(165deg,#f5f3ff 0%,#faf5ff 50%,#eff6ff 100%)",
