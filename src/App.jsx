@@ -916,49 +916,49 @@ export default function App() {
   // DARK = indigo/violet "Liquid Glass" night.  LIGHT = clean slate/blue daylight.
   const themeCSS = effectiveDark ? `
     :root {
-      /* ── NUIT — bleu nuit profond / violet premium ── */
+      /* ── ENCRE — gris-encre froid, accent bleu glacier ── */
       --t-text-90: rgba(255,255,255,0.95);
-      --t-text-85: rgba(255,255,255,0.88);
-      --t-text-70: rgba(255,255,255,0.72);
-      --t-text-55: rgba(255,255,255,0.62);
-      --t-text-40: rgba(255,255,255,0.45);
-      --t-text-30: rgba(255,255,255,0.32);
+      --t-text-85: rgba(255,255,255,0.86);
+      --t-text-70: rgba(255,255,255,0.66);
+      --t-text-55: rgba(255,255,255,0.52);
+      --t-text-40: rgba(255,255,255,0.40);
+      --t-text-30: rgba(255,255,255,0.28);
       --t-input-color: #ffffff;
-      --t-input-bg: rgba(255,255,255,0.05);
-      --t-input-border: rgba(255,255,255,0.12);
-      --t-placeholder: rgba(255,255,255,0.38);
-      --t-option-bg: #0d1020;
-      --t-scroll: rgba(255,255,255,0.14);
-      --t-row-hover: rgba(124,58,237,0.1);
-      --t-drop-bg: rgba(10,12,24,0.97);
-      --t-nav-hover: rgba(255,255,255,0.08);
-      --t-sidebar-bg: rgba(6,9,20,0.97);
-      --t-sidebar-border: rgba(255,255,255,0.07);
-      --t-sidebar-active: rgba(124,58,237,0.16);
-      --t-sidebar-text: rgba(255,255,255,0.55);
+      --t-input-bg: rgba(255,255,255,0.035);
+      --t-input-border: rgba(255,255,255,0.10);
+      --t-placeholder: rgba(255,255,255,0.32);
+      --t-option-bg: #0e0e12;
+      --t-scroll: rgba(255,255,255,0.12);
+      --t-row-hover: rgba(125,185,255,0.06);
+      --t-drop-bg: rgba(14,14,18,0.98);
+      --t-nav-hover: rgba(255,255,255,0.05);
+      --t-sidebar-bg: rgba(9,9,12,0.98);
+      --t-sidebar-border: rgba(255,255,255,0.06);
+      --t-sidebar-active: rgba(125,185,255,0.10);
+      --t-sidebar-text: rgba(255,255,255,0.50);
       --t-sidebar-text-active: rgba(255,255,255,0.97);
-      --t-card-bg: rgba(255,255,255,0.055);
-      --t-card-border: rgba(255,255,255,0.1);
-      --t-card-shadow: 0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
-      --t-td-border: rgba(255,255,255,0.07);
-      --t-thead-bg: rgba(255,255,255,0.04);
-      --t-thead-color: rgba(255,255,255,0.6);
-      --t-border-subtle: rgba(255,255,255,0.08);
-      --t-surface: rgba(255,255,255,0.05);
-      --t-surface-hover: rgba(255,255,255,0.08);
+      --t-card-bg: rgba(255,255,255,0.025);
+      --t-card-border: rgba(255,255,255,0.08);
+      --t-card-shadow: 0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25);
+      --t-td-border: rgba(255,255,255,0.06);
+      --t-thead-bg: rgba(255,255,255,0.03);
+      --t-thead-color: rgba(255,255,255,0.55);
+      --t-border-subtle: rgba(255,255,255,0.07);
+      --t-surface: rgba(255,255,255,0.035);
+      --t-surface-hover: rgba(255,255,255,0.06);
       --t-notif-bg: rgba(239,68,68,0.1);
       --t-notif-border: rgba(239,68,68,0.28);
-      --t-badge-bg: rgba(255,255,255,0.06);
-      --t-btn-sec-color: rgba(255,255,255,0.85);
-      --t-btn-ghost: #a78bfa;
-      --t-mono-bg: rgba(255,255,255,0.06);
-      --t-mono-color: rgba(167,139,250,0.9);
-      --t-tag-bg: rgba(124,58,237,0.14);
-      --t-tag-color: #c4b5fd;
-      --t-tag-border: rgba(124,58,237,0.28);
-      --t-separator: rgba(255,255,255,0.07);
-      --t-infoblock: rgba(255,255,255,0.04);
-      --t-infoblock-border: rgba(255,255,255,0.08);
+      --t-badge-bg: rgba(255,255,255,0.05);
+      --t-btn-sec-color: rgba(255,255,255,0.82);
+      --t-btn-ghost: #7db9ff;
+      --t-mono-bg: rgba(255,255,255,0.05);
+      --t-mono-color: rgba(125,185,255,0.9);
+      --t-tag-bg: rgba(125,185,255,0.10);
+      --t-tag-color: #a9d2ff;
+      --t-tag-border: rgba(125,185,255,0.22);
+      --t-separator: rgba(255,255,255,0.06);
+      --t-infoblock: rgba(255,255,255,0.03);
+      --t-infoblock-border: rgba(255,255,255,0.07);
     }
   ` : `
     :root {
