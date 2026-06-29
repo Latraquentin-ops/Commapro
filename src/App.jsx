@@ -5207,7 +5207,8 @@ function SuppliersPage({ suppliers, setSuppliers, isAdmin, orders, setPage, stoc
   const [expanded, setExpanded] = useState(null);
   const [importMsg, setImportMsg] = useState("");
   const [stockMsg, setStockMsg]   = useState("");
-
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(null);
   // Exporte les références inconnues (vues en import mais absentes du référencement)
   function exportUnknownRefs() {
     const list = unknownRefs || [];
