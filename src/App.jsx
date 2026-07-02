@@ -1201,6 +1201,10 @@ export default function App() {
         <div style={{ position:"absolute", top:"-10%", left:"-5%", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle,"+T.blob1+" 0%,transparent 70%)", animation:"float1 18s ease-in-out infinite" }} />
         <div style={{ position:"absolute", top:"30%", right:"-10%", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle,"+T.blob2+" 0%,transparent 70%)", animation:"float2 22s ease-in-out infinite" }} />
         <div style={{ position:"absolute", bottom:"-15%", left:"30%", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle,"+T.blob3+" 0%,transparent 70%)", animation:"float3 16s ease-in-out infinite" }} />
+        <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:0.5, mixBlendMode:"overlay", pointerEvents:"none" }}>
+          <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/></filter>
+          <rect width="100%" height="100%" filter="url(#grain)"/>
+        </svg>
       </div>
 
       {/* Liquid Glass Header — mobile only (hidden on desktop via CSS) */}
