@@ -1082,7 +1082,7 @@ export default function App() {
   `;
 
   const T = effectiveDark ? {
-    bg:       "#0a0a0c",
+    bg:       "linear-gradient(180deg,#07090d 0%,#090c11 50%,#060709 100%)",
     color:    "#ffffff",
     headerBg: "rgba(6,9,20,0.82)",
     headerBorder: "rgba(255,255,255,0.08)",
