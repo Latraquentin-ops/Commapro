@@ -435,6 +435,12 @@ function buildOrderHTML(order, showPrices) {
 </body>
 </html>`;
 
+    return html;
+}
+
+// Ouvre le HTML dans un nouvel onglet (comportement d'origine du bouton PDF)
+function generatePDF(order, showPrices) {
+  const html = buildOrderHTML(order, showPrices);
   const blob = new Blob([html], { type: "text/html" });
   // iOS Safari bloque window.open() depuis des handlers async
   // On utilise une ancre avec URL.createObjectURL pour forcer le téléchargement/prévisualisation
