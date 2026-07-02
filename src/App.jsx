@@ -261,7 +261,8 @@ async function htmlToPdfBlob(html) {
 }
 
 // ─── PDF ───────────────────────────────────────────────────────────────────────
-function generatePDF(order, showPrices) {
+// Construit le HTML complet du bon de commande (réutilisable : ouverture ET PDF joint)
+function buildOrderHTML(order, showPrices) {
   const total = orderTotal(order);
   const tva = total * 0.085; // TVA 8.5% La Réunion
   const ttc = total + tva;
