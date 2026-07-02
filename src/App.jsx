@@ -208,6 +208,59 @@ const STATUS = {
 const STATUS_ORDER = ["en_attente","confirmee","en_preparation","en_livraison","livree","reception_validee"];
 
 // ─── PDF ───────────────────────────────────────────────────────────────────────
+// Charge jsPDF + html2canvas à la demande (CDN), comme le scanner
+function loadPdfLibs() {
+  return new Promise((resolve, reject) => {
+    function loadOne(src, check) {
+      return new Promise((res, rej) => {
+        if (check()) return res();
+        const s = document.createElement("script");
+        s.src = src; s.onload = res; s.onerror = () => rej(new Error("Échec chargement " + src));
+        document.head.appendChild(s);
+      });
+    }
+    loadOne("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js", () => window.html2canvas)
+      .then(() => loadOne("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", () => window.jspdf && window.jspdf.jsPDF))
+      .then(resolve).catch(reject);
+  });
+}
+
+// Construit le PDF (Blob) à partir d'un HTML complet, format A4 portrait
+async function htmlToPdfBlob(html) {
+  await loadPdfLibs();
+  const holder = document.createElement("div");
+  holder.style.position = "fixed";
+  holder.style.left = "-10000px";
+  holder.style.top = "0";
+  holder.style.width = "794px"; // ~A4 @96dpi
+  holder.style.background = "#ffffff";
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  try {
+    const canvas = await window.html2canvas(holder, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    const jsPDF = window.jspdf.jsPDF;
+    const pdf = new jsPDF({ unit: "pt", format: "a4" });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const imgW = pw;
+    const imgH = canvas.height * (pw / canvas.width);
+    let pos = 0;
+    const img = canvas.toDataURL("image/jpeg", 0.92);
+    pdf.addImage(img, "JPEG", 0, pos, imgW, imgH);
+    let remaining = imgH - ph;
+    while (remaining > 0) {
+      pos -= ph;
+      pdf.addPage();
+      pdf.addImage(img, "JPEG", 0, pos, imgW, imgH);
+      remaining -= ph;
+    }
+    return pdf.output("blob");
+  } finally {
+    document.body.removeChild(holder);
+  }
+}
+
+// ─── PDF ───────────────────────────────────────────────────────────────────────
 function generatePDF(order, showPrices) {
   const total = orderTotal(order);
   const tva = total * 0.085; // TVA 8.5% La Réunion
