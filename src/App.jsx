@@ -1086,7 +1086,7 @@ export default function App() {
     color:    "#ffffff",
     headerBg: "rgba(6,9,20,0.82)",
     headerBorder: "rgba(255,255,255,0.08)",
-    blob1: "transparent", blob2: "transparent", blob3: "transparent",
+    blob1: "rgba(58,76,112,0.4)", blob2: "rgba(34,46,72,0.34)", blob3: "rgba(46,58,88,0.28)",
     accent: "linear-gradient(135deg,#ede9fe,#a78bfa)",
   } : {
     bg:       "linear-gradient(165deg,#f5f3ff 0%,#faf5ff 50%,#eff6ff 100%)",
