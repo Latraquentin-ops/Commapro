@@ -1098,7 +1098,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ fontFamily:"'Sora','-apple-system','SF Pro Display',BlinkMacSystemFont,sans-serif", minHeight:"100dvh", background:T.bg, color:T.color, position:"relative", overflowX:"hidden", transition:"background 0.4s, color 0.3s" }}>
+    <div style={{ fontFamily:"'Hanken Grotesk','-apple-system','SF Pro Display',BlinkMacSystemFont,sans-serif", minHeight:"100dvh", background:T.bg, color:T.color, position:"relative", overflowX:"hidden", transition:"background 0.4s, color 0.3s" }}>
       <style>{themeCSS + `
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         @keyframes float1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(40px,-30px) scale(1.05)} 66%{transform:translate(-20px,20px) scale(0.97)} }
