@@ -2486,15 +2486,31 @@ function OrderDetail({ order, orders, setOrders, session, onBack, setPage, setEd
                 + "\n\nCordialement,\nRIDIS";
               const body = encodeURIComponent(bodyText);
               // Utilise navigator.share si disponible (iOS natif), sinon mailto
-              if (navigator.share) {
-                try {
-                  await navigator.share({
-                    title: `BC ${order.id} — ${order.supplierName}`,
-                    text: `Bon de commande ${order.id}\n${order.supplierName}\nLivraison : ${fmtDate(order.deliveryDate)}`,
-                  });
-                } catch(e) { /* annulé par l'utilisateur */ }
-              } else {
-                window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+              const bodyMail = "Bonjour " + (order.commercial || order.supplierName) + ",\n\n"
+                + "Veuillez trouver ci-joint notre bon de commande " + order.id + " au format PDF.\n\n"
+                + "Date de commande : " + fmtDate(order.date) + "\n"
+                + "Livraison souhaitée : " + fmtDate(order.deliveryDate) + "\n"
+                + "Lieu de livraison : " + (order.deliveryPlace || "—") + "\n\n"
+                + "Je reste disponible pour toute question.\n\n"
+                + "Cordialement,\nQuentin";
+              const bodyMailEnc = encodeURIComponent(bodyMail);
+              try {
+                const htmlPdf = buildOrderHTML(order, showPrices);
+                const pdfBlob = await htmlToPdfBlob(htmlPdf);
+                const file = new File([pdfBlob], `BC-${order.id}.pdf`, { type: "application/pdf" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                  await navigator.share({ files: [file], title: `Bon de commande ${order.id} — ${order.supplierName}`, text: bodyMail });
+                } else {
+                  const url = URL.createObjectURL(pdfBlob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `BC-${order.id}.pdf`;
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(url), 5000);
+                  window.location.href = `mailto:${to}?subject=${subject}&body=${bodyMailEnc}`;
+                }
+              } catch(e) {
+                if (e && e.name === "AbortError") { /* annulé */ }
+                else { window.location.href = `mailto:${to}?subject=${subject}&body=${bodyMailEnc}`; }
               }
             }} style={{...S.btnPrimary, display:"inline-flex", alignItems:"center", gap:6, background:"rgba(99,102,241,0.7)"}}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
