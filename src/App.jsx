@@ -887,6 +887,19 @@ export default function App() {
     return alerts;
   }, [suppliers, orders]);
 
+  // ── Cloche : 3 catégories supplémentaires ──────────────────────────────────
+  const todayISO = new Date().toISOString().slice(0,10);
+  const lateOrdersNotif = useMemo(() => {
+    return (orders||[]).filter(o => o.deliveryDate && o.deliveryDate < todayISO && !["livree","reception_validee","brouillon"].includes(o.status));
+  }, [orders, todayISO]);
+  const toReceiveNotif = useMemo(() => {
+    return (orders||[]).filter(o => ["en_livraison","livree"].includes(o.status));
+  }, [orders]);
+  const catalogueSoonNotif = useMemo(() => {
+    const in3 = new Date(Date.now() + 3*86400000).toISOString().slice(0,10);
+    return (promoCatalogues||[]).filter(c => (c.start && c.start >= todayISO && c.start <= in3) || (c.end && c.end >= todayISO && c.end <= in3));
+  }, [promoCatalogues, todayISO]);
+
   if (!loaded) return (
     <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"linear-gradient(165deg,#060914 0%,#080b16 50%,#0a0818 100%)", color:"white", fontFamily:"-apple-system,'SF Pro Display',sans-serif", gap:22, position:"relative", overflow:"hidden" }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}} @keyframes pulse{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}} @keyframes glow{0%,100%{opacity:0.4}50%{opacity:0.7}}`}</style>
